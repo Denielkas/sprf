@@ -1,0 +1,184 @@
+.rostocadPage {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  max-width: 900px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  min-height: 100vh;
+}
+
+.rostocadPage h2 {
+  font-size: 28px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0;
+  color: #fff;
+}
+
+.videoArea {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 18px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 10px;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  box-sizing: border-box;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.rostocadVideo {
+  width: 100%;
+  max-width: 660px;
+  height: 520px;
+  object-fit: cover;
+  border-radius: 14px;
+  background: black;
+  display: block;
+}
+
+.msg {
+  color: #fff;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.4;
+  max-width: 95%;
+}
+
+.rostocadBtn {
+  background: #0d6efd;
+  color: white;
+  font-weight: 600;
+  padding: 15px 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 17px;
+  width: 100%;
+  max-width: 660px;
+  transition: all 0.2s;
+}
+
+.rostocadBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+
+.rostocadBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.rostocadBack {
+  background: rgba(60, 60, 60, 0.9);
+  color: white;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  width: 100%;
+  max-width: 660px;
+  font-size: 17px;
+  transition: 0.2s;
+}
+
+.rostocadBack:hover {
+  background: #666;
+}
+
+.modal-ponto {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  animation: fadeIn 0.3s ease;
+  padding: 20px;
+}
+
+.modal-box {
+  background: #ffffffee;
+  padding: 24px 20px;
+  border-radius: 18px;
+  text-align: center;
+  color: #000;
+  animation: scaleIn 0.25s ease;
+  width: 100%;
+  max-width: 360px;
+}
+
+.modal-box-erro {
+  background: rgba(255, 240, 240, 0.96);
+}
+
+.modal-icon {
+  font-size: 52px;
+  color: #2ecc71;
+  margin-bottom: 10px;
+}
+
+.modal-icon-erro {
+  color: #e74c3c;
+}
+
+.modal-box h3 {
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.modal-box p {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.6);
+  }
+  to {
+    transform: scale(1);
+  }
+}
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .rostocadVideo {
+    max-width: 620px;
+    height: 460px;
+  }
+}
+
+/* Celular */
+@media (max-width: 768px) {
+  .rostocadVideo {
+    max-width: 100%;
+    height: 340px;
+  }
+
+  .rostocadPage h2 {
+    font-size: 22px;
+  }
+
+  .rostocadBtn,
+  .rostocadBack {
+    max-width: 100%;
+  }
+}
