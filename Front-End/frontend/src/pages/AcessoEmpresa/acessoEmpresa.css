@@ -1,0 +1,488 @@
+/* ==========================================================
+   CONFIGURAÇÃO
+========================================================== */
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+
+  width: 100%;
+  min-height: 100%;
+}
+
+/* ==========================================================
+   TELA
+========================================================== */
+
+.acessoEmpresaScreen {
+  min-height: 100vh;
+
+  box-sizing: border-box;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px 20px;
+
+  background-size: cover;
+
+  background-position: center;
+
+  background-repeat: no-repeat;
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+/* ==========================================================
+   CARD
+========================================================== */
+
+.acessoEmpresaCard {
+  width: 100%;
+
+  max-width: 430px;
+
+  box-sizing: border-box;
+
+  padding: 32px;
+
+  border-radius: 24px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.94
+    );
+
+  backdrop-filter:
+    blur(10px);
+
+  box-shadow:
+    0 25px 70px
+    rgba(
+      0,
+      0,
+      0,
+      0.38
+    );
+
+  animation:
+    acessoEntrada
+    0.35s ease;
+}
+
+/* ==========================================================
+   LOGO
+========================================================== */
+
+.acessoEmpresaLogoArea {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  min-height: 85px;
+
+  margin-bottom: 10px;
+}
+
+.acessoEmpresaLogo {
+  width: 170px;
+
+  max-height: 90px;
+
+  object-fit: contain;
+}
+
+/* ==========================================================
+   CABEÇALHO
+========================================================== */
+
+.acessoEmpresaHeader {
+  text-align: center;
+
+  margin-bottom: 28px;
+}
+
+.acessoEmpresaIcon {
+  width: 55px;
+
+  height: 55px;
+
+  margin:
+    0 auto 12px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+
+  background:
+    rgba(
+      13,
+      110,
+      253,
+      0.12
+    );
+
+  color: #0d6efd;
+
+  font-size: 24px;
+}
+
+.acessoEmpresaHeader h1 {
+  margin:
+    0 0 7px;
+
+  color: #202020;
+
+  font-size: 27px;
+
+  font-weight: 800;
+}
+
+.acessoEmpresaHeader p {
+  max-width: 330px;
+
+  margin: 0 auto;
+
+  color: #777777;
+
+  font-size: 14px;
+
+  line-height: 1.5;
+}
+
+/* ==========================================================
+   FORM
+========================================================== */
+
+.acessoEmpresaForm {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 17px;
+}
+
+/* ==========================================================
+   CAMPOS
+========================================================== */
+
+.acessoEmpresaGroup {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.acessoEmpresaGroup label {
+  color: #333333;
+
+  font-size: 14px;
+
+  font-weight: 700;
+}
+
+.acessoEmpresaGroup input {
+  width: 100%;
+
+  height: 48px;
+
+  box-sizing: border-box;
+
+  padding:
+    0 14px;
+
+  border:
+    2px solid #dedede;
+
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  color: #222222;
+
+  font-size: 15px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.acessoEmpresaGroup input:focus {
+  border-color: #0d6efd;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(
+      13,
+      110,
+      253,
+      0.12
+    );
+}
+
+.acessoEmpresaGroup input::placeholder {
+  color: #aaaaaa;
+}
+
+/* ==========================================================
+   SENHA
+========================================================== */
+
+.acessoSenhaWrapper {
+  position: relative;
+}
+
+.acessoSenhaWrapper input {
+  padding-right: 50px;
+}
+
+.acessoEyeButton {
+  position: absolute;
+
+  top: 50%;
+
+  right: 14px;
+
+  transform:
+    translateY(-50%);
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px;
+
+  border: none;
+
+  background: transparent;
+
+  color: #666666;
+
+  font-size: 19px;
+
+  cursor: pointer;
+}
+
+.acessoEyeButton:hover {
+  color: #0d6efd;
+}
+
+/* ==========================================================
+   BOTÃO
+========================================================== */
+
+.acessoEmpresaButton {
+  width: 100%;
+
+  margin-top: 5px;
+
+  padding: 14px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: #0d6efd;
+
+  color: #ffffff;
+
+  font-size: 16px;
+
+  font-weight: 750;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 20px
+    rgba(
+      13,
+      110,
+      253,
+      0.25
+    );
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.acessoEmpresaButton:hover:not(:disabled) {
+  background: #084298;
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 11px 25px
+    rgba(
+      13,
+      110,
+      253,
+      0.32
+    );
+}
+
+.acessoEmpresaButton:active:not(:disabled) {
+  transform:
+    scale(0.98);
+}
+
+.acessoEmpresaButton:disabled {
+  opacity: 0.65;
+
+  cursor: default;
+}
+
+/* ==========================================================
+   MENSAGEM
+========================================================== */
+
+.acessoEmpresaMsg {
+  padding: 10px 12px;
+
+  border-radius: 8px;
+
+  background:
+    rgba(
+      25,
+      135,
+      84,
+      0.1
+    );
+
+  color: #198754;
+
+  text-align: center;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+.acessoEmpresaMsgErro {
+  background:
+    rgba(
+      220,
+      53,
+      69,
+      0.1
+    );
+
+  color: #dc3545;
+}
+
+/* ==========================================================
+   RODAPÉ
+========================================================== */
+
+.acessoEmpresaFooter {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  margin-top: 24px;
+
+  padding-top: 18px;
+
+  border-top:
+    1px solid #e5e5e5;
+
+  color: #999999;
+
+  font-size: 12px;
+}
+
+.acessoEmpresaFooter svg {
+  color: #0d6efd;
+}
+
+/* ==========================================================
+   ANIMAÇÃO
+========================================================== */
+
+@keyframes acessoEntrada {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(15px)
+      scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (max-width: 600px) {
+  .acessoEmpresaScreen {
+    padding: 18px;
+  }
+
+  .acessoEmpresaCard {
+    padding:
+      26px 22px;
+
+    border-radius: 20px;
+  }
+
+  .acessoEmpresaLogo {
+    width: 145px;
+  }
+
+  .acessoEmpresaHeader h1 {
+    font-size: 24px;
+  }
+}
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (max-width: 380px) {
+  .acessoEmpresaCard {
+    padding:
+      22px 18px;
+  }
+
+  .acessoEmpresaLogoArea {
+    min-height: 65px;
+  }
+
+  .acessoEmpresaLogo {
+    width: 125px;
+  }
+}
