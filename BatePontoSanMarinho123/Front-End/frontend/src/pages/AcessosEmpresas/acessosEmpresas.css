@@ -1,0 +1,619 @@
+/* ==========================================================
+   PÁGINA
+========================================================== */
+
+.acessosPage {
+  width: 100%;
+  min-height: 100%;
+
+  padding: 34px;
+
+  box-sizing: border-box;
+
+  color: #182338;
+}
+
+/* ==========================================================
+   CABEÇALHO
+========================================================== */
+
+.acessosHeader {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding: 30px 34px;
+  margin-bottom: 26px;
+
+  box-sizing: border-box;
+
+  border: 1px solid
+    rgba(255, 255, 255, 0.45);
+
+  border-radius: 22px;
+
+  background:
+    rgba(255, 255, 255, 0.94);
+
+  box-shadow:
+    0 16px 45px
+    rgba(0, 0, 0, 0.15);
+
+  backdrop-filter: blur(12px);
+}
+
+.acessosHeader h1 {
+  margin: 7px 0 5px;
+
+  color: #172237;
+
+  font-size: 32px;
+  font-weight: 800;
+}
+
+.acessosHeader p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.acessosTag {
+  display: inline-flex;
+
+  padding: 6px 11px;
+
+  border-radius: 20px;
+
+  background:
+    rgba(13, 110, 253, 0.1);
+
+  color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  font-size: 11px;
+  font-weight: 800;
+
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+/* ==========================================================
+   ATUALIZAR
+========================================================== */
+
+.btnAtualizarEmpresas {
+  min-height: 48px;
+
+  padding: 0 20px;
+
+  border: 1px solid #d8dee8;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  color: #344054;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    0.2s ease;
+}
+
+.btnAtualizarEmpresas:hover {
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  transform:
+    translateY(-1px);
+}
+
+/* ==========================================================
+   GRID
+========================================================== */
+
+.acessosGrid {
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1.4fr)
+    minmax(320px, 0.6fr);
+
+  gap: 25px;
+
+  align-items: start;
+}
+
+/* ==========================================================
+   CARDS
+========================================================== */
+
+.acessoCard,
+.tiposAcessoCard {
+  border-radius: 22px;
+
+  background:
+    rgba(255, 255, 255, 0.96);
+
+  box-shadow:
+    0 18px 50px
+    rgba(0, 0, 0, 0.16);
+
+  backdrop-filter:
+    blur(12px);
+
+  box-sizing: border-box;
+}
+
+.acessoCard {
+  padding: 30px;
+}
+
+.tiposAcessoCard {
+  padding: 28px;
+}
+
+/* ==========================================================
+   CABEÇALHO CARD
+========================================================== */
+
+.acessoCardHeader {
+  display: flex;
+
+  align-items: center;
+
+  gap: 16px;
+
+  padding-bottom: 22px;
+  margin-bottom: 24px;
+
+  border-bottom:
+    1px solid #edf0f5;
+}
+
+.acessoIcon {
+  width: 54px;
+  height: 54px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 15px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-size: 23px;
+
+  box-shadow:
+    0 9px 20px
+    rgba(13, 110, 253, 0.22);
+}
+
+.acessoCardHeader h2,
+.tiposAcessoCard h2 {
+  margin: 0;
+
+  color: #172237;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.acessoCardHeader p {
+  margin: 4px 0 0;
+
+  color: #718096;
+
+  font-size: 13px;
+}
+
+/* ==========================================================
+   FORMULÁRIO
+========================================================== */
+
+.acessoForm {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 20px;
+}
+
+.acessoCampo {
+  display: flex;
+  flex-direction: column;
+
+  gap: 8px;
+}
+
+.acessoCampo label {
+  color: #344054;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.acessoCampo input,
+.acessoCampo select {
+  width: 100%;
+  height: 50px;
+
+  padding: 0 14px;
+
+  box-sizing: border-box;
+
+  outline: none;
+
+  border: 1px solid #d6dce5;
+  border-radius: 11px;
+
+  background: #ffffff;
+
+  color: #182338;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.acessoCampo input:focus,
+.acessoCampo select:focus {
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 0 4px
+    rgba(13, 110, 253, 0.1);
+}
+
+.acessoCampo input::placeholder {
+  color: #a1a9b7;
+}
+
+/* ==========================================================
+   RESUMO
+========================================================== */
+
+.acessoResumo {
+  grid-column: 1 / -1;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+
+  padding: 16px 18px;
+
+  border: 1px solid #dce8ff;
+  border-radius: 12px;
+
+  background: #f5f8ff;
+}
+
+.acessoResumo span {
+  color: #697386;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.acessoResumo strong {
+  color: #172237;
+
+  font-size: 16px;
+}
+
+.acessoResumo small {
+  color: #667085;
+
+  font-size: 12px;
+}
+
+/* ==========================================================
+   CRIAR
+========================================================== */
+
+.btnCriarAcesso {
+  grid-column: 1 / -1;
+
+  min-height: 52px;
+
+  border: none;
+  border-radius: 12px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-size: 15px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 24px
+    rgba(13, 110, 253, 0.22);
+
+  transition:
+    0.2s ease;
+}
+
+.btnCriarAcesso:hover:not(:disabled) {
+  transform:
+    translateY(-2px);
+
+  filter:
+    brightness(1.05);
+}
+
+.btnCriarAcesso:disabled {
+  opacity: 0.55;
+
+  cursor:
+    not-allowed;
+
+  box-shadow: none;
+}
+
+/* ==========================================================
+   MENSAGENS
+========================================================== */
+
+.acessoMensagem {
+  padding: 13px 15px;
+
+  margin-bottom: 20px;
+
+  border-radius: 10px;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.acessoMensagem.erro {
+  border:
+    1px solid #fecaca;
+
+  background:
+    #fff1f2;
+
+  color:
+    #b42318;
+}
+
+.acessoMensagem.sucesso {
+  border:
+    1px solid #bbf7d0;
+
+  background:
+    #f0fdf4;
+
+  color:
+    #15803d;
+}
+
+/* ==========================================================
+   TIPOS DE ACESSO
+========================================================== */
+
+.tiposDescricao {
+  margin:
+    7px 0 23px;
+
+  color: #718096;
+
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tipoAcessoItem {
+  display: flex;
+
+  gap: 14px;
+
+  padding: 17px 0;
+
+  border-bottom:
+    1px solid #edf0f5;
+}
+
+.tipoAcessoIcon {
+  width: 44px;
+  height: 44px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 12px;
+
+  background:
+    rgba(13, 110, 253, 0.1);
+
+  color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.tipoAcessoItem strong {
+  display: block;
+
+  margin-bottom: 5px;
+
+  color: #172237;
+
+  font-size: 14px;
+}
+
+.tipoAcessoItem p {
+  margin: 0;
+
+  color: #718096;
+
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* ==========================================================
+   EMPRESAS DISPONÍVEIS
+========================================================== */
+
+.empresasDisponiveis {
+  display: flex;
+
+  align-items: center;
+  justify-content: space-between;
+
+  margin-top: 22px;
+
+  padding: 15px 17px;
+
+  border-radius: 12px;
+
+  background: #f6f8fb;
+}
+
+.empresasDisponiveis span {
+  color: #667085;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empresasDisponiveis strong {
+  min-width: 35px;
+  height: 35px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-size: 14px;
+}
+
+/* ==========================================================
+   TABLET
+========================================================== */
+
+@media (
+  max-width: 1000px
+) {
+  .acessosGrid {
+    grid-template-columns:
+      1fr;
+  }
+}
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (
+  max-width: 650px
+) {
+  .acessosPage {
+    padding:
+      18px 14px;
+  }
+
+  .acessosHeader {
+    flex-direction:
+      column;
+
+    align-items:
+      stretch;
+
+    padding:
+      23px 20px;
+
+    border-radius:
+      17px;
+  }
+
+  .acessosHeader h1 {
+    font-size:
+      25px;
+  }
+
+  .btnAtualizarEmpresas {
+    width: 100%;
+  }
+
+  .acessoCard,
+  .tiposAcessoCard {
+    padding:
+      20px;
+
+    border-radius:
+      17px;
+  }
+
+  .acessoForm {
+    grid-template-columns:
+      1fr;
+  }
+
+  .acessoResumo,
+  .btnCriarAcesso {
+    grid-column:
+      auto;
+  }
+}

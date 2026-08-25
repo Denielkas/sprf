@@ -5,54 +5,132 @@ const fs = require("fs");
 
 require("dotenv").config();
 
-const authRoutes = require("./routes/auth.routes");
-const funcionariosRoutes = require("./routes/funcionarios.routes");
-const pontoRoutes = require("./routes/ponto.routes");
-const relatorioRoutes = require("./routes/relatorio.routes");
-const funcaoRoutes = require("./routes/funcao.routes");
-const atestadoRoutes = require("./routes/atestado.routes");
-const bancoHorasRoutes = require("./routes/bancoHoras.routes");
-const empresaRoutes = require("./routes/empresa.routes");
+/* =========================================================
+   ROTAS
+========================================================= */
 
-/* NOVO */
-const empresaUploadRoutes = require(
-  "./routes/empresaUpload.routes"
+const authRoutes =
+  require("./routes/auth.routes");
+
+const funcionariosRoutes =
+  require("./routes/funcionarios.routes");
+
+const pontoRoutes =
+  require("./routes/ponto.routes");
+
+const relatorioRoutes =
+  require("./routes/relatorio.routes");
+
+const funcaoRoutes =
+  require("./routes/funcao.routes");
+
+const atestadoRoutes =
+  require("./routes/atestado.routes");
+
+const bancoHorasRoutes =
+  require("./routes/bancoHoras.routes");
+
+const empresaRoutes =
+  require("./routes/empresa.routes");
+
+/*
+  Rotas específicas para:
+
+  POST /api/empresas/:id/logo
+  POST /api/empresas/:id/fundo
+
+  GET /api/empresas/:id/logo
+  GET /api/empresas/:id/fundo
+*/
+
+const empresaUploadRoutes =
+  require("./routes/empresaUpload.routes");
+
+/* =========================================================
+   APP
+========================================================= */
+
+const app =
+  express();
+
+/* =========================================================
+   MIDDLEWARES
+========================================================= */
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  })
 );
 
-const app = express();
-
-/* ==============================
-   MIDDLEWARES
-============================== */
-
-app.use(cors());
-
-app.use(express.json());
+app.use(
+  express.json({
+    limit: "15mb",
+  })
+);
 
 app.use(
   express.urlencoded({
     extended: true,
+    limit: "15mb",
   })
 );
 
-/* ==============================
-   PASTAS
-============================== */
+/* =========================================================
+   PASTA DE UPLOADS
+
+   IMPORTANTE:
+
+   empresaUpload.routes.js precisa usar exatamente a mesma
+   pasta base.
+
+   Se UPLOADS_DIR não estiver definido:
+
+   Back-End/
+      uploads/
+         empresas/
+========================================================= */
 
 const uploadsPath =
-  process.env.UPLOADS_DIR ||
+  process.env.UPLOADS_DIR
+    ? path.resolve(
+        process.env.UPLOADS_DIR
+      )
+    : path.resolve(
+        __dirname,
+        "../uploads"
+      );
+
+/* =========================================================
+   PASTA EMPRESAS
+========================================================= */
+
+const empresasUploadsPath =
   path.join(
-    __dirname,
-    "../uploads"
+    uploadsPath,
+    "empresas"
   );
 
+/* =========================================================
+   RELATÓRIOS
+========================================================= */
+
 const relatoriosPath =
-  path.join(
+  path.resolve(
     __dirname,
     "relatorios"
   );
 
-if (!fs.existsSync(uploadsPath)) {
+/* =========================================================
+   CRIAR PASTAS
+========================================================= */
+
+if (
+  !fs.existsSync(
+    uploadsPath
+  )
+) {
   fs.mkdirSync(
     uploadsPath,
     {
@@ -61,7 +139,24 @@ if (!fs.existsSync(uploadsPath)) {
   );
 }
 
-if (!fs.existsSync(relatoriosPath)) {
+if (
+  !fs.existsSync(
+    empresasUploadsPath
+  )
+) {
+  fs.mkdirSync(
+    empresasUploadsPath,
+    {
+      recursive: true,
+    }
+  );
+}
+
+if (
+  !fs.existsSync(
+    relatoriosPath
+  )
+) {
   fs.mkdirSync(
     relatoriosPath,
     {
@@ -70,19 +165,42 @@ if (!fs.existsSync(relatoriosPath)) {
   );
 }
 
+/* =========================================================
+   DEBUG DAS PASTAS
+
+   Quando iniciar o backend você deverá ver estes caminhos.
+========================================================= */
+
 console.log(
-  "📂 Uploads reais:",
+  "=========================================="
+);
+
+console.log(
+  "📂 Uploads:",
   uploadsPath
 );
 
 console.log(
-  "📄 Relatórios reais:",
+  "🏢 Imagens empresas:",
+  empresasUploadsPath
+);
+
+console.log(
+  "📄 Relatórios:",
   relatoriosPath
 );
 
-/* ==============================
+console.log(
+  "=========================================="
+);
+
+/* =========================================================
    ARQUIVOS ESTÁTICOS
-============================== */
+
+   Permite abrir:
+
+   http://localhost:4000/uploads/empresas/arquivo.png
+========================================================= */
 
 app.use(
   "/uploads",
@@ -91,6 +209,10 @@ app.use(
   )
 );
 
+/* =========================================================
+   RELATÓRIOS ESTÁTICOS
+========================================================= */
+
 app.use(
   "/relatorios",
   express.static(
@@ -98,26 +220,91 @@ app.use(
   )
 );
 
-/* ==============================
-   ROTAS DA API
-============================== */
+/* =========================================================
+   ROTA DE TESTE
+========================================================= */
+
+app.get(
+  "/",
+  (_req, res) => {
+    return res.send(
+      "API SPRF rodando com sucesso 🚀"
+    );
+  }
+);
+
+/* =========================================================
+   TESTE DE UPLOADS
+
+   Abra:
+   http://localhost:4000/api/teste-uploads
+
+   para conferir qual pasta o backend está utilizando.
+========================================================= */
+
+app.get(
+  "/api/teste-uploads",
+  (_req, res) => {
+    let arquivos = [];
+
+    try {
+      if (
+        fs.existsSync(
+          empresasUploadsPath
+        )
+      ) {
+        arquivos =
+          fs.readdirSync(
+            empresasUploadsPath
+          );
+      }
+    } catch (error) {
+      console.error(
+        "Erro ao listar uploads:",
+        error
+      );
+    }
+
+    return res.json({
+      ok: true,
+
+      uploadsPath,
+
+      empresasUploadsPath,
+
+      arquivos,
+    });
+  }
+);
+
+/* =========================================================
+   AUTH
+========================================================= */
 
 app.use(
   "/api/auth",
   authRoutes
 );
 
-app.use(
-  "/api/empresas",
-  empresaRoutes
-);
+/* =========================================================
+   EMPRESAS
 
-/*
-  Rotas de logo e fundo.
+   IMPORTANTE:
 
-  Também ficam dentro de:
-  /api/empresas
-*/
+   As DUAS usam /api/empresas.
+
+   empresaRoutes:
+   GET /
+   POST /
+   PUT /:id
+   etc.
+
+   empresaUploadRoutes:
+   POST /:id/logo
+   POST /:id/fundo
+   GET /:id/logo
+   GET /:id/fundo
+========================================================= */
 
 app.use(
   "/api/empresas",
@@ -125,67 +312,88 @@ app.use(
 );
 
 app.use(
+  "/api/empresas",
+  empresaRoutes
+);
+
+/* =========================================================
+   FUNCIONÁRIOS
+========================================================= */
+
+app.use(
   "/api/funcionarios",
   funcionariosRoutes
 );
+
+/* =========================================================
+   PONTO
+========================================================= */
 
 app.use(
   "/api/ponto",
   pontoRoutes
 );
 
+/* =========================================================
+   RELATÓRIO
+========================================================= */
+
 app.use(
   "/api/relatorio",
   relatorioRoutes
 );
+
+/* =========================================================
+   FUNÇÕES
+========================================================= */
 
 app.use(
   "/api/funcoes",
   funcaoRoutes
 );
 
+/* =========================================================
+   ATESTADOS
+========================================================= */
+
 app.use(
   "/api/atestado",
   atestadoRoutes
 );
+
+/* =========================================================
+   BANCO DE HORAS
+========================================================= */
 
 app.use(
   "/api/banco-horas",
   bancoHorasRoutes
 );
 
-/* ==============================
-   ROTA TESTE
-============================== */
-
-app.get(
-  "/",
-  (_req, res) => {
-    res.send(
-      "API rodando com sucesso 🚀"
-    );
-  }
-);
-
-/* ==============================
+/* =========================================================
    404
-============================== */
+========================================================= */
 
 app.use(
   (req, res) => {
-    res.status(404).json({
-      error:
-        "Rota não encontrada",
+    return res
+      .status(404)
+      .json({
+        error:
+          "Rota não encontrada.",
 
-      path:
-        req.originalUrl,
-    });
+        method:
+          req.method,
+
+        path:
+          req.originalUrl,
+      });
   }
 );
 
-/* ==============================
+/* =========================================================
    TRATAMENTO GLOBAL DE ERROS
-============================== */
+========================================================= */
 
 app.use(
   (
@@ -195,65 +403,134 @@ app.use(
     next
   ) => {
     console.error(
-      "🔥 Erro global:",
+      "🔥 ERRO GLOBAL:"
+    );
+
+    console.error(
       err
     );
 
+    /* =====================================================
+       ERRO DE PDF
+    ===================================================== */
+
     if (
-      err.message ===
+      err?.message ===
       "Somente arquivos PDF são permitidos."
     ) {
-      return res.status(400).json({
-        error:
-          err.message,
-      });
+      return res
+        .status(400)
+        .json({
+          error:
+            err.message,
+        });
     }
 
-    /*
-      NOVO:
-      erro de imagem
-    */
+    /* =====================================================
+       ERRO DE IMAGEM
+    ===================================================== */
 
     if (
-      err.message ===
+      err?.message ===
       "Somente imagens JPG, JPEG, PNG ou WEBP são permitidas."
     ) {
-      return res.status(400).json({
-        error:
-          err.message,
-      });
+      return res
+        .status(400)
+        .json({
+          error:
+            err.message,
+        });
     }
+
+    /* =====================================================
+       ARQUIVO MUITO GRANDE
+    ===================================================== */
 
     if (
-      err.code ===
+      err?.code ===
       "LIMIT_FILE_SIZE"
     ) {
-      return res.status(400).json({
-        error:
-          "O arquivo excede o limite de 10MB.",
-      });
+      return res
+        .status(400)
+        .json({
+          error:
+            "O arquivo excede o limite de 10MB.",
+        });
     }
 
-    return res.status(500).json({
-      error:
-        "Erro interno do servidor",
-    });
+    /* =====================================================
+       MUITOS ARQUIVOS
+    ===================================================== */
+
+    if (
+      err?.code ===
+      "LIMIT_FILE_COUNT"
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Quantidade máxima de arquivos excedida.",
+        });
+    }
+
+    /* =====================================================
+       CAMPO DE UPLOAD ERRADO
+    ===================================================== */
+
+    if (
+      err?.code ===
+      "LIMIT_UNEXPECTED_FILE"
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Campo de arquivo inválido.",
+        });
+    }
+
+    /* =====================================================
+       ERRO GENÉRICO
+    ===================================================== */
+
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro interno do servidor.",
+      });
   }
 );
 
-/* ==============================
-   START SERVER
-============================== */
+/* =========================================================
+   PORTA
+========================================================= */
 
 const PORT =
-  process.env.PORT ||
+  Number(
+    process.env.PORT
+  ) ||
   4000;
+
+/* =========================================================
+   INICIAR SERVIDOR
+========================================================= */
 
 app.listen(
   PORT,
+  "0.0.0.0",
   () => {
     console.log(
-      `🚀 API rodando em http://127.0.0.1:${PORT}`
+      `🚀 API SPRF rodando na porta ${PORT}`
+    );
+
+    console.log(
+      `🔗 Local: http://127.0.0.1:${PORT}`
+    );
+
+    console.log(
+      `🖼 Teste uploads: http://127.0.0.1:${PORT}/api/teste-uploads`
     );
   }
 );

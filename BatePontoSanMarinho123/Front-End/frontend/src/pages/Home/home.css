@@ -1,271 +1,691 @@
-/* ==============================
+/* ==========================================================
+   HOME - SISTEMA DE PONTO
+   IDENTIDADE VISUAL DINÂMICA POR EMPRESA
+========================================================== */
+
+
+/* ==========================================================
    TELA INTEIRA
-============================== */
+
+   IMPORTANTE:
+   O background-image é colocado pelo Home/index.jsx:
+
+   style={{
+     backgroundImage: `url("${identidade.fundo}")`
+   }}
+
+   Portanto NÃO coloque imagem fixa aqui.
+========================================================== */
+
 .homeScreen {
+  width: 100%;
   min-height: 100vh;
+
+  position: relative;
+
   display: grid;
   grid-template-rows: auto 1fr;
-  background: url("../../assets/logo/hotel.jpg") center/cover no-repeat fixed;
+
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+
+  overflow: hidden;
+
+  isolation: isolate;
 }
 
-/* ==============================
-   BARRA SUPERIOR
-============================== */
+
+/* ==========================================================
+   CAMADA SOBRE O FUNDO
+
+   Serve para melhorar a leitura caso a empresa cadastre
+   uma imagem de fundo muito clara.
+========================================================== */
+
+.homeScreen::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  z-index: -1;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.12) 45%,
+      rgba(0, 0, 0, 0.22) 100%
+    );
+
+  pointer-events: none;
+}
+
+
+/* ==========================================================
+   CABEÇALHO
+========================================================== */
+
 .homeHeader {
+  width: 100%;
+
+  position: relative;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  backdrop-filter: blur(2px);
+
+  padding: 22px 20px 10px;
+
+  box-sizing: border-box;
+
+  z-index: 2;
 }
+
+
+/* ==========================================================
+   ÁREA DA LOGO
+========================================================== */
 
 .brand {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 10px;
-  text-decoration: none;
+  justify-content: center;
+
+  max-width: 100%;
 }
+
+
+/* ==========================================================
+   LOGO DA EMPRESA
+
+   Não colocamos fundo branco para permitir logos PNG
+   transparentes.
+========================================================== */
 
 .brandLogo {
-  width: 18vw;
-  max-width: 250px;
+  width: auto;
   height: auto;
+
+  max-width: min(320px, 50vw);
+  max-height: 150px;
+
+  display: block;
+
   object-fit: contain;
+
+  filter:
+    drop-shadow(
+      0 4px 10px
+      rgba(0, 0, 0, 0.25)
+    );
 }
 
-.brandName {
-  color: #fff;
-  font-weight: 700;
-  font-size: 18px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-}
 
-/* ==============================
-   CENTRO DA TELA — NORMAL
-============================== */
+/* ==========================================================
+   ÁREA PRINCIPAL
+========================================================== */
+
 .homeMain {
-  display: grid;
-  place-items: center;
-  padding: 24px;
+  width: 100%;
+
+  position: relative;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 20px;
+
+  padding: 20px 20px 55px;
+
+  box-sizing: border-box;
+
+  z-index: 2;
 }
 
-/* ==============================
-   BOTÃO BATER PONTO
-============================== */
+
+/* ==========================================================
+   CARD BATER PONTO
+========================================================== */
+
 .clockButton {
-  display: grid;
-  gap: 10px;
-  padding: 28px 36px;
-  border: none;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  width: min(390px, 90vw);
+  min-height: 390px;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 16px;
+
+  padding: 32px;
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.7);
+
+  border-radius: 26px;
+
+  outline: none;
+
+  background:
+    rgba(255, 255, 255, 0.93);
+
+  -webkit-backdrop-filter:
+    blur(12px);
+
+  backdrop-filter:
+    blur(12px);
+
+  box-shadow:
+    0 20px 55px
+    rgba(0, 0, 0, 0.28);
+
   cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
-  width: 40vw;
-  max-width: 380px;
-  height: 50vh;
-  max-height: 480px;
+
+  font-family: inherit;
+
   text-align: center;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
+
+
+/* ==========================================================
+   HOVER CARD
+========================================================== */
 
 .clockButton:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+  transform:
+    translateY(-4px);
+
+  background:
+    rgba(255, 255, 255, 0.97);
+
+  box-shadow:
+    0 26px 65px
+    rgba(0, 0, 0, 0.34);
 }
 
-/* ÍCONE */
+
+/* ==========================================================
+   CLIQUE
+========================================================== */
+
+.clockButton:active {
+  transform:
+    scale(0.985);
+}
+
+
+/* ==========================================================
+   ÍCONE DO RELÓGIO
+========================================================== */
+
 .clockIcon {
-  width: 25%;
-  max-width: 130px;
+  width: 115px;
+  height: 115px;
+
   display: block;
-  margin: 0 auto;
+
+  object-fit: contain;
+
+  margin-bottom: 4px;
 }
 
-/* HORA */
+
+/* ==========================================================
+   HORA
+
+   A cor vem da empresa.
+========================================================== */
+
 .clockTime {
-  font-size: clamp(40px, 8vw, 64px);
-  font-weight: 800;
-  color: #0d6efd;
+  margin: 0;
+
+  color:
+    var(
+      --home-cor-primaria,
+      #0d6efd
+    );
+
+  font-size:
+    clamp(
+      42px,
+      6vw,
+      64px
+    );
+
+  font-weight: 900;
+
+  line-height: 1;
+
+  letter-spacing: 1px;
+
+  font-variant-numeric:
+    tabular-nums;
 }
 
-/* TEXTO */
+
+/* ==========================================================
+   TEXTO BATER PONTO
+========================================================== */
+
 .clockLabel {
-  font-size: clamp(20px, 3vw, 28px);
-  font-weight: 600;
-  color: #0d6efd;
+  color:
+    var(
+      --home-cor-primaria,
+      #0d6efd
+    );
+
+  font-size:
+    clamp(
+      21px,
+      3vw,
+      28px
+    );
+
+  font-weight: 700;
+
+  line-height: 1.2;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
-.clockButton:hover .clockLabel {
-  color: #084298;
-  transform: translateY(-4px);
-  text-shadow: 0 0 10px rgba(13, 110, 253, 0.4);
+
+/* ==========================================================
+   HOVER TEXTO
+========================================================== */
+
+.clockButton:hover
+.clockLabel {
+  color:
+    var(
+      --home-cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-2px);
 }
 
-/* ==============================
-   DARK MODE
-============================== */
-@media (prefers-color-scheme: dark) {
-  .clockButton {
-    background: rgba(255, 255, 255, 0.75);
-  }
+
+/* ==========================================================
+   BOTÃO VER PONTOS
+========================================================== */
+
+.viewPointsButton {
+  min-width: 230px;
+  min-height: 56px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  padding:
+    14px 28px;
+
+  box-sizing: border-box;
+
+  border: none;
+
+  border-radius: 15px;
+
+  outline: none;
+
+  background:
+    var(
+      --home-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 10px 28px
+    rgba(0, 0, 0, 0.28);
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* ==============================
-   MOBILE
-============================== */
-@media (max-width: 600px) {
-  .clockButton {
-    width: 85vw;
-    height: auto;
-    padding: 22px;
-    max-height: none;
-    border-radius: 20px;
-  }
 
-  .clockIcon {
-    width: 90px !important;
-    height: 90px !important;
-  }
+/* ==========================================================
+   HOVER VER PONTOS
+========================================================== */
 
-  .clockTime {
-    font-size: 32px;
-  }
+.viewPointsButton:hover {
+  transform:
+    translateY(-3px);
 
-  .clockLabel {
-    font-size: 22px;
-  }
+  background:
+    var(
+      --home-cor-secundaria,
+      #084298
+    );
 
-  .clockButton:active {
-    transform: scale(0.97);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
-  }
+  box-shadow:
+    0 15px 35px
+    rgba(0, 0, 0, 0.34);
 }
 
-/* ==============================
-   MOBILE MUITO PEQUENO
-============================== */
-@media (max-width: 380px) {
-  .clockIcon {
-    width: 70px !important;
-    height: 70px !important;
-  }
 
-  .clockTime {
-    font-size: 26px;
-  }
+/* ==========================================================
+   CLIQUE VER PONTOS
+========================================================== */
 
-  .clockLabel {
-    font-size: 18px;
-  }
-
-  .clockButton {
-    padding: 18px;
-  }
+.viewPointsButton:active {
+  transform:
+    scale(0.98);
 }
 
-/* ==============================
-   TABLET VERTICAL (600–800px)
-============================== */
-@media (min-width: 600px) and (max-width: 800px) {
 
-  .homeScreen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding-top: 30px;
-  }
+/* ==========================================================
+   ÍCONE VER PONTOS
+========================================================== */
+
+.viewPointsEmoji {
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  font-size: 22px;
+}
+
+
+/* ==========================================================
+   TEXTO VER PONTOS
+========================================================== */
+
+.viewPointsLabel {
+  white-space: nowrap;
+}
+
+
+/* ==========================================================
+   TABLET
+========================================================== */
+
+@media (
+  min-width: 601px
+)
+and (
+  max-width: 900px
+) {
 
   .homeHeader {
-    padding: 10px;
-    backdrop-filter: blur(3px);
+    padding:
+      28px 20px 10px;
   }
 
   .brandLogo {
-    width: 700px;
+    max-width:
+      min(
+        340px,
+        50vw
+      );
+
+    max-height:
+      160px;
   }
 
-  .brandName {
-    font-size: 22px;
-  }
-
-  /* 🔥 FORÇA UM EMBAIXO DO OUTRO */
   .homeMain {
-    margin-top: 250px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
+    padding:
+      25px 20px 60px;
   }
 
   .clockButton {
-    width: 70vw;
-    max-width: 800px;
-    height: auto;
-    padding: 40px 32px;
-    border-radius: 28px;
+    width:
+      min(
+        470px,
+        72vw
+      );
 
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    min-height:
+      430px;
+
+    border-radius:
+      28px;
   }
 
   .clockIcon {
-    width: 150px;
+    width: 135px;
+    height: 135px;
   }
 
   .clockTime {
-    font-size: 54px;
-    font-weight: 900;
-    letter-spacing: 2px;
-    margin-bottom: 15px;
+    font-size: 58px;
   }
 
   .clockLabel {
     font-size: 28px;
-    font-weight: 700;
+  }
+
+  .viewPointsButton {
+    min-width: 270px;
+
+    min-height: 60px;
+
+    font-size: 18px;
   }
 }
 
-/* ==============================
-   BOTÃO — VER PONTOS
-============================== */
-.viewPointsButton {
-  margin-top: 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
 
-  padding: 14px 26px;
-  border: none;
-  border-radius: 14px;
+/* ==========================================================
+   CELULAR
+========================================================== */
 
-  background: rgba(13, 110, 253, 0.95);
-  color: #fff;
+@media (
+  max-width: 600px
+) {
 
-  font-size: 18px;
-  font-weight: 600;
+  .homeScreen {
+    min-height:
+      100dvh;
 
-  cursor: pointer;
-  transition: all 0.15s ease;
+    background-position:
+      center center;
+  }
 
-  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.25);
+  .homeHeader {
+    padding:
+      22px 15px 5px;
+  }
+
+  .brandLogo {
+    max-width:
+      min(
+        230px,
+        65vw
+      );
+
+    max-height:
+      110px;
+  }
+
+  .homeMain {
+    justify-content:
+      center;
+
+    gap: 17px;
+
+    padding:
+      15px 15px 35px;
+  }
+
+  .clockButton {
+    width:
+      min(
+        330px,
+        90vw
+      );
+
+    min-height:
+      330px;
+
+    padding:
+      25px 20px;
+
+    border-radius:
+      23px;
+  }
+
+  .clockIcon {
+    width: 90px;
+    height: 90px;
+  }
+
+  .clockTime {
+    font-size: 40px;
+  }
+
+  .clockLabel {
+    font-size: 22px;
+  }
+
+  .viewPointsButton {
+    width:
+      min(
+        330px,
+        90vw
+      );
+
+    min-width: 0;
+
+    min-height: 54px;
+
+    padding:
+      13px 20px;
+
+    font-size: 16px;
+  }
 }
 
-.viewPointsButton:hover {
-  transform: translateY(-2px);
-  background: #084298;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (
+  max-width: 380px
+) {
+
+  .homeHeader {
+    padding-top: 15px;
+  }
+
+  .brandLogo {
+    max-width: 190px;
+    max-height: 90px;
+  }
+
+  .homeMain {
+    padding-bottom: 25px;
+  }
+
+  .clockButton {
+    width: 90vw;
+
+    min-height: 285px;
+
+    padding:
+      20px 15px;
+
+    border-radius: 20px;
+  }
+
+  .clockIcon {
+    width: 72px;
+    height: 72px;
+  }
+
+  .clockTime {
+    font-size: 34px;
+  }
+
+  .clockLabel {
+    font-size: 19px;
+  }
+
+  .viewPointsButton {
+    width: 90vw;
+
+    font-size: 15px;
+  }
 }
 
-.viewPointsButton:active {
-  transform: scale(0.97);
-}
 
-.viewPointsEmoji {
-  font-size: 22px;
-}
+/* ==========================================================
+   TELAS BAIXAS
 
-.viewPointsLabel {
-  white-space: nowrap;
+   Importante para tablet ou computador com pouca altura.
+========================================================== */
+
+@media (
+  max-height: 700px
+)
+and (
+  min-width: 601px
+) {
+
+  .homeHeader {
+    padding:
+      12px 20px 5px;
+  }
+
+  .brandLogo {
+    max-height: 90px;
+  }
+
+  .homeMain {
+    gap: 14px;
+
+    padding:
+      10px 20px 25px;
+  }
+
+  .clockButton {
+    min-height: 300px;
+
+    padding: 20px;
+  }
+
+  .clockIcon {
+    width: 85px;
+    height: 85px;
+  }
+
+  .clockTime {
+    font-size: 48px;
+  }
+
+  .clockLabel {
+    font-size: 23px;
+  }
 }

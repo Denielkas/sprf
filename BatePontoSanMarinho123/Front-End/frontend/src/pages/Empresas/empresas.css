@@ -1,5 +1,367 @@
 /* ==========================================================
-   UPLOAD DE LOGO E FUNDO
+   PÁGINA EMPRESAS
+========================================================== */
+
+.empresasPage {
+  width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
+
+  padding: 34px;
+  box-sizing: border-box;
+
+  color: #172033;
+}
+
+
+/* ==========================================================
+   CABEÇALHO
+========================================================== */
+
+.empresasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 24px;
+
+  padding: 25px 28px;
+  margin-bottom: 22px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+
+  box-shadow:
+    0 12px 35px rgba(0, 0, 0, 0.18);
+
+  backdrop-filter: blur(14px);
+}
+
+.empresasHeader h1 {
+  margin: 0 0 4px;
+
+  color: #172033;
+
+  font-size: 30px;
+  font-weight: 800;
+
+  letter-spacing: -0.6px;
+}
+
+.empresasHeader p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+/* ==========================================================
+   BOTÕES DO CABEÇALHO
+========================================================== */
+
+.empresasHeaderButtons {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.empresasRefreshButton,
+.empresasAddButton {
+  min-height: 44px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 10px 18px;
+
+  border-radius: 10px;
+
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+
+/* ATUALIZAR */
+
+.empresasRefreshButton {
+  border: 1px solid #d8e0e9;
+
+  background: #ffffff;
+
+  color: #475569;
+
+  box-shadow:
+    0 2px 7px rgba(15, 23, 42, 0.06);
+}
+
+.empresasRefreshButton:hover {
+  transform: translateY(-1px);
+
+  background: #f8fafc;
+
+  box-shadow:
+    0 6px 14px rgba(15, 23, 42, 0.1);
+}
+
+
+/* NOVA EMPRESA */
+
+.empresasAddButton {
+  border: none;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 7px 18px rgba(13, 110, 253, 0.25);
+}
+
+.empresasAddButton:hover {
+  transform: translateY(-2px);
+
+  filter: brightness(1.06);
+
+  box-shadow:
+    0 10px 22px rgba(13, 110, 253, 0.3);
+}
+
+
+/* ==========================================================
+   MENSAGENS
+========================================================== */
+
+.empresasMensagem {
+  margin-bottom: 18px;
+
+  padding: 14px 17px;
+
+  border-radius: 11px;
+
+  font-size: 14px;
+  font-weight: 650;
+
+  box-shadow:
+    0 5px 15px rgba(15, 23, 42, 0.08);
+}
+
+.empresasMensagemSucesso {
+  border: 1px solid #bbf7d0;
+
+  background: #f0fdf4;
+
+  color: #15803d;
+}
+
+.empresasMensagemErro {
+  border: 1px solid #fecaca;
+
+  background: #fef2f2;
+
+  color: #b91c1c;
+}
+
+
+/* ==========================================================
+   CARD DO FORMULÁRIO
+========================================================== */
+
+.empresaFormCard {
+  margin-bottom: 22px;
+
+  padding: 28px;
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+
+  background: rgba(255, 255, 255, 0.97);
+
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.2);
+
+  backdrop-filter: blur(14px);
+}
+
+
+/* ==========================================================
+   CABEÇALHO DO FORMULÁRIO
+========================================================== */
+
+.empresaFormHeader {
+  margin-bottom: 24px;
+  padding-bottom: 18px;
+
+  border-bottom: 1px solid #e8edf3;
+}
+
+.empresaFormHeader h2 {
+  margin: 0 0 5px;
+
+  color: #172033;
+
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.empresaFormHeader p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 14px;
+}
+
+
+/* ==========================================================
+   FORMULÁRIO
+========================================================== */
+
+.empresaForm {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 19px 22px;
+}
+
+.empresaFormGroup {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.empresaFormGroup > label:first-child {
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.empresaFormGroup > input {
+  width: 100%;
+  height: 46px;
+
+  box-sizing: border-box;
+
+  padding: 0 13px;
+
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #1e293b;
+
+  font-family: inherit;
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.empresaFormGroup > input:focus {
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 0 3px
+    rgba(13, 110, 253, 0.12);
+}
+
+
+/* ==========================================================
+   CAMPOS DE COR
+========================================================== */
+
+.empresaColorField {
+  display: flex;
+
+  gap: 9px;
+}
+
+.empresaColorField input[type="color"] {
+  width: 54px;
+  height: 46px;
+
+  flex-shrink: 0;
+
+  padding: 4px;
+
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
+
+  background: #ffffff;
+
+  cursor: pointer;
+}
+
+.empresaColorField input:not([type="color"]) {
+  min-width: 0;
+  height: 46px;
+
+  flex: 1;
+
+  box-sizing: border-box;
+
+  padding: 0 13px;
+
+  border: 1px solid #d7dee8;
+  border-radius: 10px;
+
+  outline: none;
+
+  color: #334155;
+
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.empresaColorField input:not([type="color"]):focus {
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 0 3px
+    rgba(13, 110, 253, 0.1);
+}
+
+
+/* ==========================================================
+   UPLOAD
 ========================================================== */
 
 .empresaUploadGroup {
@@ -7,9 +369,9 @@
 }
 
 .empresaUploadButton {
-  min-height: 48px;
+  min-height: 50px;
 
-  display: flex !important;
+  display: flex;
   align-items: center;
   justify-content: center;
 
@@ -19,74 +381,83 @@
 
   padding: 12px 16px;
 
-  border: 2px dashed #c9c9c9;
-  border-radius: 10px;
+  border: 1.5px dashed #cbd5e1;
+  border-radius: 11px;
 
-  background: #f8f9fa;
+  background: #f8fafc;
 
-  color: #444444 !important;
+  color: #475569;
 
-  font-size: 14px !important;
-  font-weight: 700 !important;
+  font-size: 13px;
+  font-weight: 700;
 
   cursor: pointer;
 
   transition:
-    border-color 0.2s,
-    background 0.2s,
-    color 0.2s;
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    transform 0.2s ease;
 }
 
 .empresaUploadButton:hover {
+  transform: translateY(-1px);
+
   border-color:
     var(
       --empresa-cor-primaria,
       #0d6efd
     );
 
-  background: #f1f6ff;
+  background: #ffffff;
 
   color:
     var(
       --empresa-cor-primaria,
       #0d6efd
-    ) !important;
+    );
 }
 
 .empresaUploadButton svg {
-  font-size: 18px;
+  font-size: 17px;
 }
 
 .empresaArquivoSelecionado {
-  display: flex;
+  min-height: 38px;
 
+  display: flex;
   align-items: center;
   justify-content: space-between;
 
   gap: 10px;
 
-  padding: 8px 10px;
+  margin-top: 7px;
 
-  border-radius: 8px;
+  padding: 7px 8px 7px 11px;
 
-  background: #eef4ff;
+  border: 1px solid #dbeafe;
+  border-radius: 9px;
 
-  color: #333333;
+  background: #eff6ff;
 }
 
 .empresaArquivoSelecionado span {
+  min-width: 0;
+
   overflow: hidden;
 
+  color: #334155;
+
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
 
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .empresaArquivoSelecionado button {
-  width: 27px;
-  height: 27px;
+  width: 28px;
+  height: 28px;
 
   flex-shrink: 0;
 
@@ -94,36 +465,42 @@
   align-items: center;
   justify-content: center;
 
+  padding: 0;
+
   border: none;
-  border-radius: 50%;
+  border-radius: 7px;
 
-  background: #dc3545;
+  background: #ffffff;
 
-  color: #ffffff;
+  color: #dc2626;
 
   cursor: pointer;
 }
+
 
 /* ==========================================================
    PREVIEW
 ========================================================== */
 
 .empresaPreview {
+  position: relative;
+
   grid-column: 1 / -1;
 
-  min-height: 220px;
+  min-height: 250px;
 
   display: flex;
   flex-direction: column;
-
   align-items: center;
   justify-content: center;
 
-  gap: 8px;
+  gap: 7px;
 
-  padding: 25px;
+  padding: 30px;
 
-  border-radius: 16px;
+  box-sizing: border-box;
+
+  border-radius: 17px;
 
   background-color:
     var(
@@ -139,25 +516,25 @@
   overflow: hidden;
 
   box-shadow:
-    inset 0 0 0 1px
-    rgba(255, 255, 255, 0.12);
+    0 12px 28px rgba(15, 23, 42, 0.16);
 }
 
 .empresaPreviewLogo {
-  width: 95px;
-  height: 95px;
+  width: 92px;
+  height: 92px;
 
   display: flex;
-
   align-items: center;
   justify-content: center;
 
   margin-bottom: 6px;
+  padding: 7px;
 
-  border-radius: 14px;
+  box-sizing: border-box;
 
-  background:
-    rgba(255, 255, 255, 0.92);
+  border-radius: 19px;
+
+  background: rgba(255, 255, 255, 0.96);
 
   color:
     var(
@@ -165,9 +542,12 @@
       #0d6efd
     );
 
-  font-size: 42px;
+  font-size: 39px;
 
   overflow: hidden;
+
+  box-shadow:
+    0 10px 25px rgba(0, 0, 0, 0.25);
 }
 
 .empresaPreviewLogo img {
@@ -175,29 +555,35 @@
   height: 100%;
 
   object-fit: contain;
+
+  border-radius: 12px;
 }
 
 .empresaPreview strong {
-  font-size: 22px;
+  color: #ffffff;
+
+  font-size: 23px;
+  font-weight: 800;
+
+  text-align: center;
 
   text-shadow:
-    0 2px 6px
-    rgba(0, 0, 0, 0.6);
+    0 2px 8px rgba(0, 0, 0, 0.55);
 }
 
 .empresaPreview > span {
-  font-size: 13px;
+  color: rgba(255, 255, 255, 0.82);
 
-  opacity: 0.85;
+  font-size: 12px;
 }
 
 .empresaPreview > button {
-  margin-top: 10px;
+  margin-top: 9px;
 
   padding: 10px 18px;
 
   border: none;
-  border-radius: 8px;
+  border-radius: 9px;
 
   background:
     var(
@@ -212,12 +598,246 @@
   cursor: default;
 }
 
+
 /* ==========================================================
-   LOGO NO CARD
+   AÇÕES DO FORMULÁRIO
 ========================================================== */
 
-.empresaCardIcon {
+.empresaFormActions {
+  grid-column: 1 / -1;
+
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 10px;
+
+  padding-top: 5px;
+}
+
+.empresaCancelButton,
+.empresaSaveButton {
+  min-height: 43px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 10px 18px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+.empresaCancelButton {
+  border: 1px solid #d7dee8;
+
+  background: #ffffff;
+
+  color: #475569;
+}
+
+.empresaSaveButton {
+  border: none;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 6px 15px rgba(13, 110, 253, 0.2);
+}
+
+.empresaSaveButton:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+
+/* ==========================================================
+   LISTA DE EMPRESAS
+========================================================== */
+
+.empresasListCard {
+  padding: 26px 28px;
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 18px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  box-shadow:
+    0 14px 38px rgba(0, 0, 0, 0.2);
+
+  backdrop-filter: blur(14px);
+}
+
+.empresasListHeader {
+  margin-bottom: 20px;
+  padding-bottom: 17px;
+
+  border-bottom: 1px solid #e8edf3;
+}
+
+.empresasListHeader > div {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+}
+
+.empresasListHeader h2 {
+  margin: 0;
+
+  color: #172033;
+
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.empresasListHeader span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px 10px;
+
+  border-radius: 20px;
+
+  background: #eef4ff;
+
+  color: #0d6efd;
+
+  font-size: 11px;
+  font-weight: 800;
+}
+
+
+/* ==========================================================
+   LOADING / VAZIO
+========================================================== */
+
+.empresasLoading,
+.empresasEmpty {
+  min-height: 210px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  padding: 30px;
+
+  border: 1px dashed #d5dde7;
+  border-radius: 14px;
+
+  background: #f8fafc;
+
+  text-align: center;
+}
+
+.empresasLoading {
+  color: #64748b;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empresasEmpty > svg {
+  margin-bottom: 13px;
+
+  color: #94a3b8;
+
+  font-size: 30px;
+}
+
+.empresasEmpty h3 {
+  margin: 0 0 6px;
+
+  color: #1e293b;
+
+  font-size: 17px;
+  font-weight: 800;
+}
+
+.empresasEmpty p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+
+/* ==========================================================
+   GRID
+========================================================== */
+
+.empresasGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fill,
+      minmax(320px, 1fr)
+    );
+
+  gap: 17px;
+}
+
+
+/* ==========================================================
+   CARD EMPRESA
+========================================================== */
+
+.empresaCard {
+  position: relative;
+
+  display: flex;
+
+  gap: 16px;
+
+  padding: 19px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+
+  background: #ffffff;
+
   overflow: hidden;
+
+  box-shadow:
+    0 4px 13px rgba(15, 23, 42, 0.06);
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.empresaCard::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+  bottom: 0;
+
+  width: 4px;
 
   background:
     var(
@@ -226,34 +846,884 @@
     );
 }
 
+.empresaCard:hover {
+  transform: translateY(-3px);
+
+  border-color: #cbd5e1;
+
+  box-shadow:
+    0 12px 25px rgba(15, 23, 42, 0.11);
+}
+
+
+/* ==========================================================
+   LOGO DO CARD
+========================================================== */
+
+.empresaCardIcon {
+  width: 62px;
+  height: 62px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 5px;
+
+  box-sizing: border-box;
+
+  border-radius: 13px;
+
+  background:
+    var(
+      --card-primary,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-size: 25px;
+
+  overflow: hidden;
+}
+
 .empresaCardIcon img {
   width: 100%;
   height: 100%;
 
   object-fit: contain;
 
+  border-radius: 9px;
+
   background: #ffffff;
+}
+
+
+/* ==========================================================
+   CONTEÚDO DO CARD
+========================================================== */
+
+.empresaCardContent {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.empresaCardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 10px;
+}
+
+.empresaCardTop > div {
+  min-width: 0;
+}
+
+.empresaCardTop h3 {
+  margin: 0 0 3px;
+
+  color: #1e293b;
+
+  font-size: 17px;
+  font-weight: 800;
+
+  overflow: hidden;
+
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.empresaCardTop p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 12px;
+}
+
+
+/* ==========================================================
+   STATUS
+========================================================== */
+
+.empresaStatus {
+  flex-shrink: 0;
+
+  padding: 5px 9px;
+
+  border-radius: 20px;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  letter-spacing: 0.3px;
+}
+
+.empresaAtiva {
+  background: #dcfce7;
+
+  color: #15803d;
+}
+
+.empresaInativa {
+  background: #fee2e2;
+
+  color: #b91c1c;
+}
+
+
+/* ==========================================================
+   RESUMO CNPJ
+========================================================== */
+
+.empresaResumoCnpj {
+  display: flex;
+  align-items: center;
+
+  gap: 9px;
+
+  margin-top: 14px;
+
+  padding: 10px 11px;
 
   border-radius: 10px;
+
+  background: #f8fafc;
 }
+
+.empresaResumoCnpj > svg {
+  color:
+    var(
+      --card-primary,
+      #0d6efd
+    );
+
+  font-size: 17px;
+}
+
+.empresaResumoCnpj div {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+}
+
+.empresaResumoCnpj span {
+  color: #64748b;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.empresaResumoCnpj strong {
+  color: #1e293b;
+
+  font-size: 13px;
+}
+
+
+/* ==========================================================
+   CORES
+========================================================== */
+
+.empresaCores {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 12px;
+
+  margin-top: 12px;
+}
+
+.empresaCores div {
+  display: flex;
+  align-items: center;
+
+  gap: 6px;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.empresaCores div > span {
+  width: 13px;
+  height: 13px;
+
+  display: block;
+
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+}
+
+
+/* ==========================================================
+   BOTÕES DOS CARDS
+========================================================== */
+
+.empresaCardActions {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 7px;
+
+  margin-top: 15px;
+  padding-top: 13px;
+
+  border-top: 1px solid #edf1f5;
+}
+
+.empresaCardActions button {
+  min-height: 35px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 6px;
+
+  padding: 7px 10px;
+
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.15s ease,
+    background 0.15s ease;
+}
+
+.empresaCardActions button:hover {
+  transform: translateY(-1px);
+}
+
+.empresaActionCnpj {
+  border: 1px solid #bfdbfe;
+
+  background: #eff6ff;
+
+  color: #1d4ed8;
+}
+
+.empresaActionEdit {
+  border: 1px solid #d7dee8;
+
+  background: #f8fafc;
+
+  color: #475569;
+}
+
+.empresaActionDisable {
+  border: 1px solid #fecaca;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+}
+
+.empresaActionEnable {
+  border: 1px solid #bbf7d0;
+
+  background: #f0fdf4;
+
+  color: #15803d;
+}
+
+
+/* ==========================================================
+   MODAL
+========================================================== */
+
+.empresaModalOverlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 9999;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(2, 6, 23, 0.68);
+
+  backdrop-filter: blur(6px);
+}
+
+.empresaModal {
+  width: 100%;
+  max-width: 720px;
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  padding: 25px;
+
+  box-sizing: border-box;
+
+  border-radius: 18px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 25px 70px rgba(0, 0, 0, 0.35);
+}
+
+
+/* ==========================================================
+   HEADER MODAL
+========================================================== */
+
+.empresaModalHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+
+  border-bottom: 1px solid #e8edf3;
+}
+
+.empresaModalHeader h2 {
+  margin: 0 0 4px;
+
+  color: #172033;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+.empresaModalHeader p {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+.empresaModalClose {
+  width: 36px;
+  height: 36px;
+
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 9px;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  cursor: pointer;
+}
+
+
+/* ==========================================================
+   LISTA CNPJ
+========================================================== */
+
+.empresaCnpjLista {
+  display: flex;
+  flex-direction: column;
+
+  gap: 9px;
+
+  margin-bottom: 21px;
+}
+
+.empresaCnpjVazio {
+  padding: 25px;
+
+  border: 1px dashed #d7dee8;
+  border-radius: 11px;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  font-size: 13px;
+
+  text-align: center;
+}
+
+.empresaCnpjItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  padding: 13px 14px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 11px;
+
+  background: #ffffff;
+}
+
+.empresaCnpjPrincipal {
+  border-color: #bfdbfe;
+
+  background: #f8fbff;
+}
+
+.empresaCnpjInfo {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 3px;
+}
+
+.empresaCnpjInfo > strong {
+  color: #1e293b;
+
+  font-size: 14px;
+}
+
+.empresaCnpjInfo > span {
+  color: #64748b;
+
+  font-size: 12px;
+}
+
+
+/* ==========================================================
+   BADGES CNPJ
+========================================================== */
+
+.empresaCnpjBadges {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 5px;
+
+  margin-top: 5px;
+}
+
+.cnpjPrincipalBadge,
+.cnpjAtivoBadge,
+.cnpjInativoBadge {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 4px;
+
+  width: fit-content;
+
+  padding: 4px 7px;
+
+  border-radius: 20px;
+
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.cnpjPrincipalBadge {
+  background: #fef3c7;
+
+  color: #a16207;
+}
+
+.cnpjAtivoBadge {
+  background: #dcfce7;
+
+  color: #15803d;
+}
+
+.cnpjInativoBadge {
+  background: #fee2e2;
+
+  color: #b91c1c;
+}
+
+
+/* ==========================================================
+   BOTÕES CNPJ
+========================================================== */
+
+.empresaCnpjButtons {
+  display: flex;
+
+  gap: 6px;
+}
+
+.empresaCnpjButtons button {
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 1px solid #d7dee8;
+  border-radius: 8px;
+
+  background: #f8fafc;
+
+  color: #475569;
+
+  cursor: pointer;
+}
+
+.empresaCnpjButtons
+.empresaCnpjDelete {
+  border-color: #fecaca;
+
+  background: #fef2f2;
+
+  color: #dc2626;
+}
+
+
+/* ==========================================================
+   FORM CNPJ
+========================================================== */
+
+.empresaCnpjForm {
+  padding: 19px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+
+  background: #f8fafc;
+}
+
+.empresaCnpjForm h3 {
+  margin: 0 0 15px;
+
+  color: #1e293b;
+
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.empresaCnpjFormGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 13px;
+}
+
+.empresaCnpjFormGrid > div {
+  display: flex;
+  flex-direction: column;
+
+  gap: 6px;
+}
+
+.empresaCnpjFormGrid label {
+  color: #475569;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.empresaCnpjFormGrid input {
+  width: 100%;
+  height: 43px;
+
+  box-sizing: border-box;
+
+  padding: 0 12px;
+
+  border: 1px solid #d7dee8;
+  border-radius: 9px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  color: #1e293b;
+
+  font-family: inherit;
+}
+
+.empresaCnpjFormGrid input:focus {
+  border-color: #0d6efd;
+
+  box-shadow:
+    0 0 0 3px rgba(13, 110, 253, 0.1);
+}
+
+
+/* ==========================================================
+   CHECKBOX
+========================================================== */
+
+.empresaCnpjChecks {
+  display: flex;
+  flex-wrap: wrap;
+
+  gap: 18px;
+
+  margin-top: 14px;
+}
+
+.empresaCnpjChecks label {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  color: #475569;
+
+  font-size: 12px;
+  font-weight: 650;
+
+  cursor: pointer;
+}
+
+
+/* ==========================================================
+   AÇÕES FORM CNPJ
+========================================================== */
+
+.empresaCnpjFormActions {
+  display: flex;
+  justify-content: flex-end;
+
+  gap: 9px;
+
+  margin-top: 17px;
+}
+
+.empresaCnpjCancel,
+.empresaCnpjSave {
+  min-height: 39px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 7px;
+
+  padding: 8px 14px;
+
+  border-radius: 8px;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 750;
+
+  cursor: pointer;
+}
+
+.empresaCnpjCancel {
+  border: 1px solid #d7dee8;
+
+  background: #ffffff;
+
+  color: #475569;
+}
+
+.empresaCnpjSave {
+  border: none;
+
+  background: #0d6efd;
+
+  color: #ffffff;
+}
+
+.empresaCnpjSave:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+
+/* ==========================================================
+   TABLET
+========================================================== */
+
+@media (max-width: 900px) {
+
+  .empresasPage {
+    padding: 90px 20px 30px;
+  }
+
+  .empresaForm {
+    grid-template-columns: 1fr;
+  }
+
+  .empresaPreview,
+  .empresaFormActions {
+    grid-column: 1;
+  }
+
+  .empresasGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 /* ==========================================================
    MOBILE
 ========================================================== */
 
 @media (max-width: 650px) {
-  .empresaPreview {
-    min-height: 190px;
 
-    padding: 20px;
+  .empresasPage {
+    padding:
+      85px
+      12px
+      25px;
+  }
+
+  .empresasHeader {
+    flex-direction: column;
+    align-items: stretch;
+
+    padding: 19px;
+
+    border-radius: 15px;
+  }
+
+  .empresasHeader h1 {
+    font-size: 25px;
+  }
+
+  .empresasHeaderButtons {
+    width: 100%;
+  }
+
+  .empresasRefreshButton,
+  .empresasAddButton {
+    flex: 1;
+
+    padding: 10px 12px;
+  }
+
+  .empresaFormCard,
+  .empresasListCard {
+    padding: 18px;
+
+    border-radius: 15px;
+  }
+
+  .empresasListHeader > div {
+    align-items: flex-start;
+    flex-direction: column;
+
+    gap: 7px;
+  }
+
+  .empresaCard {
+    flex-direction: column;
+  }
+
+  .empresaCardTop {
+    align-items: flex-start;
+  }
+
+  .empresaCardActions {
+    display: grid;
+
+    grid-template-columns:
+      repeat(2, 1fr);
+  }
+
+  .empresaPreview {
+    min-height: 220px;
+
+    padding: 22px;
   }
 
   .empresaPreviewLogo {
-    width: 75px;
-    height: 75px;
+    width: 78px;
+    height: 78px;
   }
 
   .empresaPreview strong {
     font-size: 19px;
+  }
+
+  .empresaFormActions {
+    flex-direction: column-reverse;
+  }
+
+  .empresaCancelButton,
+  .empresaSaveButton {
+    width: 100%;
+  }
+
+  .empresaModalOverlay {
+    padding: 10px;
+  }
+
+  .empresaModal {
+    padding: 18px;
+
+    border-radius: 15px;
+  }
+
+  .empresaCnpjFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (max-width: 420px) {
+
+  .empresasHeaderButtons {
+    flex-direction: column;
+  }
+
+  .empresasRefreshButton,
+  .empresasAddButton {
+    width: 100%;
+  }
+
+  .empresaCardActions {
+    grid-template-columns: 1fr;
+  }
+
+  .empresaCnpjItem {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .empresaCnpjButtons {
+    width: 100%;
+
+    justify-content: flex-end;
+  }
+
+  .empresaCnpjFormActions {
+    flex-direction: column;
+  }
+
+  .empresaCnpjCancel,
+  .empresaCnpjSave {
+    width: 100%;
   }
 }

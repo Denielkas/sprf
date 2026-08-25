@@ -439,3 +439,28 @@ body,
     padding: 11px;
   }
 }
+
+/* ==========================================================
+   IDENTIFICAÇÃO DO TIPO DE USUÁRIO
+========================================================== */
+
+.sidebarTipoUsuario {
+  margin-top: 8px;
+
+  padding: 4px 10px;
+
+  border-radius: 20px;
+
+  background:
+    var(--empresa-cor-primaria);
+
+  color: #ffffff;
+
+  font-size: 11px;
+
+  font-weight: 800;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.8px;
+}

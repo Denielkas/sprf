@@ -11,7 +11,10 @@ const {
   relatorioTodosFuncionarios,
 } = require("../controllers/relatorio.controller");
 
-const { auth } = require("../middlewares/auth");
+const {
+  auth,
+  somenteRH,
+} = require("../middlewares/auth");
 
 
 /* =========================================================
@@ -504,6 +507,7 @@ function formulaHoraExtra(
   return `IFERROR(IF(OR(A${rowNumber}="",C${rowNumber}="",G${rowNumber}=""),"",IF((G${rowNumber}-VLOOKUP(B${rowNumber},$L$6:$M$13,2,FALSE))<=TIME(0,15,0),"",G${rowNumber}-VLOOKUP(B${rowNumber},$L$6:$M$13,2,FALSE))),"")`;
 }
 
+
 /* =========================================================
    PDF
 ========================================================= */
@@ -528,10 +532,6 @@ function desenharTabelaFuncionario(
     doc.page.margins.left;
 
   let y = 25;
-
-  /* =====================================================
-     CABEÇALHO
-  ===================================================== */
 
   doc
     .font("Helvetica-Bold")
@@ -594,55 +594,20 @@ function desenharTabelaFuncionario(
 
   y += 22;
 
-  /* =====================================================
-     COLUNAS
-  ===================================================== */
-
   const colunas = [
-    {
-      titulo: "Data",
-      largura: 52,
-    },
-    {
-      titulo: "Dia",
-      largura: 57,
-    },
-    {
-      titulo: "Entrada",
-      largura: 52,
-    },
-    {
-      titulo: "Int. Início",
-      largura: 55,
-    },
-    {
-      titulo: "Int. Fim",
-      largura: 50,
-    },
-    {
-      titulo: "Saída",
-      largura: 52,
-    },
-    {
-      titulo: "Total",
-      largura: 52,
-    },
-    {
-      titulo: "Saldo",
-      largura: 58,
-    },
-    {
-      titulo: "Status",
-      largura: 100,
-    },
+    { titulo: "Data", largura: 52 },
+    { titulo: "Dia", largura: 57 },
+    { titulo: "Entrada", largura: 52 },
+    { titulo: "Int. Início", largura: 55 },
+    { titulo: "Int. Fim", largura: 50 },
+    { titulo: "Saída", largura: 52 },
+    { titulo: "Total", largura: 52 },
+    { titulo: "Saldo", largura: 58 },
+    { titulo: "Status", largura: 100 },
   ];
 
   const alturaCabecalho = 20;
   const alturaLinha = 18;
-
-  /* =====================================================
-     FUNÇÃO CABEÇALHO DA TABELA
-  ===================================================== */
 
   function desenharCabecalhoTabela() {
     let atualX = x;
@@ -664,8 +629,7 @@ function desenharTabelaFuncionario(
         atualX + 2,
         y + 6,
         {
-          width:
-            coluna.largura - 4,
+          width: coluna.largura - 4,
           align: "center",
         }
       );
@@ -678,19 +642,11 @@ function desenharTabelaFuncionario(
 
   desenharCabecalhoTabela();
 
-  /* =====================================================
-     LINHAS
-  ===================================================== */
-
   doc
     .font("Helvetica")
     .fontSize(7);
 
   for (const item of dados) {
-    /*
-      Se estiver chegando ao final da página,
-      cria uma nova página.
-    */
     if (
       y + alturaLinha >
       doc.page.height -
@@ -741,29 +697,12 @@ function desenharTabelaFuncionario(
     const valores = [
       limparTexto(item.data),
       diaSemana,
-
-      horaParaTextoPDF(
-        item.entrada
-      ),
-
-      horaParaTextoPDF(
-        item.intervalo_inicio
-      ),
-
-      horaParaTextoPDF(
-        item.intervalo_fim
-      ),
-
-      horaParaTextoPDF(
-        item.saida
-      ),
-
-      limparTexto(
-        item.total_horas
-      ),
-
+      horaParaTextoPDF(item.entrada),
+      horaParaTextoPDF(item.intervalo_inicio),
+      horaParaTextoPDF(item.intervalo_fim),
+      horaParaTextoPDF(item.saida),
+      limparTexto(item.total_horas),
       saldoTexto,
-
       textoStatus(item),
     ];
 
@@ -788,14 +727,9 @@ function desenharTabelaFuncionario(
         atualX + 2,
         y + 5,
         {
-          width:
-            coluna.largura - 4,
-
-          height:
-            alturaLinha - 4,
-
+          width: coluna.largura - 4,
+          height: alturaLinha - 4,
           align: "center",
-
           ellipsis: true,
         }
       );
@@ -805,10 +739,6 @@ function desenharTabelaFuncionario(
 
     y += alturaLinha;
   }
-
-  /* =====================================================
-     SALDO FINAL
-  ===================================================== */
 
   const saldoFinal =
     somarSaldo(dados);
@@ -842,10 +772,6 @@ function desenharTabelaFuncionario(
 
   y += 35;
 
-  /* =====================================================
-     ASSINATURA
-  ===================================================== */
-
   const larguraAssinatura = 240;
 
   const assinaturaX =
@@ -878,9 +804,7 @@ function desenharTabelaFuncionario(
       assinaturaX,
       y,
       {
-        width:
-          larguraAssinatura,
-
+        width: larguraAssinatura,
         align: "center",
       }
     );
@@ -903,29 +827,21 @@ function criarTabelaExcelFuncionario(
       funcionario.cnpj_empresa
     );
 
-  /* =====================================================
-     LARGURA DAS COLUNAS
-  ===================================================== */
-
   ws.columns = [
-    { width: 13 }, // A Data
-    { width: 15 }, // B Dia
-    { width: 12 }, // C Entrada
-    { width: 12 }, // D Intervalo início
-    { width: 12 }, // E Intervalo fim
-    { width: 12 }, // F Saída
-    { width: 13 }, // G Horas dia
-    { width: 13 }, // H Atraso
-    { width: 13 }, // I Hora extra
-    { width: 23 }, // J Status
-    { width: 3 },  // K
-    { width: 15 }, // L
-    { width: 15 }, // M
+    { width: 13 },
+    { width: 15 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 12 },
+    { width: 13 },
+    { width: 13 },
+    { width: 13 },
+    { width: 23 },
+    { width: 3 },
+    { width: 15 },
+    { width: 15 },
   ];
-
-  /* =====================================================
-     CABEÇALHO
-  ===================================================== */
 
   ws.mergeCells("A1:J1");
 
@@ -971,10 +887,6 @@ function criarTabelaExcelFuncionario(
       ano
     )}`;
 
-  /* =====================================================
-     CABEÇALHO DA TABELA
-  ===================================================== */
-
   const cabecalhos = [
     "Data",
     "Dia",
@@ -1016,32 +928,16 @@ function criarTabelaExcelFuncionario(
       };
 
       cell.border = {
-        top: {
-          style: "thin",
-        },
-        left: {
-          style: "thin",
-        },
-        bottom: {
-          style: "thin",
-        },
-        right: {
-          style: "thin",
-        },
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     }
   );
 
-  /* =====================================================
-     TABELA AUXILIAR DE CARGA HORÁRIA
-     L:M
-  ===================================================== */
-
-  ws.getCell("L5").value =
-    "Dia";
-
-  ws.getCell("M5").value =
-    "Carga";
+  ws.getCell("L5").value = "Dia";
+  ws.getCell("M5").value = "Carga";
 
   ws.getCell("L5").font = {
     bold: true,
@@ -1083,10 +979,6 @@ function criarTabelaExcelFuncionario(
     }
   );
 
-  /* =====================================================
-     DADOS
-  ===================================================== */
-
   let rowNumber = 7;
 
   for (const item of dados) {
@@ -1100,8 +992,6 @@ function criarTabelaExcelFuncionario(
         rowNumber
       );
 
-    /* DATA */
-
     row.getCell(1).value =
       dataObj || "";
 
@@ -1110,16 +1000,12 @@ function criarTabelaExcelFuncionario(
         "dd/mm/yyyy";
     }
 
-    /* DIA */
-
     row.getCell(2).value = {
       formula:
         formulaDiaSemanaExcel(
           rowNumber
         ),
     };
-
-    /* HORÁRIOS */
 
     row.getCell(3).value =
       horaParaNumeroExcel(
@@ -1150,11 +1036,7 @@ function criarTabelaExcelFuncionario(
         "hh:mm";
     }
 
-    /* HORAS DO DIA */
-
-    if (
-      temHorario(item)
-    ) {
+    if (temHorario(item)) {
       row.getCell(7).value = {
         formula:
           formulaHDia(
@@ -1165,11 +1047,8 @@ function criarTabelaExcelFuncionario(
       row.getCell(7).numFmt =
         "[h]:mm";
     } else {
-      row.getCell(7).value =
-        "";
+      row.getCell(7).value = "";
     }
-
-    /* ATRASO */
 
     if (
       !item.folga &&
@@ -1188,11 +1067,8 @@ function criarTabelaExcelFuncionario(
       row.getCell(8).numFmt =
         "[h]:mm";
     } else {
-      row.getCell(8).value =
-        "";
+      row.getCell(8).value = "";
     }
-
-    /* HORA EXTRA */
 
     if (
       !item.folga &&
@@ -1212,11 +1088,8 @@ function criarTabelaExcelFuncionario(
       row.getCell(9).numFmt =
         "[h]:mm";
     } else {
-      row.getCell(9).value =
-        "";
+      row.getCell(9).value = "";
     }
-
-    /* STATUS */
 
     row.getCell(10).value =
       textoStatus(item);
@@ -1237,6 +1110,7 @@ function criarTabelaExcelFuncionario(
       row.getCell(10).fill = {
         type: "pattern",
         pattern: "solid",
+
         fgColor: {
           argb:
             corFundoStatus(
@@ -1245,8 +1119,6 @@ function criarTabelaExcelFuncionario(
         },
       };
     }
-
-    /* BORDAS */
 
     for (
       let col = 1;
@@ -1257,18 +1129,10 @@ function criarTabelaExcelFuncionario(
         row.getCell(col);
 
       cell.border = {
-        top: {
-          style: "thin",
-        },
-        left: {
-          style: "thin",
-        },
-        bottom: {
-          style: "thin",
-        },
-        right: {
-          style: "thin",
-        },
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
 
       cell.alignment = {
@@ -1279,10 +1143,6 @@ function criarTabelaExcelFuncionario(
 
     rowNumber++;
   }
-
-  /* =====================================================
-     TOTAIS
-  ===================================================== */
 
   const primeiraLinha = 7;
   const ultimaLinha =
@@ -1355,24 +1215,12 @@ function criarTabelaExcelFuncionario(
       linhaTotal,
       col
     ).border = {
-      top: {
-        style: "thin",
-      },
-      left: {
-        style: "thin",
-      },
-      bottom: {
-        style: "thin",
-      },
-      right: {
-        style: "thin",
-      },
+      top: { style: "thin" },
+      left: { style: "thin" },
+      bottom: { style: "thin" },
+      right: { style: "thin" },
     };
   }
-
-  /* =====================================================
-     CONGELAR CABEÇALHO
-  ===================================================== */
 
   ws.views = [
     {
@@ -1409,10 +1257,6 @@ function criarTabelaExcelSemSoma(
     { width: 15 },
     { width: 25 },
   ];
-
-  /* =====================================================
-     CABEÇALHO
-  ===================================================== */
 
   ws.mergeCells("A1:H1");
 
@@ -1490,25 +1334,13 @@ function criarTabelaExcelSemSoma(
       };
 
       cell.border = {
-        top: {
-          style: "thin",
-        },
-        left: {
-          style: "thin",
-        },
-        bottom: {
-          style: "thin",
-        },
-        right: {
-          style: "thin",
-        },
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
     }
   );
-
-  /* =====================================================
-     DADOS
-  ===================================================== */
 
   let rowNumber = 7;
 
@@ -1565,10 +1397,6 @@ function criarTabelaExcelSemSoma(
     row.getCell(8).value =
       textoStatus(item);
 
-    /*
-      Força horários como TEXTO.
-      Ex.: 0530, 1730.
-    */
     for (
       let col = 3;
       col <= 6;
@@ -1612,18 +1440,10 @@ function criarTabelaExcelSemSoma(
         row.getCell(col);
 
       cell.border = {
-        top: {
-          style: "thin",
-        },
-        left: {
-          style: "thin",
-        },
-        bottom: {
-          style: "thin",
-        },
-        right: {
-          style: "thin",
-        },
+        top: { style: "thin" },
+        left: { style: "thin" },
+        bottom: { style: "thin" },
+        right: { style: "thin" },
       };
 
       cell.alignment = {
@@ -1643,22 +1463,22 @@ function criarTabelaExcelSemSoma(
   ];
 }
 
+
 /* =========================================================
    MULTIEMPRESA
    DESCOBRIR EMPRESA DA REQUISIÇÃO
 ========================================================= */
 
 function obterEmpresaIdDaRequisicao(req) {
-  /*
-    ADMIN DA EMPRESA
+  /* =====================================================
+     RH DA EMPRESA
 
-    A empresa vem obrigatoriamente do token.
-    Não confiamos no empresa_id enviado pela URL.
-  */
-  if (req.user?.role === "admin_empresa") {
-    const empresaId = Number(
-      req.user.empresa_id
-    );
+     O RH só pode consultar a própria empresa.
+  ===================================================== */
+
+  if (req.user?.role === "rh_empresa") {
+    const empresaId =
+      Number(req.user.empresa_id);
 
     if (
       Number.isInteger(empresaId) &&
@@ -1670,18 +1490,38 @@ function obterEmpresaIdDaRequisicao(req) {
     return null;
   }
 
-  /*
-    SUPER ADMIN
+  /* =====================================================
+     ADMIN EMPRESA ANTIGO
 
-    O Super Admin pode escolher qual empresa
-    deseja consultar usando:
+     Mantido temporariamente para não quebrar usuários
+     que já existem no banco.
+  ===================================================== */
 
-    ?empresa_id=1
-  */
+  if (req.user?.role === "admin_empresa") {
+    const empresaId =
+      Number(req.user.empresa_id);
+
+    if (
+      Number.isInteger(empresaId) &&
+      empresaId > 0
+    ) {
+      return empresaId;
+    }
+
+    return null;
+  }
+
+  /* =====================================================
+     SUPER ADMIN
+
+     Precisa informar:
+
+     ?empresa_id=1
+  ===================================================== */
+
   if (req.user?.role === "super_admin") {
-    const empresaId = Number(
-      req.query.empresa_id
-    );
+    const empresaId =
+      Number(req.query.empresa_id);
 
     if (
       Number.isInteger(empresaId) &&
@@ -1699,7 +1539,6 @@ function obterEmpresaIdDaRequisicao(req) {
 
 /* =========================================================
    BUSCAR FUNCIONÁRIO
-   MULTIEMPRESA
 ========================================================= */
 
 async function buscarFuncionarioPorId(
@@ -1754,7 +1593,6 @@ async function buscarFuncionarioPorId(
 
 /* =========================================================
    BUSCAR DADOS DO RELATÓRIO
-   MULTIEMPRESA
 ========================================================= */
 
 async function buscarDadosRelatorioFuncionario(
@@ -1763,13 +1601,6 @@ async function buscarDadosRelatorioFuncionario(
   ano,
   empresaId
 ) {
-  /*
-    Como relatorioFuncionario é um controller
-    Express, criamos uma requisição interna.
-
-    A empresa já foi validada pela rota real.
-  */
-
   const fakeReq = {
     params: {
       id: funcionarioId,
@@ -1818,17 +1649,13 @@ async function buscarDadosRelatorioFuncionario(
 
 
 /* =========================================================
-   ROTAS PDF
-========================================================= */
-
-
-/* =========================================================
-   PDF - TODOS OS FUNCIONÁRIOS
+   PDF - TODOS
 ========================================================= */
 
 router.get(
   "/pdf/todos",
   auth,
+  somenteRH,
   async (req, res) => {
     const { mes, ano } = req.query;
 
@@ -1848,11 +1675,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         BUSCAR SOMENTE FUNCIONÁRIOS
-         DA EMPRESA
-      ========================================= */
-
       const funcionariosQuery =
         await pool.query(
           `
@@ -1862,12 +1684,9 @@ router.get(
             nome,
             cpf,
             cnpj_empresa
-
           FROM funcionarios
-
           WHERE ativo = true
             AND empresa_id = $1
-
           ORDER BY nome ASC
           `,
           [empresaId]
@@ -1881,10 +1700,6 @@ router.get(
             "Nenhum funcionário encontrado.",
         });
       }
-
-      /* =========================================
-         CRIAR PDF
-      ========================================= */
 
       const doc = new PDFDocument({
         size: "A4",
@@ -1906,10 +1721,6 @@ router.get(
 
       let gerouAlgumFuncionario = false;
       let primeiro = true;
-
-      /* =========================================
-         GERAR RELATÓRIO DE CADA FUNCIONÁRIO
-      ========================================= */
 
       for (
         const funcionarioBase
@@ -1933,9 +1744,7 @@ router.get(
             empresaId
           );
 
-        if (
-          !dadosFuncionario.length
-        ) {
+        if (!dadosFuncionario.length) {
           continue;
         }
 
@@ -1971,7 +1780,6 @@ router.get(
       }
 
       doc.end();
-
     } catch (err) {
       console.error(
         "Erro ao gerar PDF de todos:",
@@ -1996,6 +1804,7 @@ router.get(
 router.get(
   "/pdf/:funcId",
   auth,
+  somenteRH,
   async (req, res) => {
     const { funcId } = req.params;
     const { mes, ano } = req.query;
@@ -2022,10 +1831,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         FUNCIONÁRIO DA EMPRESA
-      ========================================= */
-
       const funcionario =
         await buscarFuncionarioPorId(
           funcId,
@@ -2039,10 +1844,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         RELATÓRIO
-      ========================================= */
-
       const dadosFuncionario =
         await buscarDadosRelatorioFuncionario(
           funcionario.id,
@@ -2051,18 +1852,12 @@ router.get(
           empresaId
         );
 
-      if (
-        !dadosFuncionario.length
-      ) {
+      if (!dadosFuncionario.length) {
         return res.status(404).json({
           error:
             "Nenhum registro encontrado.",
         });
       }
-
-      /* =========================================
-         GERAR PDF
-      ========================================= */
 
       const doc =
         new PDFDocument({
@@ -2092,7 +1887,6 @@ router.get(
       );
 
       doc.end();
-
     } catch (err) {
       console.error(
         "Erro ao gerar PDF:",
@@ -2111,17 +1905,13 @@ router.get(
 
 
 /* =========================================================
-   ROTAS EXCEL
-========================================================= */
-
-
-/* =========================================================
-   EXCEL - TODOS OS FUNCIONÁRIOS
+   EXCEL - TODOS
 ========================================================= */
 
 router.get(
   "/excel/todos",
   auth,
+  somenteRH,
   async (req, res) => {
     const { mes, ano } = req.query;
 
@@ -2143,10 +1933,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         FUNCIONÁRIOS DA EMPRESA
-      ========================================= */
-
       const funcionariosQuery =
         await pool.query(
           `
@@ -2156,12 +1942,9 @@ router.get(
             nome,
             cpf,
             cnpj_empresa
-
           FROM funcionarios
-
           WHERE ativo = true
             AND empresa_id = $1
-
           ORDER BY nome ASC
           `,
           [empresaId]
@@ -2175,10 +1958,6 @@ router.get(
             "Nenhum funcionário encontrado.",
         });
       }
-
-      /* =========================================
-         WORKBOOK
-      ========================================= */
 
       const workbook =
         new ExcelJS.Workbook();
@@ -2194,10 +1973,6 @@ router.get(
 
       let gerouAlgumFuncionario =
         false;
-
-      /* =========================================
-         UMA ABA POR FUNCIONÁRIO
-      ========================================= */
 
       for (
         const funcionarioBase
@@ -2221,15 +1996,9 @@ router.get(
             empresaId
           );
 
-        if (
-          !dadosFuncionario.length
-        ) {
+        if (!dadosFuncionario.length) {
           continue;
         }
-
-        /* =====================================
-           NOME DA ABA
-        ===================================== */
 
         let nomeAba = String(
           funcionario.nome ||
@@ -2247,10 +2016,6 @@ router.get(
             ""
           )
           .substring(0, 31);
-
-        /*
-          Evitar abas duplicadas.
-        */
 
         let nomeAbaFinal =
           nomeAba;
@@ -2302,10 +2067,6 @@ router.get(
           "Nenhum registro encontrado para o período informado.";
       }
 
-      /* =========================================
-         ENVIAR EXCEL
-      ========================================= */
-
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -2321,7 +2082,6 @@ router.get(
       );
 
       return res.end();
-
     } catch (err) {
       console.error(
         "Erro ao gerar Excel de todos:",
@@ -2340,12 +2100,13 @@ router.get(
 
 
 /* =========================================================
-   EXCEL SEM SOMA - UM FUNCIONÁRIO
+   EXCEL SEM SOMA
 ========================================================= */
 
 router.get(
   "/excel-sem-soma/:funcId",
   auth,
+  somenteRH,
   async (req, res) => {
     const { funcId } = req.params;
     const { mes, ano } = req.query;
@@ -2372,10 +2133,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         FUNCIONÁRIO
-      ========================================= */
-
       const funcionario =
         await buscarFuncionarioPorId(
           funcId,
@@ -2389,10 +2146,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         DADOS
-      ========================================= */
-
       const dadosFuncionario =
         await buscarDadosRelatorioFuncionario(
           funcionario.id,
@@ -2401,18 +2154,12 @@ router.get(
           empresaId
         );
 
-      if (
-        !dadosFuncionario.length
-      ) {
+      if (!dadosFuncionario.length) {
         return res.status(404).json({
           error:
             "Nenhum registro encontrado.",
         });
       }
-
-      /* =========================================
-         EXCEL
-      ========================================= */
 
       const workbook =
         new ExcelJS.Workbook();
@@ -2451,7 +2198,6 @@ router.get(
       );
 
       return res.end();
-
     } catch (err) {
       console.error(
         "Erro ao gerar Excel sem soma:",
@@ -2476,6 +2222,7 @@ router.get(
 router.get(
   "/excel/:funcId",
   auth,
+  somenteRH,
   async (req, res) => {
     const { funcId } = req.params;
     const { mes, ano } = req.query;
@@ -2502,10 +2249,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         FUNCIONÁRIO
-      ========================================= */
-
       const funcionario =
         await buscarFuncionarioPorId(
           funcId,
@@ -2519,10 +2262,6 @@ router.get(
         });
       }
 
-      /* =========================================
-         DADOS
-      ========================================= */
-
       const dadosFuncionario =
         await buscarDadosRelatorioFuncionario(
           funcionario.id,
@@ -2531,18 +2270,12 @@ router.get(
           empresaId
         );
 
-      if (
-        !dadosFuncionario.length
-      ) {
+      if (!dadosFuncionario.length) {
         return res.status(404).json({
           error:
             "Nenhum registro encontrado.",
         });
       }
-
-      /* =========================================
-         EXCEL
-      ========================================= */
 
       const workbook =
         new ExcelJS.Workbook();
@@ -2581,7 +2314,6 @@ router.get(
       );
 
       return res.end();
-
     } catch (err) {
       console.error(
         "Erro ao gerar Excel:",
@@ -2600,28 +2332,29 @@ router.get(
 
 
 /* =========================================================
-   ROTAS JSON
+   JSON - TODOS
+
+   SOMENTE RH / SUPER ADMIN
 ========================================================= */
-
-/*
-  IMPORTANTE:
-
-  /todos precisa ficar ANTES de /:id.
-
-  Caso contrário, o Express poderia interpretar
-  "todos" como se fosse o ID de um funcionário.
-*/
 
 router.get(
   "/todos",
   auth,
+  somenteRH,
   relatorioTodosFuncionarios
 );
 
 
+/* =========================================================
+   JSON - FUNCIONÁRIO
+
+   SOMENTE RH / SUPER ADMIN
+========================================================= */
+
 router.get(
   "/:id",
   auth,
+  somenteRH,
   relatorioFuncionario
 );
 

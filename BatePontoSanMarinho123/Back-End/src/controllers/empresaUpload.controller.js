@@ -3,123 +3,383 @@ const path = require("path");
 const fs = require("fs");
 
 /* =========================================================
-   PASTA
+   PASTA DE UPLOADS
+
+   PRECISA SER EXATAMENTE A MESMA REGRA DO server.js
 ========================================================= */
 
-const PASTA_EMPRESAS =
+const UPLOADS_DIR =
   process.env.UPLOADS_DIR
-    ? path.join(process.env.UPLOADS_DIR, "empresas")
-    : path.join(__dirname, "../../uploads/empresas");
+    ? path.resolve(
+        process.env.UPLOADS_DIR
+      )
+    : path.resolve(
+        __dirname,
+        "../../uploads"
+      );
+
+const PASTA_EMPRESAS =
+  path.join(
+    UPLOADS_DIR,
+    "empresas"
+  );
+
+/* =========================================================
+   GARANTIR PASTA
+========================================================= */
+
+if (
+  !fs.existsSync(
+    PASTA_EMPRESAS
+  )
+) {
+  fs.mkdirSync(
+    PASTA_EMPRESAS,
+    {
+      recursive: true,
+    }
+  );
+}
+
+console.log(
+  "🖼 Controller imagens empresas:",
+  PASTA_EMPRESAS
+);
 
 /* =========================================================
    GARANTIR COLUNAS
 ========================================================= */
 
 async function garantirColunasImagens() {
+  /*
+    Primeiro garantimos que a tabela existe.
+
+    Normalmente ela já existe, mas isso evita erro durante
+    inicialização/migração de banco antigo.
+  */
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS empresas (
+      id BIGSERIAL PRIMARY KEY,
+
+      nome VARCHAR(150)
+      NOT NULL,
+
+      nome_fantasia VARCHAR(150),
+
+      cor_primaria VARCHAR(30)
+      DEFAULT '#0d6efd',
+
+      cor_secundaria VARCHAR(30)
+      DEFAULT '#084298',
+
+      logo_arquivo TEXT,
+
+      fundo_arquivo TEXT,
+
+      ativo BOOLEAN
+      NOT NULL
+      DEFAULT true,
+
+      created_at TIMESTAMP
+      NOT NULL
+      DEFAULT NOW(),
+
+      updated_at TIMESTAMP
+      NOT NULL
+      DEFAULT NOW()
+    );
+  `);
+
+  /* =======================================================
+     LOGO
+  ======================================================= */
+
   await pool.query(`
     ALTER TABLE empresas
     ADD COLUMN IF NOT EXISTS logo_arquivo TEXT;
   `);
 
+  /* =======================================================
+     FUNDO
+  ======================================================= */
+
   await pool.query(`
     ALTER TABLE empresas
     ADD COLUMN IF NOT EXISTS fundo_arquivo TEXT;
   `);
+
+  /* =======================================================
+     UPDATED_AT
+  ======================================================= */
+
+  await pool.query(`
+    ALTER TABLE empresas
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
+    NOT NULL DEFAULT NOW();
+  `);
 }
 
 /* =========================================================
-   VERIFICAR EMPRESA
+   BUSCAR EMPRESA
 ========================================================= */
 
-async function buscarEmpresa(id) {
-  const { rows } = await pool.query(
+async function buscarEmpresa(
+  id
+) {
+  const empresaId =
+    Number(id);
+
+  if (
+    !Number.isInteger(
+      empresaId
+    ) ||
+    empresaId <= 0
+  ) {
+    return null;
+  }
+
+  const {
+    rows,
+  } = await pool.query(
     `
     SELECT
       id,
       nome,
       nome_fantasia,
       logo_arquivo,
-      fundo_arquivo
+      fundo_arquivo,
+      cor_primaria,
+      cor_secundaria,
+      ativo
+
     FROM empresas
+
     WHERE id = $1
+
     LIMIT 1
     `,
-    [id]
+    [
+      empresaId,
+    ]
   );
 
-  return rows[0] || null;
+  return (
+    rows[0] ||
+    null
+  );
 }
 
 /* =========================================================
-   EXCLUIR ARQUIVO ANTIGO
+   PEGAR SOMENTE NOME DO ARQUIVO
+
+   Evita salvar ou acessar caminhos externos.
 ========================================================= */
 
-function excluirArquivo(nomeArquivo) {
+function nomeSeguroArquivo(
+  nomeArquivo
+) {
+  if (!nomeArquivo) {
+    return null;
+  }
+
+  return path.basename(
+    String(
+      nomeArquivo
+    )
+  );
+}
+
+/* =========================================================
+   MONTAR CAMINHO DO ARQUIVO
+========================================================= */
+
+function caminhoArquivo(
+  nomeArquivo
+) {
+  const nomeSeguro =
+    nomeSeguroArquivo(
+      nomeArquivo
+    );
+
+  if (!nomeSeguro) {
+    return null;
+  }
+
+  return path.join(
+    PASTA_EMPRESAS,
+    nomeSeguro
+  );
+}
+
+/* =========================================================
+   EXCLUIR ARQUIVO
+========================================================= */
+
+function excluirArquivo(
+  nomeArquivo
+) {
   if (!nomeArquivo) {
     return;
   }
 
-  const nomeSeguro = path.basename(nomeArquivo);
+  const arquivo =
+    caminhoArquivo(
+      nomeArquivo
+    );
 
-  const caminho = path.join(
-    PASTA_EMPRESAS,
-    nomeSeguro
-  );
+  if (!arquivo) {
+    return;
+  }
 
   try {
-    if (fs.existsSync(caminho)) {
-      fs.unlinkSync(caminho);
+    if (
+      fs.existsSync(
+        arquivo
+      )
+    ) {
+      fs.unlinkSync(
+        arquivo
+      );
+
+      console.log(
+        "🗑 Imagem antiga removida:",
+        arquivo
+      );
     }
-  } catch (err) {
+  } catch (error) {
     console.error(
       "Erro ao excluir imagem antiga:",
-      err
+      error
     );
   }
 }
 
 /* =========================================================
-   EXCLUIR ARQUIVO RECÉM-ENVIADO EM CASO DE ERRO
+   EXCLUIR UPLOAD ATUAL
+
+   Utilizado caso alguma coisa dê errado depois que o
+   Multer já salvou o arquivo.
 ========================================================= */
 
-function excluirUploadAtual(req) {
-  if (!req.file?.filename) {
+function excluirUploadAtual(
+  req
+) {
+  if (
+    !req.file?.filename
+  ) {
     return;
   }
 
-  excluirArquivo(req.file.filename);
+  excluirArquivo(
+    req.file.filename
+  );
 }
 
 /* =========================================================
-   UPLOAD LOGO
+   UPLOAD DA LOGO
 ========================================================= */
 
-async function uploadLogoEmpresa(req, res) {
+async function uploadLogoEmpresa(
+  req,
+  res
+) {
   try {
     await garantirColunasImagens();
 
-    const { id } = req.params;
+    const empresaId =
+      Number(
+        req.params.id
+      );
 
-    if (!req.file) {
-      return res.status(400).json({
-        error: "Selecione uma imagem para a logo.",
-      });
+    /* =====================================================
+       VALIDAR ID
+    ===================================================== */
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      excluirUploadAtual(
+        req
+      );
+
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
     }
 
-    const empresa = await buscarEmpresa(id);
+    /* =====================================================
+       VALIDAR ARQUIVO
+    ===================================================== */
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Selecione uma imagem para a logo.",
+        });
+    }
+
+    console.log(
+      "📤 Upload logo empresa:",
+      empresaId
+    );
+
+    console.log(
+      "📄 Arquivo recebido:",
+      req.file.filename
+    );
+
+    console.log(
+      "📁 Caminho recebido:",
+      req.file.path
+    );
+
+    /* =====================================================
+       BUSCAR EMPRESA
+    ===================================================== */
+
+    const empresa =
+      await buscarEmpresa(
+        empresaId
+      );
 
     if (!empresa) {
-      excluirUploadAtual(req);
+      excluirUploadAtual(
+        req
+      );
 
-      return res.status(404).json({
-        error: "Empresa não encontrada.",
-      });
+      return res
+        .status(404)
+        .json({
+          error:
+            "Empresa não encontrada.",
+        });
     }
 
     const arquivoAntigo =
       empresa.logo_arquivo;
 
-    const { rows } = await pool.query(
+    /* =====================================================
+       SALVAR NO BANCO
+
+       IMPORTANTE:
+       salvamos somente filename.
+
+       Exemplo:
+       empresa-1-logo-123456.png
+    ===================================================== */
+
+    const {
+      rows,
+    } = await pool.query(
       `
       UPDATE empresas
 
@@ -133,21 +393,48 @@ async function uploadLogoEmpresa(req, res) {
         id,
         nome,
         nome_fantasia,
+        cor_primaria,
+        cor_secundaria,
         logo_arquivo,
-        fundo_arquivo
+        fundo_arquivo,
+        ativo,
+        updated_at
       `,
       [
         req.file.filename,
-        id,
+        empresaId,
       ]
     );
 
+    /* =====================================================
+       EXCLUIR LOGO ANTIGA
+    ===================================================== */
+
     if (
       arquivoAntigo &&
-      arquivoAntigo !== req.file.filename
+      arquivoAntigo !==
+        req.file.filename
     ) {
-      excluirArquivo(arquivoAntigo);
+      excluirArquivo(
+        arquivoAntigo
+      );
     }
+
+    /* =====================================================
+       URLs
+    ===================================================== */
+
+    const logoUrl =
+      `/api/empresas/${empresaId}/logo`;
+
+    const fundoUrl =
+      rows[0].fundo_arquivo
+        ? `/api/empresas/${empresaId}/fundo`
+        : null;
+
+    /* =====================================================
+       RESPOSTA
+    ===================================================== */
 
     return res.json({
       ok: true,
@@ -155,57 +442,140 @@ async function uploadLogoEmpresa(req, res) {
       message:
         "Logo atualizada com sucesso.",
 
-      empresa: rows[0],
-
       logo_url:
-        `/api/empresas/${id}/logo`,
-    });
-  } catch (err) {
-    excluirUploadAtual(req);
+        logoUrl,
 
-    console.error(
-      "Erro ao enviar logo:",
-      err
+      fundo_url:
+        fundoUrl,
+
+      empresa: {
+        ...rows[0],
+
+        logo_url:
+          logoUrl,
+
+        fundo_url:
+          fundoUrl,
+      },
+    });
+
+  } catch (error) {
+    excluirUploadAtual(
+      req
     );
 
-    return res.status(500).json({
-      error:
-        "Erro ao atualizar logo da empresa.",
-    });
+    console.error(
+      "❌ Erro ao enviar logo:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro ao atualizar logo da empresa.",
+      });
   }
 }
 
 /* =========================================================
-   UPLOAD FUNDO
+   UPLOAD DO FUNDO
 ========================================================= */
 
-async function uploadFundoEmpresa(req, res) {
+async function uploadFundoEmpresa(
+  req,
+  res
+) {
   try {
     await garantirColunasImagens();
 
-    const { id } = req.params;
+    const empresaId =
+      Number(
+        req.params.id
+      );
 
-    if (!req.file) {
-      return res.status(400).json({
-        error:
-          "Selecione uma imagem de fundo.",
-      });
+    /* =====================================================
+       VALIDAR ID
+    ===================================================== */
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      excluirUploadAtual(
+        req
+      );
+
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
     }
 
-    const empresa = await buscarEmpresa(id);
+    /* =====================================================
+       VALIDAR ARQUIVO
+    ===================================================== */
+
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Selecione uma imagem de fundo.",
+        });
+    }
+
+    console.log(
+      "📤 Upload fundo empresa:",
+      empresaId
+    );
+
+    console.log(
+      "📄 Arquivo recebido:",
+      req.file.filename
+    );
+
+    console.log(
+      "📁 Caminho recebido:",
+      req.file.path
+    );
+
+    /* =====================================================
+       BUSCAR EMPRESA
+    ===================================================== */
+
+    const empresa =
+      await buscarEmpresa(
+        empresaId
+      );
 
     if (!empresa) {
-      excluirUploadAtual(req);
+      excluirUploadAtual(
+        req
+      );
 
-      return res.status(404).json({
-        error: "Empresa não encontrada.",
-      });
+      return res
+        .status(404)
+        .json({
+          error:
+            "Empresa não encontrada.",
+        });
     }
 
     const arquivoAntigo =
       empresa.fundo_arquivo;
 
-    const { rows } = await pool.query(
+    /* =====================================================
+       SALVAR NO BANCO
+    ===================================================== */
+
+    const {
+      rows,
+    } = await pool.query(
       `
       UPDATE empresas
 
@@ -219,21 +589,48 @@ async function uploadFundoEmpresa(req, res) {
         id,
         nome,
         nome_fantasia,
+        cor_primaria,
+        cor_secundaria,
         logo_arquivo,
-        fundo_arquivo
+        fundo_arquivo,
+        ativo,
+        updated_at
       `,
       [
         req.file.filename,
-        id,
+        empresaId,
       ]
     );
 
+    /* =====================================================
+       EXCLUIR FUNDO ANTIGO
+    ===================================================== */
+
     if (
       arquivoAntigo &&
-      arquivoAntigo !== req.file.filename
+      arquivoAntigo !==
+        req.file.filename
     ) {
-      excluirArquivo(arquivoAntigo);
+      excluirArquivo(
+        arquivoAntigo
+      );
     }
+
+    /* =====================================================
+       URLs
+    ===================================================== */
+
+    const logoUrl =
+      rows[0].logo_arquivo
+        ? `/api/empresas/${empresaId}/logo`
+        : null;
+
+    const fundoUrl =
+      `/api/empresas/${empresaId}/fundo`;
+
+    /* =====================================================
+       RESPOSTA
+    ===================================================== */
 
     return res.json({
       ok: true,
@@ -241,141 +638,292 @@ async function uploadFundoEmpresa(req, res) {
       message:
         "Imagem de fundo atualizada com sucesso.",
 
-      empresa: rows[0],
+      logo_url:
+        logoUrl,
 
       fundo_url:
-        `/api/empresas/${id}/fundo`,
-    });
-  } catch (err) {
-    excluirUploadAtual(req);
+        fundoUrl,
 
-    console.error(
-      "Erro ao enviar fundo:",
-      err
+      empresa: {
+        ...rows[0],
+
+        logo_url:
+          logoUrl,
+
+        fundo_url:
+          fundoUrl,
+      },
+    });
+
+  } catch (error) {
+    excluirUploadAtual(
+      req
     );
 
-    return res.status(500).json({
-      error:
-        "Erro ao atualizar imagem de fundo.",
-    });
+    console.error(
+      "❌ Erro ao enviar fundo:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro ao atualizar imagem de fundo da empresa.",
+      });
   }
 }
 
 /* =========================================================
-   VISUALIZAR LOGO
+   ENVIAR IMAGEM
+
+   Função compartilhada por logo e fundo.
 ========================================================= */
 
-async function visualizarLogoEmpresa(req, res) {
+function enviarImagem(
+  res,
+  nomeArquivo,
+  tipo
+) {
+  if (!nomeArquivo) {
+    return res
+      .status(404)
+      .json({
+        error:
+          `Esta empresa não possui ${tipo}.`,
+      });
+  }
+
+  const arquivo =
+    caminhoArquivo(
+      nomeArquivo
+    );
+
+  console.log(
+    `🔎 Procurando ${tipo}:`,
+    arquivo
+  );
+
+  if (
+    !arquivo ||
+    !fs.existsSync(
+      arquivo
+    )
+  ) {
+    console.error(
+      `❌ ${tipo} não encontrado no disco:`,
+      arquivo
+    );
+
+    return res
+      .status(404)
+      .json({
+        error:
+          `Arquivo de ${tipo} não encontrado.`,
+
+        arquivo:
+          nomeSeguroArquivo(
+            nomeArquivo
+          ),
+      });
+  }
+
+  /* =======================================================
+     CACHE
+
+     no-cache facilita enquanto estamos desenvolvendo e
+     trocando as imagens das empresas.
+  ======================================================= */
+
+  res.setHeader(
+    "Cache-Control",
+    "no-store, no-cache, must-revalidate, proxy-revalidate"
+  );
+
+  res.setHeader(
+    "Pragma",
+    "no-cache"
+  );
+
+  res.setHeader(
+    "Expires",
+    "0"
+  );
+
+  /* =======================================================
+     SENDFILE
+  ======================================================= */
+
+  return res.sendFile(
+    arquivo,
+    (error) => {
+      if (
+        error &&
+        !res.headersSent
+      ) {
+        console.error(
+          `Erro ao enviar ${tipo}:`,
+          error
+        );
+
+        return res
+          .status(500)
+          .json({
+            error:
+              `Erro ao carregar ${tipo}.`,
+          });
+      }
+    }
+  );
+}
+
+/* =========================================================
+   VISUALIZAR LOGO
+
+   GET /api/empresas/:id/logo
+========================================================= */
+
+async function visualizarLogoEmpresa(
+  req,
+  res
+) {
   try {
     await garantirColunasImagens();
 
-    const empresa =
-      await buscarEmpresa(
+    const empresaId =
+      Number(
         req.params.id
       );
 
-    if (!empresa) {
-      return res.status(404).json({
-        error:
-          "Empresa não encontrada.",
-      });
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
     }
 
-    if (!empresa.logo_arquivo) {
-      return res.status(404).json({
-        error:
-          "Esta empresa não possui logo.",
-      });
-    }
-
-    const nomeSeguro =
-      path.basename(
-        empresa.logo_arquivo
+    const empresa =
+      await buscarEmpresa(
+        empresaId
       );
 
-    const arquivo = path.join(
-      PASTA_EMPRESAS,
-      nomeSeguro
-    );
-
-    if (!fs.existsSync(arquivo)) {
-      return res.status(404).json({
-        error:
-          "Arquivo da logo não encontrado.",
-      });
+    if (!empresa) {
+      return res
+        .status(404)
+        .json({
+          error:
+            "Empresa não encontrada.",
+        });
     }
 
-    return res.sendFile(arquivo);
-  } catch (err) {
-    console.error(
-      "Erro ao visualizar logo:",
-      err
+    console.log(
+      "🖼 Logo cadastrada no banco:",
+      empresa.logo_arquivo
     );
 
-    return res.status(500).json({
-      error:
-        "Erro ao carregar logo.",
-    });
+    return enviarImagem(
+      res,
+      empresa.logo_arquivo,
+      "logo"
+    );
+
+  } catch (error) {
+    console.error(
+      "❌ Erro ao visualizar logo:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro ao carregar logo.",
+      });
   }
 }
 
 /* =========================================================
    VISUALIZAR FUNDO
+
+   GET /api/empresas/:id/fundo
 ========================================================= */
 
-async function visualizarFundoEmpresa(req, res) {
+async function visualizarFundoEmpresa(
+  req,
+  res
+) {
   try {
     await garantirColunasImagens();
 
-    const empresa =
-      await buscarEmpresa(
+    const empresaId =
+      Number(
         req.params.id
       );
 
-    if (!empresa) {
-      return res.status(404).json({
-        error:
-          "Empresa não encontrada.",
-      });
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
     }
 
-    if (!empresa.fundo_arquivo) {
-      return res.status(404).json({
-        error:
-          "Esta empresa não possui imagem de fundo.",
-      });
-    }
-
-    const nomeSeguro =
-      path.basename(
-        empresa.fundo_arquivo
+    const empresa =
+      await buscarEmpresa(
+        empresaId
       );
 
-    const arquivo = path.join(
-      PASTA_EMPRESAS,
-      nomeSeguro
-    );
-
-    if (!fs.existsSync(arquivo)) {
-      return res.status(404).json({
-        error:
-          "Arquivo de fundo não encontrado.",
-      });
+    if (!empresa) {
+      return res
+        .status(404)
+        .json({
+          error:
+            "Empresa não encontrada.",
+        });
     }
 
-    return res.sendFile(arquivo);
-  } catch (err) {
-    console.error(
-      "Erro ao visualizar fundo:",
-      err
+    console.log(
+      "🌄 Fundo cadastrado no banco:",
+      empresa.fundo_arquivo
     );
 
-    return res.status(500).json({
-      error:
-        "Erro ao carregar imagem de fundo.",
-    });
+    return enviarImagem(
+      res,
+      empresa.fundo_arquivo,
+      "imagem de fundo"
+    );
+
+  } catch (error) {
+    console.error(
+      "❌ Erro ao visualizar fundo:",
+      error
+    );
+
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro ao carregar imagem de fundo.",
+      });
   }
 }
+
+/* =========================================================
+   EXPORTS
+========================================================= */
 
 module.exports = {
   uploadLogoEmpresa,

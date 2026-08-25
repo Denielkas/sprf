@@ -5,18 +5,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
-/* =========================================================
-   LOGIN INICIAL / IDENTIFICAÇÃO DA EMPRESA
-========================================================= */
-
 import AcessoEmpresa from "./pages/AcessoEmpresa";
-
-/* =========================================================
-   LOGIN ADMINISTRATIVO
-========================================================= */
-
-import Login from "./pages/Login";
-import Register from "./pages/Register";
 
 /* =========================================================
    PONTO
@@ -27,6 +16,7 @@ import Reconhecimento from "./pages/Reconhecimento";
 import EscolherBatida from "./pages/EscolherBatida";
 import BuscarPontos from "./pages/BuscarPontos";
 import ResultadoPontos from "./pages/ResultadoPontos";
+import VincularCPF from "./pages/VincularCPF";
 
 /* =========================================================
    FUNCIONÁRIOS
@@ -37,10 +27,9 @@ import RegistrarFuncionario from "./pages/RegistrarFuncionario";
 import ListarFuncionarios from "./pages/ListarFuncionarios";
 
 /* =========================================================
-   ADMINISTRAÇÃO
+   RH / ADMINISTRAÇÃO
 ========================================================= */
 
-import ListarAdmins from "./pages/ListarAdmins";
 import RelatorioFuncionario from "./pages/RelatorioFuncionario";
 import InserirPontoManual from "./pages/InserirPontoManual";
 import CadastrarAtestado from "./pages/CadastrarAtestado";
@@ -48,11 +37,10 @@ import BancoHoras from "./pages/BancoHoras";
 
 /* =========================================================
    SUPER ADMIN
-
-   Essa página já existe.
 ========================================================= */
 
 import Empresas from "./pages/Empresas";
+import AcessosEmpresas from "./pages/AcessosEmpresas";
 
 /* =========================================================
    LAYOUT
@@ -61,14 +49,64 @@ import Empresas from "./pages/Empresas";
 import DashboardLayout from "./layouts/DashboardLayout";
 
 /* =========================================================
+   BUSCAR USUÁRIO LOGADO
+========================================================= */
+
+function getUsuario() {
+  try {
+    const salvo =
+      localStorage.getItem("usuario");
+
+    if (!salvo) {
+      return null;
+    }
+
+    return JSON.parse(salvo);
+  } catch (error) {
+    console.error(
+      "Erro ao carregar usuário:",
+      error
+    );
+
+    return null;
+  }
+}
+
+/* =========================================================
+   LIMPAR SESSÃO
+========================================================= */
+
+function limparSessao() {
+  localStorage.removeItem("token");
+  localStorage.removeItem("usuario");
+  localStorage.removeItem("role");
+  localStorage.removeItem("empresa_id");
+  localStorage.removeItem("empresa_nome");
+  localStorage.removeItem("identidade_empresa");
+}
+
+/* =========================================================
    ROTA PRIVADA
+
+   Permite:
+   - super_admin
+   - rh_empresa
+   - ponto_empresa
+
+   As rotas específicas abaixo controlam
+   exatamente onde cada usuário pode entrar.
 ========================================================= */
 
 function PrivateRoute({ children }) {
   const token =
     localStorage.getItem("token");
 
-  if (!token) {
+  const usuario =
+    getUsuario();
+
+  if (!token || !usuario) {
+    limparSessao();
+
     return (
       <Navigate
         to="/"
@@ -81,7 +119,7 @@ function PrivateRoute({ children }) {
 }
 
 /* =========================================================
-   ROTA SOMENTE SUPER ADMIN
+   SOMENTE SUPER ADMIN
 ========================================================= */
 
 function SuperAdminRoute({
@@ -90,7 +128,12 @@ function SuperAdminRoute({
   const token =
     localStorage.getItem("token");
 
-  if (!token) {
+  const usuario =
+    getUsuario();
+
+  if (!token || !usuario) {
+    limparSessao();
+
     return (
       <Navigate
         to="/"
@@ -99,30 +142,39 @@ function SuperAdminRoute({
     );
   }
 
-  let usuario = null;
-
-  try {
-    const salvo =
-      localStorage.getItem("usuario");
-
-    if (salvo) {
-      usuario =
-        JSON.parse(salvo);
-    }
-  } catch (error) {
-    console.error(
-      "Erro ao carregar usuário:",
-      error
-    );
-  }
-
   if (
-    usuario?.role !==
+    usuario.role !==
     "super_admin"
   ) {
+    if (
+      usuario.role ===
+      "rh_empresa"
+    ) {
+      return (
+        <Navigate
+          to="/app"
+          replace
+        />
+      );
+    }
+
+    if (
+      usuario.role ===
+      "ponto_empresa"
+    ) {
+      return (
+        <Navigate
+          to="/ponto"
+          replace
+        />
+      );
+    }
+
+    limparSessao();
+
     return (
       <Navigate
-        to="/app/registrar-funcionario"
+        to="/"
         replace
       />
     );
@@ -132,7 +184,299 @@ function SuperAdminRoute({
 }
 
 /* =========================================================
-   ROUTER
+   SOMENTE RH
+========================================================= */
+
+function RHRoute({
+  children,
+}) {
+  const token =
+    localStorage.getItem("token");
+
+  const usuario =
+    getUsuario();
+
+  if (!token || !usuario) {
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     SE NÃO FOR RH
+  ======================================================= */
+
+  if (
+    usuario.role !==
+    "rh_empresa"
+  ) {
+    /* -----------------------------------------------------
+       LOGIN DO PONTO
+    ----------------------------------------------------- */
+
+    if (
+      usuario.role ===
+      "ponto_empresa"
+    ) {
+      return (
+        <Navigate
+          to="/ponto"
+          replace
+        />
+      );
+    }
+
+    /* -----------------------------------------------------
+       SUPER ADMIN
+    ----------------------------------------------------- */
+
+    if (
+      usuario.role ===
+      "super_admin"
+    ) {
+      return (
+        <Navigate
+          to="/app/empresas"
+          replace
+        />
+      );
+    }
+
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     RH PRECISA TER EMPRESA
+  ======================================================= */
+
+  if (!usuario.empresa_id) {
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+/* =========================================================
+   SOMENTE LOGIN DE PONTO
+========================================================= */
+
+function PontoRoute({
+  children,
+}) {
+  const token =
+    localStorage.getItem("token");
+
+  const usuario =
+    getUsuario();
+
+  if (!token || !usuario) {
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     SOMENTE ponto_empresa
+  ======================================================= */
+
+  if (
+    usuario.role !==
+    "ponto_empresa"
+  ) {
+    /* -----------------------------------------------------
+       RH
+    ----------------------------------------------------- */
+
+    if (
+      usuario.role ===
+      "rh_empresa"
+    ) {
+      return (
+        <Navigate
+          to="/app"
+          replace
+        />
+      );
+    }
+
+    /* -----------------------------------------------------
+       SUPER ADMIN
+    ----------------------------------------------------- */
+
+    if (
+      usuario.role ===
+      "super_admin"
+    ) {
+      return (
+        <Navigate
+          to="/app/empresas"
+          replace
+        />
+      );
+    }
+
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     PONTO PRECISA TER EMPRESA
+  ======================================================= */
+
+  if (!usuario.empresa_id) {
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  return children;
+}
+
+/* =========================================================
+   REDIRECIONAMENTO AUTOMÁTICO
+
+   Decide para onde cada login vai.
+========================================================= */
+
+function RedirecionarApp() {
+  const token =
+    localStorage.getItem("token");
+
+  const usuario =
+    getUsuario();
+
+  if (!token || !usuario) {
+    limparSessao();
+
+    return (
+      <Navigate
+        to="/"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     SUPER ADMIN
+  ======================================================= */
+
+  if (
+    usuario.role ===
+    "super_admin"
+  ) {
+    return (
+      <Navigate
+        to="/app/empresas"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     RH
+  ======================================================= */
+
+  if (
+    usuario.role ===
+    "rh_empresa"
+  ) {
+    if (!usuario.empresa_id) {
+      limparSessao();
+
+      return (
+        <Navigate
+          to="/"
+          replace
+        />
+      );
+    }
+
+    return (
+      <Navigate
+        to="/app/registrar-funcionario"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     PONTO
+  ======================================================= */
+
+  if (
+    usuario.role ===
+    "ponto_empresa"
+  ) {
+    if (!usuario.empresa_id) {
+      limparSessao();
+
+      return (
+        <Navigate
+          to="/"
+          replace
+        />
+      );
+    }
+
+    return (
+      <Navigate
+        to="/ponto"
+        replace
+      />
+    );
+  }
+
+  /* =======================================================
+     ROLE INVÁLIDA
+  ======================================================= */
+
+  limparSessao();
+
+  return (
+    <Navigate
+      to="/"
+      replace
+    />
+  );
+}
+
+/* =========================================================
+   ROUTER PRINCIPAL
 ========================================================= */
 
 export default function AppRouter() {
@@ -141,12 +485,12 @@ export default function AppRouter() {
       <Routes>
 
         {/* =================================================
-            PRIMEIRA TELA DO SISTEMA
+            LOGIN PRINCIPAL
 
-            LOGIN PARA IDENTIFICAR:
-            - SAN MARINHO
-            - MARANTO
-            - SUPER ADMIN
+            Login único para:
+            - super_admin
+            - rh_empresa
+            - ponto_empresa
         ================================================= */}
 
         <Route
@@ -157,43 +501,16 @@ export default function AppRouter() {
         />
 
         {/* =================================================
-            TELA DE BATER PONTO
-
-            Depois do login inicial,
-            o usuário da empresa cai aqui.
+            TERMINAL DE PONTO
         ================================================= */}
 
         <Route
           path="/ponto"
           element={
-            <PrivateRoute>
+            <PontoRoute>
               <Home />
-            </PrivateRoute>
+            </PontoRoute>
           }
-        />
-
-        {/* =================================================
-            LOGIN ADMINISTRATIVO
-
-            Este é o login para entrar
-            nos relatórios, funcionários,
-            banco de horas etc.
-        ================================================= */}
-
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-
-        {/* =================================================
-            CADASTRO ANTIGO DE ADMIN
-
-            Vamos manter por enquanto.
-        ================================================= */}
-
-        <Route
-          path="/register"
-          element={<Register />}
         />
 
         {/* =================================================
@@ -203,9 +520,22 @@ export default function AppRouter() {
         <Route
           path="/reconhecimento"
           element={
-            <PrivateRoute>
+            <PontoRoute>
               <Reconhecimento />
-            </PrivateRoute>
+            </PontoRoute>
+          }
+        />
+
+        {/* =================================================
+            VINCULAR CPF / ROSTO
+        ================================================= */}
+
+        <Route
+          path="/vincular-cpf"
+          element={
+            <PontoRoute>
+              <VincularCPF />
+            </PontoRoute>
           }
         />
 
@@ -216,36 +546,46 @@ export default function AppRouter() {
         <Route
           path="/escolher-batida"
           element={
-            <PrivateRoute>
+            <PontoRoute>
               <EscolherBatida />
-            </PrivateRoute>
+            </PontoRoute>
           }
         />
 
         {/* =================================================
-            CONSULTA DE PONTO
+            CONSULTAR PONTOS
         ================================================= */}
 
         <Route
           path="/buscar-pontos"
           element={
-            <PrivateRoute>
+            <PontoRoute>
               <BuscarPontos />
-            </PrivateRoute>
-          }
-        />
-
-        <Route
-          path="/resultado-pontos"
-          element={
-            <PrivateRoute>
-              <ResultadoPontos />
-            </PrivateRoute>
+            </PontoRoute>
           }
         />
 
         {/* =================================================
-            ÁREA ADMINISTRATIVA
+            RESULTADO DOS PONTOS
+        ================================================= */}
+
+        <Route
+          path="/resultado-pontos"
+          element={
+            <PontoRoute>
+              <ResultadoPontos />
+            </PontoRoute>
+          }
+        />
+
+        {/* =================================================
+            DASHBOARD
+
+            Aqui entram:
+            - super_admin
+            - rh_empresa
+
+            ponto_empresa não usa dashboard.
         ================================================= */}
 
         <Route
@@ -258,9 +598,7 @@ export default function AppRouter() {
         >
 
           {/* ===============================================
-              ROTA INICIAL DO /APP
-
-              Decide conforme o usuário.
+              REDIRECIONAMENTO INICIAL
           =============================================== */}
 
           <Route
@@ -271,7 +609,7 @@ export default function AppRouter() {
           />
 
           {/* ===============================================
-              SUPER ADMIN
+              SUPER ADMIN - EMPRESAS
           =============================================== */}
 
           <Route
@@ -284,68 +622,113 @@ export default function AppRouter() {
           />
 
           {/* ===============================================
-              ADMIN DA EMPRESA
+              SUPER ADMIN - ACESSOS DAS EMPRESAS
+          =============================================== */}
+
+          <Route
+            path="acessos"
+            element={
+              <SuperAdminRoute>
+                <AcessosEmpresas />
+              </SuperAdminRoute>
+            }
+          />
+
+          {/* ===============================================
+              RH - CADASTRAR FUNCIONÁRIO
           =============================================== */}
 
           <Route
             path="registrar-funcionario"
             element={
-              <RegistrarFuncionario />
+              <RHRoute>
+                <RegistrarFuncionario />
+              </RHRoute>
             }
           />
+
+          {/* ===============================================
+              RH - LISTAR FUNCIONÁRIOS
+          =============================================== */}
 
           <Route
             path="funcionarios"
             element={
-              <ListarFuncionarios />
+              <RHRoute>
+                <ListarFuncionarios />
+              </RHRoute>
             }
           />
 
-          <Route
-            path="admins"
-            element={
-              <ListarAdmins />
-            }
-          />
+          {/* ===============================================
+              RH - CADASTRAR ROSTO
+          =============================================== */}
 
           <Route
             path="cadastrar-rosto/:id"
             element={
-              <CadastrarRosto />
+              <RHRoute>
+                <CadastrarRosto />
+              </RHRoute>
             }
           />
+
+          {/* ===============================================
+              RH - RELATÓRIO
+          =============================================== */}
 
           <Route
             path="relatorio"
             element={
-              <RelatorioFuncionario />
+              <RHRoute>
+                <RelatorioFuncionario />
+              </RHRoute>
             }
           />
+
+          {/* ===============================================
+              RH - PONTO MANUAL
+          =============================================== */}
 
           <Route
             path="manual"
             element={
-              <InserirPontoManual />
+              <RHRoute>
+                <InserirPontoManual />
+              </RHRoute>
             }
           />
+
+          {/* ===============================================
+              RH - ATESTADO
+          =============================================== */}
 
           <Route
             path="atestado"
             element={
-              <CadastrarAtestado />
+              <RHRoute>
+                <CadastrarAtestado />
+              </RHRoute>
             }
           />
+
+          {/* ===============================================
+              RH - BANCO DE HORAS
+          =============================================== */}
 
           <Route
             path="bancoHoras"
             element={
-              <BancoHoras />
+              <RHRoute>
+                <BancoHoras />
+              </RHRoute>
             }
           />
+
         </Route>
 
         {/* =================================================
-            QUALQUER ROTA INVÁLIDA
+            ROTA INVÁLIDA
         ================================================= */}
 
         <Route
@@ -357,55 +740,8 @@ export default function AppRouter() {
             />
           }
         />
+
       </Routes>
     </BrowserRouter>
-  );
-}
-
-/* =========================================================
-   REDIRECIONAMENTO DA ÁREA ADMINISTRATIVA
-========================================================= */
-
-function RedirecionarApp() {
-  let usuario = null;
-
-  try {
-    const salvo =
-      localStorage.getItem(
-        "usuario"
-      );
-
-    if (salvo) {
-      usuario =
-        JSON.parse(salvo);
-    }
-  } catch (error) {
-    console.error(
-      "Erro ao ler usuário:",
-      error
-    );
-  }
-
-  /* SUPER ADMIN */
-
-  if (
-    usuario?.role ===
-    "super_admin"
-  ) {
-    return (
-      <Navigate
-        to="/app/empresas"
-        replace
-      />
-    );
-  }
-
-  /* ADMIN DA EMPRESA */
-
-  return (
-    <Navigate
-      to="/app/registrar-funcionario"
-      replace
-    />
   );
 }

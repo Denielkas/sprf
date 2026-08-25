@@ -5,9 +5,9 @@ const pool = require("../database/pool");
 ========================================================= */
 
 async function garantirTabelaEmpresas() {
-  /* -------------------------------------------------------
-     TABELA PRINCIPAL
-  ------------------------------------------------------- */
+  /* =======================================================
+     TABELA EMPRESAS
+  ======================================================= */
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS empresas (
@@ -23,11 +23,11 @@ async function garantirTabelaEmpresas() {
         NOT NULL DEFAULT '#0d6efd',
 
       cor_secundaria VARCHAR(20)
-        NOT NULL DEFAULT '#1a1a1a',
+        NOT NULL DEFAULT '#084298',
 
-      logo_url TEXT,
+      logo_arquivo TEXT,
 
-      fundo_url TEXT,
+      fundo_arquivo TEXT,
 
       ativo BOOLEAN
         NOT NULL DEFAULT true,
@@ -40,9 +40,19 @@ async function garantirTabelaEmpresas() {
     );
   `);
 
-  /*
-    Compatibilidade com banco já existente.
-  */
+  /* =======================================================
+     COMPATIBILIDADE COM BANCO ANTIGO
+  ======================================================= */
+
+  await pool.query(`
+    ALTER TABLE empresas
+    ADD COLUMN IF NOT EXISTS nome_fantasia VARCHAR(200);
+  `);
+
+  await pool.query(`
+    ALTER TABLE empresas
+    ADD COLUMN IF NOT EXISTS cnpj VARCHAR(14);
+  `);
 
   await pool.query(`
     ALTER TABLE empresas
@@ -53,17 +63,17 @@ async function garantirTabelaEmpresas() {
   await pool.query(`
     ALTER TABLE empresas
     ADD COLUMN IF NOT EXISTS cor_secundaria VARCHAR(20)
-    NOT NULL DEFAULT '#1a1a1a';
+    NOT NULL DEFAULT '#084298';
   `);
 
   await pool.query(`
     ALTER TABLE empresas
-    ADD COLUMN IF NOT EXISTS logo_url TEXT;
+    ADD COLUMN IF NOT EXISTS logo_arquivo TEXT;
   `);
 
   await pool.query(`
     ALTER TABLE empresas
-    ADD COLUMN IF NOT EXISTS fundo_url TEXT;
+    ADD COLUMN IF NOT EXISTS fundo_arquivo TEXT;
   `);
 
   await pool.query(`
@@ -74,15 +84,78 @@ async function garantirTabelaEmpresas() {
 
   await pool.query(`
     ALTER TABLE empresas
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP
+    DEFAULT NOW();
+  `);
+
+  await pool.query(`
+    ALTER TABLE empresas
     ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
     DEFAULT NOW();
   `);
 
-  /* -------------------------------------------------------
-     TABELA DE CNPJS
+  /* =======================================================
+     MIGRAR IMAGENS ANTIGAS
 
-     Uma empresa poderá possuir vários CNPJs.
-  ------------------------------------------------------- */
+     Caso sua tabela antiga possua logo_url/fundo_url,
+     tentamos aproveitar esses registros.
+
+     Como PostgreSQL não permite referenciar coluna que
+     talvez não exista diretamente, verificamos antes.
+  ======================================================= */
+
+  await pool.query(`
+    DO $$
+    BEGIN
+
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'empresas'
+          AND column_name = 'logo_url'
+      ) THEN
+
+        UPDATE empresas
+        SET logo_arquivo =
+          regexp_replace(
+            logo_url,
+            '^.*/',
+            ''
+          )
+        WHERE
+          logo_arquivo IS NULL
+          AND logo_url IS NOT NULL
+          AND TRIM(logo_url) <> '';
+
+      END IF;
+
+      IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = 'empresas'
+          AND column_name = 'fundo_url'
+      ) THEN
+
+        UPDATE empresas
+        SET fundo_arquivo =
+          regexp_replace(
+            fundo_url,
+            '^.*/',
+            ''
+          )
+        WHERE
+          fundo_arquivo IS NULL
+          AND fundo_url IS NOT NULL
+          AND TRIM(fundo_url) <> '';
+
+      END IF;
+
+    END $$;
+  `);
+
+  /* =======================================================
+     TABELA DE CNPJS
+  ======================================================= */
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS empresa_cnpjs (
@@ -112,15 +185,42 @@ async function garantirTabelaEmpresas() {
     );
   `);
 
-  /*
-    MIGRAÇÃO DO CNPJ ANTIGO.
+  /* =======================================================
+     COMPATIBILIDADE empresa_cnpjs
+  ======================================================= */
 
-    Se a empresa já tinha CNPJ diretamente
-    na tabela empresas, colocamos também
-    em empresa_cnpjs.
+  await pool.query(`
+    ALTER TABLE empresa_cnpjs
+    ADD COLUMN IF NOT EXISTS nome VARCHAR(200);
+  `);
 
-    Assim não perdemos os dados existentes.
-  */
+  await pool.query(`
+    ALTER TABLE empresa_cnpjs
+    ADD COLUMN IF NOT EXISTS principal BOOLEAN
+    NOT NULL DEFAULT false;
+  `);
+
+  await pool.query(`
+    ALTER TABLE empresa_cnpjs
+    ADD COLUMN IF NOT EXISTS ativo BOOLEAN
+    NOT NULL DEFAULT true;
+  `);
+
+  await pool.query(`
+    ALTER TABLE empresa_cnpjs
+    ADD COLUMN IF NOT EXISTS created_at TIMESTAMP
+    DEFAULT NOW();
+  `);
+
+  await pool.query(`
+    ALTER TABLE empresa_cnpjs
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP
+    DEFAULT NOW();
+  `);
+
+  /* =======================================================
+     MIGRAR CNPJ ANTIGO
+  ======================================================= */
 
   await pool.query(`
     INSERT INTO empresa_cnpjs (
@@ -134,10 +234,15 @@ async function garantirTabelaEmpresas() {
     SELECT
       e.id,
       e.cnpj,
+
       COALESCE(
-        e.nome_fantasia,
+        NULLIF(
+          TRIM(e.nome_fantasia),
+          ''
+        ),
         e.nome
       ),
+
       true,
       true
 
@@ -159,8 +264,89 @@ async function garantirTabelaEmpresas() {
           AND ec.cnpj = e.cnpj
       );
   `);
-}
 
+  /* =======================================================
+     GARANTIR UM CNPJ PRINCIPAL
+  ======================================================= */
+
+  await pool.query(`
+    UPDATE empresa_cnpjs ec
+
+    SET
+      principal = true,
+      updated_at = NOW()
+
+    WHERE ec.id IN (
+      SELECT
+        MIN(ec2.id)
+
+      FROM empresa_cnpjs ec2
+
+      WHERE
+        ec2.ativo = true
+
+        AND NOT EXISTS (
+          SELECT 1
+
+          FROM empresa_cnpjs principal
+
+          WHERE
+            principal.empresa_id =
+              ec2.empresa_id
+
+            AND principal.principal =
+              true
+
+            AND principal.ativo =
+              true
+        )
+
+      GROUP BY
+        ec2.empresa_id
+    );
+  `);
+
+  /* =======================================================
+     SINCRONIZAR CNPJ PRINCIPAL
+  ======================================================= */
+
+  await pool.query(`
+    UPDATE empresas e
+
+    SET
+      cnpj = (
+        SELECT ec.cnpj
+
+        FROM empresa_cnpjs ec
+
+        WHERE
+          ec.empresa_id = e.id
+
+          AND ec.principal = true
+
+          AND ec.ativo = true
+
+        ORDER BY ec.id ASC
+
+        LIMIT 1
+      ),
+
+      updated_at = NOW()
+
+    WHERE EXISTS (
+      SELECT 1
+
+      FROM empresa_cnpjs ec
+
+      WHERE
+        ec.empresa_id = e.id
+
+        AND ec.principal = true
+
+        AND ec.ativo = true
+    );
+  `);
+}
 
 /* =========================================================
    FUNÇÕES AUXILIARES
@@ -175,7 +361,6 @@ function limparCnpj(cnpj) {
     .replace(/\D/g, "");
 }
 
-
 function validarCnpjBasico(cnpj) {
   if (!cnpj) {
     return false;
@@ -183,7 +368,6 @@ function validarCnpjBasico(cnpj) {
 
   return /^\d{14}$/.test(cnpj);
 }
-
 
 function validarCorHex(cor) {
   if (!cor) {
@@ -195,9 +379,34 @@ function validarCorHex(cor) {
   );
 }
 
+/* =========================================================
+   MONTAR RESPOSTA DA EMPRESA
+
+   Aqui transformamos os arquivos em URLs públicas.
+========================================================= */
+
+function montarEmpresa(empresa) {
+  if (!empresa) {
+    return null;
+  }
+
+  return {
+    ...empresa,
+
+    logo_url:
+      empresa.logo_arquivo
+        ? `/api/empresas/${empresa.id}/logo`
+        : null,
+
+    fundo_url:
+      empresa.fundo_arquivo
+        ? `/api/empresas/${empresa.id}/fundo`
+        : null,
+  };
+}
 
 /* =========================================================
-   BUSCAR CNPJS DE UMA EMPRESA
+   BUSCAR CNPJS DA EMPRESA
 ========================================================= */
 
 async function buscarCnpjsEmpresa(
@@ -231,10 +440,8 @@ async function buscarCnpjsEmpresa(
   return rows;
 }
 
-
 /* =========================================================
    LISTAR EMPRESAS
-   SOMENTE SUPER ADMIN PELA ROTA
 ========================================================= */
 
 async function listarEmpresas(
@@ -247,26 +454,26 @@ async function listarEmpresas(
     const { rows } =
       await pool.query(`
         SELECT
-          e.id,
-          e.nome,
-          e.nome_fantasia,
-          e.cnpj,
+          id,
+          nome,
+          nome_fantasia,
+          cnpj,
 
-          e.cor_primaria,
-          e.cor_secundaria,
+          cor_primaria,
+          cor_secundaria,
 
-          e.logo_url,
-          e.fundo_url,
+          logo_arquivo,
+          fundo_arquivo,
 
-          e.ativo,
+          ativo,
 
-          e.created_at,
-          e.updated_at
+          created_at,
+          updated_at
 
-        FROM empresas e
+        FROM empresas
 
         ORDER BY
-          e.nome ASC
+          nome ASC
       `);
 
     const empresas =
@@ -279,7 +486,9 @@ async function listarEmpresas(
               );
 
             return {
-              ...empresa,
+              ...montarEmpresa(
+                empresa
+              ),
 
               cnpjs,
             };
@@ -296,13 +505,14 @@ async function listarEmpresas(
       err
     );
 
-    return res.status(500).json({
-      error:
-        "Erro ao listar empresas.",
-    });
+    return res
+      .status(500)
+      .json({
+        error:
+          "Erro ao listar empresas.",
+      });
   }
 }
-
 
 /* =========================================================
    BUSCAR EMPRESA POR ID
@@ -315,9 +525,22 @@ async function buscarEmpresaPorId(
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
+    }
 
     const { rows } =
       await pool.query(
@@ -331,8 +554,8 @@ async function buscarEmpresaPorId(
           cor_primaria,
           cor_secundaria,
 
-          logo_url,
-          fundo_url,
+          logo_arquivo,
+          fundo_arquivo,
 
           ativo,
 
@@ -345,7 +568,7 @@ async function buscarEmpresaPorId(
 
         LIMIT 1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -368,7 +591,9 @@ async function buscarEmpresaPorId(
       );
 
     return res.json({
-      ...empresa,
+      ...montarEmpresa(
+        empresa
+      ),
 
       cnpjs,
     });
@@ -387,7 +612,6 @@ async function buscarEmpresaPorId(
   }
 }
 
-
 /* =========================================================
    CRIAR EMPRESA
 ========================================================= */
@@ -399,6 +623,9 @@ async function criarEmpresa(
   const client =
     await pool.connect();
 
+  let transacaoIniciada =
+    false;
+
   try {
     await garantirTabelaEmpresas();
 
@@ -407,19 +634,15 @@ async function criarEmpresa(
       nome_fantasia,
 
       cnpj,
-
       cnpjs,
 
       cor_primaria,
       cor_secundaria,
-
-      logo_url,
-      fundo_url,
     } = req.body;
 
-    /* -----------------------------------------------------
+    /* =====================================================
        NOME
-    ----------------------------------------------------- */
+    ===================================================== */
 
     if (
       !nome ||
@@ -433,9 +656,9 @@ async function criarEmpresa(
         });
     }
 
-    /* -----------------------------------------------------
+    /* =====================================================
        CORES
-    ----------------------------------------------------- */
+    ===================================================== */
 
     cor_primaria =
       cor_primaria ||
@@ -443,7 +666,7 @@ async function criarEmpresa(
 
     cor_secundaria =
       cor_secundaria ||
-      "#1a1a1a";
+      "#084298";
 
     if (
       !validarCorHex(
@@ -471,16 +694,9 @@ async function criarEmpresa(
         });
     }
 
-    /* -----------------------------------------------------
-       COMPATIBILIDADE
-
-       Aceita:
-       cnpj: "..."
-
-       ou:
-
-       cnpjs: [...]
-    ----------------------------------------------------- */
+    /* =====================================================
+       CNPJS
+    ===================================================== */
 
     let listaCnpjs = [];
 
@@ -508,10 +724,6 @@ async function criarEmpresa(
         },
       ];
     }
-
-    /* -----------------------------------------------------
-       NORMALIZAR CNPJS
-    ----------------------------------------------------- */
 
     listaCnpjs =
       listaCnpjs
@@ -563,9 +775,9 @@ async function criarEmpresa(
             item.cnpj
         );
 
-    /* -----------------------------------------------------
+    /* =====================================================
        VALIDAR CNPJS
-    ----------------------------------------------------- */
+    ===================================================== */
 
     for (
       const item
@@ -585,9 +797,9 @@ async function criarEmpresa(
       }
     }
 
-    /* -----------------------------------------------------
-       EVITAR DUPLICADOS NA MESMA REQUISIÇÃO
-    ----------------------------------------------------- */
+    /* =====================================================
+       DUPLICADOS
+    ===================================================== */
 
     const cnpjsUnicos =
       new Set(
@@ -609,10 +821,9 @@ async function criarEmpresa(
         });
     }
 
-    /*
-      Se nenhum foi marcado como principal,
-      o primeiro será principal.
-    */
+    /* =====================================================
+       PRINCIPAL
+    ===================================================== */
 
     if (
       listaCnpjs.length > 0 &&
@@ -624,10 +835,6 @@ async function criarEmpresa(
       listaCnpjs[0].principal =
         true;
     }
-
-    /*
-      Apenas um principal.
-    */
 
     let encontrouPrincipal =
       false;
@@ -654,13 +861,16 @@ async function criarEmpresa(
         }
       );
 
+    /* =====================================================
+       TRANSAÇÃO
+    ===================================================== */
+
     await client.query(
       "BEGIN"
     );
 
-    /* -----------------------------------------------------
-       CRIAR EMPRESA
-    ----------------------------------------------------- */
+    transacaoIniciada =
+      true;
 
     const cnpjPrincipal =
       listaCnpjs.find(
@@ -669,6 +879,13 @@ async function criarEmpresa(
       )?.cnpj ||
       listaCnpjs[0]?.cnpj ||
       null;
+
+    /* =====================================================
+       EMPRESA
+
+       A logo e o fundo serão enviados posteriormente
+       pelas rotas específicas de upload.
+    ===================================================== */
 
     const empresaResult =
       await client.query(
@@ -681,8 +898,8 @@ async function criarEmpresa(
           cor_primaria,
           cor_secundaria,
 
-          logo_url,
-          fundo_url,
+          logo_arquivo,
+          fundo_arquivo,
 
           ativo
         )
@@ -693,12 +910,23 @@ async function criarEmpresa(
           $3,
           $4,
           $5,
-          $6,
-          $7,
+          NULL,
+          NULL,
           true
         )
 
-        RETURNING *
+        RETURNING
+          id,
+          nome,
+          nome_fantasia,
+          cnpj,
+          cor_primaria,
+          cor_secundaria,
+          logo_arquivo,
+          fundo_arquivo,
+          ativo,
+          created_at,
+          updated_at
         `,
         [
           String(
@@ -720,21 +948,15 @@ async function criarEmpresa(
           String(
             cor_secundaria
           ).trim(),
-
-          logo_url ||
-            null,
-
-          fundo_url ||
-            null,
         ]
       );
 
     const empresa =
       empresaResult.rows[0];
 
-    /* -----------------------------------------------------
-       CRIAR CNPJS
-    ----------------------------------------------------- */
+    /* =====================================================
+       CADASTRAR CNPJS
+    ===================================================== */
 
     for (
       const item
@@ -774,6 +996,9 @@ async function criarEmpresa(
       "COMMIT"
     );
 
+    transacaoIniciada =
+      false;
+
     const empresaCnpjs =
       await buscarCnpjsEmpresa(
         empresa.id
@@ -788,16 +1013,31 @@ async function criarEmpresa(
           "Empresa cadastrada com sucesso.",
 
         empresa: {
-          ...empresa,
+          ...montarEmpresa(
+            empresa
+          ),
 
           cnpjs:
             empresaCnpjs,
         },
       });
   } catch (err) {
-    await client.query(
-      "ROLLBACK"
-    );
+    if (
+      transacaoIniciada
+    ) {
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback:",
+          rollbackError
+        );
+      }
+    }
 
     console.error(
       "Erro ao cadastrar empresa:",
@@ -827,7 +1067,6 @@ async function criarEmpresa(
   }
 }
 
-
 /* =========================================================
    ATUALIZAR EMPRESA
 ========================================================= */
@@ -842,9 +1081,22 @@ async function atualizarEmpresa(
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
+    }
 
     let {
       nome,
@@ -853,20 +1105,28 @@ async function atualizarEmpresa(
       cor_primaria,
       cor_secundaria,
 
-      logo_url,
-      fundo_url,
-
       ativo,
     } = req.body;
 
-    /* -----------------------------------------------------
-       VERIFICAR EMPRESA
-    ----------------------------------------------------- */
+    /* =====================================================
+       EMPRESA ATUAL
+    ===================================================== */
 
     const existe =
       await client.query(
         `
-        SELECT *
+        SELECT
+          id,
+          nome,
+          nome_fantasia,
+          cnpj,
+          cor_primaria,
+          cor_secundaria,
+          logo_arquivo,
+          fundo_arquivo,
+          ativo,
+          created_at,
+          updated_at
 
         FROM empresas
 
@@ -874,7 +1134,7 @@ async function atualizarEmpresa(
 
         LIMIT 1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -891,6 +1151,10 @@ async function atualizarEmpresa(
 
     const atual =
       existe.rows[0];
+
+    /* =====================================================
+       VALORES
+    ===================================================== */
 
     nome =
       nome !== undefined
@@ -912,29 +1176,27 @@ async function atualizarEmpresa(
     cor_primaria =
       cor_primaria !==
       undefined
-        ? cor_primaria
+        ? String(
+            cor_primaria
+          ).trim()
         : atual.cor_primaria;
 
     cor_secundaria =
       cor_secundaria !==
       undefined
-        ? cor_secundaria
+        ? String(
+            cor_secundaria
+          ).trim()
         : atual.cor_secundaria;
-
-    logo_url =
-      logo_url !== undefined
-        ? logo_url
-        : atual.logo_url;
-
-    fundo_url =
-      fundo_url !== undefined
-        ? fundo_url
-        : atual.fundo_url;
 
     ativo =
       ativo !== undefined
         ? Boolean(ativo)
         : atual.ativo;
+
+    /* =====================================================
+       VALIDAÇÕES
+    ===================================================== */
 
     if (!nome) {
       return res
@@ -971,6 +1233,16 @@ async function atualizarEmpresa(
         });
     }
 
+    /* =====================================================
+       ATUALIZAR
+
+       IMPORTANTE:
+       esta função NÃO altera logo_arquivo nem fundo_arquivo.
+
+       As imagens são controladas exclusivamente pelo
+       empresaUpload.controller.js.
+    ===================================================== */
+
     const { rows } =
       await client.query(
         `
@@ -985,17 +1257,24 @@ async function atualizarEmpresa(
 
           cor_secundaria = $4,
 
-          logo_url = $5,
-
-          fundo_url = $6,
-
-          ativo = $7,
+          ativo = $5,
 
           updated_at = NOW()
 
-        WHERE id = $8
+        WHERE id = $6
 
-        RETURNING *
+        RETURNING
+          id,
+          nome,
+          nome_fantasia,
+          cnpj,
+          cor_primaria,
+          cor_secundaria,
+          logo_arquivo,
+          fundo_arquivo,
+          ativo,
+          created_at,
+          updated_at
         `,
         [
           nome,
@@ -1006,13 +1285,9 @@ async function atualizarEmpresa(
 
           cor_secundaria,
 
-          logo_url,
-
-          fundo_url,
-
           ativo,
 
-          id,
+          empresaId,
         ]
       );
 
@@ -1031,7 +1306,9 @@ async function atualizarEmpresa(
         "Empresa atualizada com sucesso.",
 
       empresa: {
-        ...empresa,
+        ...montarEmpresa(
+          empresa
+        ),
 
         cnpjs,
       },
@@ -1053,7 +1330,6 @@ async function atualizarEmpresa(
   }
 }
 
-
 /* =========================================================
    ALTERAR STATUS
 ========================================================= */
@@ -1065,13 +1341,26 @@ async function alterarStatusEmpresa(
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
 
     const {
       ativo,
     } = req.body;
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
+    }
 
     if (
       typeof ativo !==
@@ -1098,11 +1387,22 @@ async function alterarStatusEmpresa(
 
         WHERE id = $2
 
-        RETURNING *
+        RETURNING
+          id,
+          nome,
+          nome_fantasia,
+          cnpj,
+          cor_primaria,
+          cor_secundaria,
+          logo_arquivo,
+          fundo_arquivo,
+          ativo,
+          created_at,
+          updated_at
         `,
         [
           ativo,
-          id,
+          empresaId,
         ]
       );
 
@@ -1126,7 +1426,9 @@ async function alterarStatusEmpresa(
           : "Empresa desativada com sucesso.",
 
       empresa:
-        rows[0],
+        montarEmpresa(
+          rows[0]
+        ),
     });
   } catch (err) {
     console.error(
@@ -1143,9 +1445,8 @@ async function alterarStatusEmpresa(
   }
 }
 
-
 /* =========================================================
-   ADICIONAR CNPJ À EMPRESA
+   ADICIONAR CNPJ
 ========================================================= */
 
 async function adicionarCnpj(
@@ -1155,18 +1456,34 @@ async function adicionarCnpj(
   const client =
     await pool.connect();
 
+  let transacaoIniciada =
+    false;
+
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
 
     let {
       cnpj,
       nome,
       principal,
     } = req.body;
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "ID da empresa inválido.",
+        });
+    }
 
     cnpj =
       limparCnpj(
@@ -1197,7 +1514,7 @@ async function adicionarCnpj(
 
         LIMIT 1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -1216,10 +1533,8 @@ async function adicionarCnpj(
       "BEGIN"
     );
 
-    /*
-      Se o novo CNPJ será principal,
-      removemos o principal anterior.
-    */
+    transacaoIniciada =
+      true;
 
     if (principal) {
       await client.query(
@@ -1234,7 +1549,7 @@ async function adicionarCnpj(
 
         WHERE empresa_id = $1
         `,
-        [id]
+        [empresaId]
       );
     }
 
@@ -1260,7 +1575,7 @@ async function adicionarCnpj(
         RETURNING *
         `,
         [
-          id,
+          empresaId,
 
           cnpj,
 
@@ -1276,11 +1591,6 @@ async function adicionarCnpj(
         ]
       );
 
-    /*
-      Caso seja o primeiro CNPJ,
-      tornamos principal.
-    */
-
     const quantidade =
       await client.query(
         `
@@ -1292,7 +1602,7 @@ async function adicionarCnpj(
 
         WHERE empresa_id = $1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -1303,18 +1613,15 @@ async function adicionarCnpj(
         `
         UPDATE empresa_cnpjs
 
-        SET principal = true
+        SET
+          principal = true,
+          updated_at = NOW()
 
         WHERE id = $1
         `,
         [rows[0].id]
       );
     }
-
-    /*
-      Atualiza o campo antigo empresas.cnpj
-      para manter compatibilidade.
-    */
 
     await client.query(
       `
@@ -1331,6 +1638,10 @@ async function adicionarCnpj(
 
             AND principal = true
 
+            AND ativo = true
+
+          ORDER BY id ASC
+
           LIMIT 1
         ),
 
@@ -1339,16 +1650,19 @@ async function adicionarCnpj(
 
       WHERE id = $1
       `,
-      [id]
+      [empresaId]
     );
 
     await client.query(
       "COMMIT"
     );
 
+    transacaoIniciada =
+      false;
+
     const cnpjs =
       await buscarCnpjsEmpresa(
-        id
+        empresaId
       );
 
     return res
@@ -1362,9 +1676,22 @@ async function adicionarCnpj(
         cnpjs,
       });
   } catch (err) {
-    await client.query(
-      "ROLLBACK"
-    );
+    if (
+      transacaoIniciada
+    ) {
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback:",
+          rollbackError
+        );
+      }
+    }
 
     console.error(
       "Erro ao adicionar CNPJ:",
@@ -1394,9 +1721,8 @@ async function adicionarCnpj(
   }
 }
 
-
 /* =========================================================
-   ALTERAR CNPJ
+   ATUALIZAR CNPJ
 ========================================================= */
 
 async function atualizarCnpj(
@@ -1406,13 +1732,35 @@ async function atualizarCnpj(
   const client =
     await pool.connect();
 
+  let transacaoIniciada =
+    false;
+
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-      cnpjId,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
+
+    const cnpjId =
+      Number(req.params.cnpjId);
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0 ||
+      !Number.isInteger(
+        cnpjId
+      ) ||
+      cnpjId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Empresa ou CNPJ inválido.",
+        });
+    }
 
     let {
       cnpj,
@@ -1437,7 +1785,7 @@ async function atualizarCnpj(
         `,
         [
           cnpjId,
-          id,
+          empresaId,
         ]
       );
 
@@ -1458,7 +1806,9 @@ async function atualizarCnpj(
 
     cnpj =
       cnpj !== undefined
-        ? limparCnpj(cnpj)
+        ? limparCnpj(
+            cnpj
+          )
         : atual.cnpj;
 
     nome =
@@ -1503,7 +1853,13 @@ async function atualizarCnpj(
       "BEGIN"
     );
 
-    if (principal) {
+    transacaoIniciada =
+      true;
+
+    if (
+      principal &&
+      ativo
+    ) {
       await client.query(
         `
         UPDATE empresa_cnpjs
@@ -1516,7 +1872,7 @@ async function atualizarCnpj(
 
         WHERE empresa_id = $1
         `,
-        [id]
+        [empresaId]
       );
     }
 
@@ -1543,17 +1899,23 @@ async function atualizarCnpj(
       `,
       [
         cnpj,
+
         nome,
-        principal,
+
+        principal &&
+          ativo,
+
         ativo,
+
         cnpjId,
-        id,
+
+        empresaId,
       ]
     );
 
-    /*
-      Garante pelo menos um principal.
-    */
+    /* =====================================================
+       GARANTIR PRINCIPAL
+    ===================================================== */
 
     const principalResult =
       await client.query(
@@ -1571,7 +1933,7 @@ async function atualizarCnpj(
 
         LIMIT 1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -1582,7 +1944,11 @@ async function atualizarCnpj(
         `
         UPDATE empresa_cnpjs
 
-        SET principal = true
+        SET
+          principal = true,
+
+          updated_at =
+            NOW()
 
         WHERE id = (
           SELECT id
@@ -1599,9 +1965,13 @@ async function atualizarCnpj(
           LIMIT 1
         )
         `,
-        [id]
+        [empresaId]
       );
     }
+
+    /* =====================================================
+       SINCRONIZAR EMPRESA
+    ===================================================== */
 
     await client.query(
       `
@@ -1618,6 +1988,10 @@ async function atualizarCnpj(
 
             AND principal = true
 
+            AND ativo = true
+
+          ORDER BY id ASC
+
           LIMIT 1
         ),
 
@@ -1626,16 +2000,19 @@ async function atualizarCnpj(
 
       WHERE id = $1
       `,
-      [id]
+      [empresaId]
     );
 
     await client.query(
       "COMMIT"
     );
 
+    transacaoIniciada =
+      false;
+
     const cnpjs =
       await buscarCnpjsEmpresa(
-        id
+        empresaId
       );
 
     return res.json({
@@ -1647,9 +2024,22 @@ async function atualizarCnpj(
       cnpjs,
     });
   } catch (err) {
-    await client.query(
-      "ROLLBACK"
-    );
+    if (
+      transacaoIniciada
+    ) {
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback:",
+          rollbackError
+        );
+      }
+    }
 
     console.error(
       "Erro ao atualizar CNPJ:",
@@ -1679,7 +2069,6 @@ async function atualizarCnpj(
   }
 }
 
-
 /* =========================================================
    REMOVER CNPJ
 ========================================================= */
@@ -1691,13 +2080,35 @@ async function removerCnpj(
   const client =
     await pool.connect();
 
+  let transacaoIniciada =
+    false;
+
   try {
     await garantirTabelaEmpresas();
 
-    const {
-      id,
-      cnpjId,
-    } = req.params;
+    const empresaId =
+      Number(req.params.id);
+
+    const cnpjId =
+      Number(req.params.cnpjId);
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0 ||
+      !Number.isInteger(
+        cnpjId
+      ) ||
+      cnpjId <= 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          error:
+            "Empresa ou CNPJ inválido.",
+        });
+    }
 
     const cnpjResult =
       await client.query(
@@ -1715,7 +2126,7 @@ async function removerCnpj(
         `,
         [
           cnpjId,
-          id,
+          empresaId,
         ]
       );
 
@@ -1735,6 +2146,9 @@ async function removerCnpj(
       "BEGIN"
     );
 
+    transacaoIniciada =
+      true;
+
     await client.query(
       `
       DELETE FROM empresa_cnpjs
@@ -1746,13 +2160,13 @@ async function removerCnpj(
       `,
       [
         cnpjId,
-        id,
+        empresaId,
       ]
     );
 
-    /*
-      Verifica se ainda existe principal.
-    */
+    /* =====================================================
+       GARANTIR PRINCIPAL
+    ===================================================== */
 
     const principalResult =
       await client.query(
@@ -1766,9 +2180,11 @@ async function removerCnpj(
 
           AND principal = true
 
+          AND ativo = true
+
         LIMIT 1
         `,
-        [id]
+        [empresaId]
       );
 
     if (
@@ -1779,23 +2195,34 @@ async function removerCnpj(
         `
         UPDATE empresa_cnpjs
 
-        SET principal = true
+        SET
+          principal = true,
+
+          updated_at =
+            NOW()
 
         WHERE id = (
           SELECT id
 
           FROM empresa_cnpjs
 
-          WHERE empresa_id = $1
+          WHERE
+            empresa_id = $1
+
+            AND ativo = true
 
           ORDER BY id ASC
 
           LIMIT 1
         )
         `,
-        [id]
+        [empresaId]
       );
     }
+
+    /* =====================================================
+       SINCRONIZAR EMPRESA
+    ===================================================== */
 
     await client.query(
       `
@@ -1812,6 +2239,10 @@ async function removerCnpj(
 
             AND principal = true
 
+            AND ativo = true
+
+          ORDER BY id ASC
+
           LIMIT 1
         ),
 
@@ -1820,16 +2251,19 @@ async function removerCnpj(
 
       WHERE id = $1
       `,
-      [id]
+      [empresaId]
     );
 
     await client.query(
       "COMMIT"
     );
 
+    transacaoIniciada =
+      false;
+
     const cnpjs =
       await buscarCnpjsEmpresa(
-        id
+        empresaId
       );
 
     return res.json({
@@ -1841,9 +2275,22 @@ async function removerCnpj(
       cnpjs,
     });
   } catch (err) {
-    await client.query(
-      "ROLLBACK"
-    );
+    if (
+      transacaoIniciada
+    ) {
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback:",
+          rollbackError
+        );
+      }
+    }
 
     console.error(
       "Erro ao remover CNPJ:",
@@ -1860,7 +2307,6 @@ async function removerCnpj(
     client.release();
   }
 }
-
 
 /* =========================================================
    EXPORTS

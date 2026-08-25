@@ -5,6 +5,10 @@ const fs = require("fs");
 
 const router = express.Router();
 
+/* =========================================================
+   CONTROLLER
+========================================================= */
+
 const {
   listarEmpresas,
   buscarEmpresaPorId,
@@ -16,40 +20,41 @@ const {
   removerCnpj,
 } = require("../controllers/empresa.controller");
 
+/* =========================================================
+   MIDDLEWARES
+========================================================= */
+
 const {
   auth,
   somenteSuperAdmin,
 } = require("../middlewares/auth");
 
-
 /* =========================================================
    PASTA DE UPLOAD DAS EMPRESAS
 ========================================================= */
 
-const PASTA_EMPRESAS =
-  process.env.UPLOADS_DIR
-    ? path.join(
-        process.env.UPLOADS_DIR,
-        "empresas"
-      )
-    : path.join(
-        __dirname,
-        "../../uploads/empresas"
-      );
-
-
-if (!fs.existsSync(PASTA_EMPRESAS)) {
-  fs.mkdirSync(
-    PASTA_EMPRESAS,
-    {
-      recursive: true,
-    }
-  );
-}
-
+const PASTA_EMPRESAS = process.env.UPLOADS_DIR
+  ? path.join(
+      process.env.UPLOADS_DIR,
+      "empresas"
+    )
+  : path.join(
+      __dirname,
+      "../../uploads/empresas"
+    );
 
 /* =========================================================
-   CONFIGURAÇÃO DO MULTER
+   GARANTIR QUE A PASTA EXISTA
+========================================================= */
+
+if (!fs.existsSync(PASTA_EMPRESAS)) {
+  fs.mkdirSync(PASTA_EMPRESAS, {
+    recursive: true,
+  });
+}
+
+/* =========================================================
+   CONFIGURAÇÃO DO STORAGE
 ========================================================= */
 
 const storage = multer.diskStorage({
@@ -69,34 +74,48 @@ const storage = multer.diskStorage({
     file,
     cb
   ) => {
-    const extensao =
-      path
-        .extname(file.originalname)
-        .toLowerCase();
+    const extensao = path
+      .extname(file.originalname)
+      .toLowerCase();
 
-    const tipo =
-      file.fieldname === "logo"
-        ? "logo"
-        : "fundo";
+    let tipo = "imagem";
+
+    if (file.fieldname === "logo") {
+      tipo = "logo";
+    }
+
+    if (file.fieldname === "fundo") {
+      tipo = "fundo";
+    }
 
     const empresaId =
-      req.params.id || "nova";
+      req.params.id || "empresa";
 
-    const nomeArquivo =
-      `${tipo}-empresa-${empresaId}-${Date.now()}-${Math.round(
+    const nomeArquivo = [
+      tipo,
+      "empresa",
+      empresaId,
+      Date.now(),
+      Math.round(
         Math.random() * 1e9
-      )}${extensao}`;
+      ),
+    ].join("-");
 
     cb(
       null,
-      nomeArquivo
+      `${nomeArquivo}${extensao}`
     );
   },
 });
 
-
 /* =========================================================
-   FILTRO DAS IMAGENS
+   FILTRO DOS ARQUIVOS
+
+   Permitidos:
+   JPG
+   JPEG
+   PNG
+   WEBP
 ========================================================= */
 
 const fileFilter = (
@@ -104,10 +123,9 @@ const fileFilter = (
   file,
   cb
 ) => {
-  const extensao =
-    path
-      .extname(file.originalname)
-      .toLowerCase();
+  const extensao = path
+    .extname(file.originalname)
+    .toLowerCase();
 
   const extensoesPermitidas = [
     ".jpg",
@@ -122,13 +140,19 @@ const fileFilter = (
     "image/webp",
   ];
 
-  if (
-    !extensoesPermitidas.includes(
+  const extensaoValida =
+    extensoesPermitidas.includes(
       extensao
-    ) ||
-    !mimesPermitidos.includes(
+    );
+
+  const mimeValido =
+    mimesPermitidos.includes(
       file.mimetype
-    )
+    );
+
+  if (
+    !extensaoValida ||
+    !mimeValido
   ) {
     return cb(
       new Error(
@@ -143,30 +167,190 @@ const fileFilter = (
   );
 };
 
-
 /* =========================================================
-   UPLOAD
+   MULTER
+
+   Máximo:
+   10 MB por arquivo
+   2 arquivos por requisição
 ========================================================= */
 
-const uploadEmpresa =
-  multer({
-    storage,
+const uploadEmpresa = multer({
+  storage,
 
-    fileFilter,
+  fileFilter,
 
-    limits: {
-      fileSize:
-        10 * 1024 * 1024,
+  limits: {
+    fileSize:
+      10 * 1024 * 1024,
 
-      files: 2,
+    files: 2,
+  },
+});
+
+/* =========================================================
+   CONFIGURAÇÃO DOS CAMPOS
+
+   Front deve enviar:
+
+   logo
+   fundo
+========================================================= */
+
+const uploadImagensEmpresa =
+  uploadEmpresa.fields([
+    {
+      name: "logo",
+      maxCount: 1,
     },
-  });
+    {
+      name: "fundo",
+      maxCount: 1,
+    },
+  ]);
 
+/* =========================================================
+   MIDDLEWARE PARA TRATAR ERROS DO MULTER
+========================================================= */
+
+function processarUploadImagens(
+  req,
+  res,
+  next
+) {
+  uploadImagensEmpresa(
+    req,
+    res,
+    (err) => {
+      if (!err) {
+        return next();
+      }
+
+      console.error(
+        "Erro no upload da empresa:",
+        err
+      );
+
+      /* ===============================================
+         ERROS DO MULTER
+      =============================================== */
+
+      if (
+        err instanceof
+        multer.MulterError
+      ) {
+        if (
+          err.code ===
+          "LIMIT_FILE_SIZE"
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "A imagem ultrapassa o limite de 10 MB.",
+            });
+        }
+
+        if (
+          err.code ===
+          "LIMIT_FILE_COUNT"
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                "Envie no máximo uma logo e uma imagem de fundo.",
+            });
+        }
+
+        if (
+          err.code ===
+          "LIMIT_UNEXPECTED_FILE"
+        ) {
+          return res
+            .status(400)
+            .json({
+              error:
+                'Campo de arquivo inválido. Utilize "logo" e/ou "fundo".',
+            });
+        }
+
+        return res
+          .status(400)
+          .json({
+            error:
+              err.message ||
+              "Erro no upload da imagem.",
+          });
+      }
+
+      /* ===============================================
+         ERROS DO FILTRO
+      =============================================== */
+
+      return res
+        .status(400)
+        .json({
+          error:
+            err.message ||
+            "Arquivo inválido.",
+        });
+    }
+  );
+}
+
+/* =========================================================
+   REMOVER ARQUIVO
+
+   Utilizado caso aconteça algum erro depois que
+   o Multer já salvou a imagem.
+========================================================= */
+
+function removerArquivo(
+  arquivo
+) {
+  if (!arquivo?.path) {
+    return;
+  }
+
+  try {
+    if (
+      fs.existsSync(
+        arquivo.path
+      )
+    ) {
+      fs.unlinkSync(
+        arquivo.path
+      );
+    }
+  } catch (err) {
+    console.error(
+      "Erro ao remover arquivo:",
+      err
+    );
+  }
+}
+
+/* =========================================================
+   REMOVER ARQUIVOS DO UPLOAD
+========================================================= */
+
+function removerArquivosUpload(
+  req
+) {
+  const logo =
+    req.files?.logo?.[0];
+
+  const fundo =
+    req.files?.fundo?.[0];
+
+  removerArquivo(logo);
+  removerArquivo(fundo);
+}
 
 /* =========================================================
    TODAS AS ROTAS ABAIXO SÃO EXCLUSIVAS DO SUPER ADMIN
 ========================================================= */
-
 
 /* =========================================================
    LISTAR EMPRESAS
@@ -181,21 +365,6 @@ router.get(
   listarEmpresas
 );
 
-
-/* =========================================================
-   BUSCAR UMA EMPRESA
-
-   GET /api/empresas/:id
-========================================================= */
-
-router.get(
-  "/:id",
-  auth,
-  somenteSuperAdmin,
-  buscarEmpresaPorId
-);
-
-
 /* =========================================================
    CADASTRAR EMPRESA
 
@@ -209,21 +378,6 @@ router.post(
   criarEmpresa
 );
 
-
-/* =========================================================
-   ATUALIZAR EMPRESA
-
-   PUT /api/empresas/:id
-========================================================= */
-
-router.put(
-  "/:id",
-  auth,
-  somenteSuperAdmin,
-  atualizarEmpresa
-);
-
-
 /* =========================================================
    UPLOAD DA IDENTIDADE VISUAL
 
@@ -231,15 +385,15 @@ router.put(
 
    multipart/form-data
 
-   Campos:
+   Campos aceitos:
 
-   logo  = arquivo da logo
-   fundo = imagem de fundo
+   logo
+   fundo
 
    Pode enviar:
    - somente logo
    - somente fundo
-   - os dois
+   - logo + fundo
 ========================================================= */
 
 router.post(
@@ -249,22 +403,41 @@ router.post(
 
   somenteSuperAdmin,
 
-  uploadEmpresa.fields([
-    {
-      name: "logo",
-      maxCount: 1,
-    },
-    {
-      name: "fundo",
-      maxCount: 1,
-    },
-  ]),
+  processarUploadImagens,
 
-  async (req, res) => {
+  async (
+    req,
+    res
+  ) => {
     try {
-      const {
-        id,
-      } = req.params;
+      const empresaId =
+        Number(req.params.id);
+
+      /* ===============================================
+         VALIDAR ID
+      =============================================== */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        removerArquivosUpload(
+          req
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "ID da empresa inválido.",
+          });
+      }
+
+      /* ===============================================
+         PEGAR ARQUIVOS
+      =============================================== */
 
       const logo =
         req.files?.logo?.[0] ||
@@ -274,10 +447,9 @@ router.post(
         req.files?.fundo?.[0] ||
         null;
 
-
-      /* -----------------------------------------
-         PRECISA ENVIAR PELO MENOS UMA IMAGEM
-      ----------------------------------------- */
+      /* ===============================================
+         PRECISA TER PELO MENOS UMA IMAGEM
+      =============================================== */
 
       if (
         !logo &&
@@ -291,25 +463,32 @@ router.post(
           });
       }
 
+      /* ===============================================
+         MONTAR URL DA LOGO
+      =============================================== */
 
-      /* -----------------------------------------
-         MONTAR URLs
-      ----------------------------------------- */
+      const logoUrl = logo
+        ? `/uploads/empresas/${logo.filename}`
+        : undefined;
 
-      const logoUrl =
-        logo
-          ? `/uploads/empresas/${logo.filename}`
-          : undefined;
+      /* ===============================================
+         MONTAR URL DO FUNDO
+      =============================================== */
 
-      const fundoUrl =
-        fundo
-          ? `/uploads/empresas/${fundo.filename}`
-          : undefined;
+      const fundoUrl = fundo
+        ? `/uploads/empresas/${fundo.filename}`
+        : undefined;
 
+      /* ===============================================
+         PREPARAR BODY PARA atualizarEmpresa()
 
-      /* -----------------------------------------
-         SIMULAR REQUISIÇÃO PARA CONTROLLER
-      ----------------------------------------- */
+         IMPORTANTE:
+         somente adicionamos a propriedade quando
+         realmente foi enviada uma nova imagem.
+
+         Assim uma atualização de logo não apaga
+         o fundo e vice-versa.
+      =============================================== */
 
       req.body = {
         ...req.body,
@@ -325,10 +504,9 @@ router.post(
           fundoUrl;
       }
 
-
-      /* -----------------------------------------
-         ATUALIZAR EMPRESA
-      ----------------------------------------- */
+      /* ===============================================
+         CHAMAR CONTROLLER
+      =============================================== */
 
       return atualizarEmpresa(
         req,
@@ -340,6 +518,14 @@ router.post(
         err
       );
 
+      /* ===============================================
+         EVITAR ARQUIVOS ÓRFÃOS EM CASO DE ERRO
+      =============================================== */
+
+      removerArquivosUpload(
+        req
+      );
+
       return res
         .status(500)
         .json({
@@ -349,7 +535,6 @@ router.post(
     }
   }
 );
-
 
 /* =========================================================
    ATIVAR / DESATIVAR EMPRESA
@@ -364,7 +549,6 @@ router.patch(
   alterarStatusEmpresa
 );
 
-
 /* =========================================================
    ADICIONAR CNPJ
 
@@ -377,7 +561,6 @@ router.post(
   somenteSuperAdmin,
   adicionarCnpj
 );
-
 
 /* =========================================================
    ATUALIZAR CNPJ
@@ -392,7 +575,6 @@ router.put(
   atualizarCnpj
 );
 
-
 /* =========================================================
    REMOVER CNPJ
 
@@ -406,5 +588,37 @@ router.delete(
   removerCnpj
 );
 
+/* =========================================================
+   ATUALIZAR EMPRESA
+
+   PUT /api/empresas/:id
+========================================================= */
+
+router.put(
+  "/:id",
+  auth,
+  somenteSuperAdmin,
+  atualizarEmpresa
+);
+
+/* =========================================================
+   BUSCAR EMPRESA POR ID
+
+   IMPORTANTE:
+   deixar /:id depois das rotas específicas.
+
+   GET /api/empresas/:id
+========================================================= */
+
+router.get(
+  "/:id",
+  auth,
+  somenteSuperAdmin,
+  buscarEmpresaPorId
+);
+
+/* =========================================================
+   EXPORT
+========================================================= */
 
 module.exports = router;

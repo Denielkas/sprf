@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+
 import {
   FaBuilding,
   FaPlus,
@@ -15,6 +16,7 @@ import {
 } from "react-icons/fa";
 
 import { api } from "../../services/api";
+
 import "./empresas.css";
 
 /* =========================================================
@@ -27,7 +29,9 @@ const somenteNumeros = (valor = "") =>
 const formatarCnpj = (valor = "") => {
   const numeros = somenteNumeros(valor).slice(0, 14);
 
-  if (numeros.length <= 2) return numeros;
+  if (numeros.length <= 2) {
+    return numeros;
+  }
 
   if (numeros.length <= 5) {
     return `${numeros.slice(0, 2)}.${numeros.slice(2)}`;
@@ -56,24 +60,64 @@ const formatarCnpj = (valor = "") => {
   )}-${numeros.slice(12, 14)}`;
 };
 
+/* =========================================================
+   FORMULÁRIO VAZIO
+========================================================= */
+
 const criarFormularioVazio = () => ({
   nome: "",
   nome_fantasia: "",
   cor_primaria: "#0d6efd",
   cor_secundaria: "#1a1a1a",
-  logo_url: "",
-  fundo_url: "",
 });
+
+/* =========================================================
+   URL DOS ARQUIVOS
+
+   O backend agora retorna:
+   logo_url
+   fundo_url
+========================================================= */
+
+const getArquivoUrl = (url = "") => {
+  if (!url) {
+    return "";
+  }
+
+  if (
+    url.startsWith("http://") ||
+    url.startsWith("https://") ||
+    url.startsWith("blob:") ||
+    url.startsWith("data:")
+  ) {
+    return url;
+  }
+
+  return url;
+};
+
+const getLogoUrl = (empresa) =>
+  getArquivoUrl(empresa?.logo_url || "");
+
+const getFundoUrl = (empresa) =>
+  getArquivoUrl(empresa?.fundo_url || "");
 
 /* =========================================================
    COMPONENTE
 ========================================================= */
 
 export default function Empresas() {
-  const [empresas, setEmpresas] = useState([]);
+  /* =======================================================
+     EMPRESAS
+  ======================================================= */
 
+  const [empresas, setEmpresas] = useState([]);
   const [carregando, setCarregando] = useState(true);
   const [salvando, setSalvando] = useState(false);
+
+  /* =======================================================
+     FORMULÁRIO EMPRESA
+  ======================================================= */
 
   const [mostrarFormulario, setMostrarFormulario] =
     useState(false);
@@ -82,6 +126,10 @@ export default function Empresas() {
     useState(null);
 
   const [form, setForm] = useState(criarFormularioVazio());
+
+  /* =======================================================
+     MENSAGENS
+  ======================================================= */
 
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
@@ -110,7 +158,8 @@ export default function Empresas() {
     ativo: true,
   });
 
-  const [salvandoCnpj, setSalvandoCnpj] = useState(false);
+  const [salvandoCnpj, setSalvandoCnpj] =
+    useState(false);
 
   /* =======================================================
      MENSAGENS
@@ -145,16 +194,9 @@ export default function Empresas() {
 
       const { data } = await api.get("/empresas");
 
-      setEmpresas(
-        Array.isArray(data)
-          ? data
-          : []
-      );
+      setEmpresas(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(
-        "Erro ao carregar empresas:",
-        err
-      );
+      console.error("Erro ao carregar empresas:", err);
 
       mostrarErro(
         err.response?.data?.error ||
@@ -170,23 +212,18 @@ export default function Empresas() {
   }, []);
 
   /* =======================================================
-     LIMPAR IMAGENS
+     LIBERAR PREVIEWS BLOB
   ======================================================= */
 
-  const limparImagensFormulario = () => {
-    if (
-      logoPreview &&
-      logoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(logoPreview);
+  const liberarBlob = (url) => {
+    if (url?.startsWith("blob:")) {
+      URL.revokeObjectURL(url);
     }
+  };
 
-    if (
-      fundoPreview &&
-      fundoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(fundoPreview);
-    }
+  const limparImagensFormulario = () => {
+    liberarBlob(logoPreview);
+    liberarBlob(fundoPreview);
 
     setLogoArquivo(null);
     setFundoArquivo(null);
@@ -196,14 +233,11 @@ export default function Empresas() {
   };
 
   /* =======================================================
-     FORMULÁRIO EMPRESA
+     ALTERAR FORM
   ======================================================= */
 
   const alterarForm = (e) => {
-    const {
-      name,
-      value,
-    } = e.target;
+    const { name, value } = e.target;
 
     setForm((anterior) => ({
       ...anterior,
@@ -211,51 +245,17 @@ export default function Empresas() {
     }));
   };
 
+  /* =======================================================
+     NOVA EMPRESA
+  ======================================================= */
+
   const abrirNovaEmpresa = () => {
     limparMensagens();
     limparImagensFormulario();
 
     setEmpresaEditando(null);
+
     setForm(criarFormularioVazio());
-
-    setMostrarFormulario(true);
-  };
-
-  const abrirEditarEmpresa = (empresa) => {
-    limparMensagens();
-    limparImagensFormulario();
-
-    setEmpresaEditando(empresa);
-
-    setForm({
-      nome:
-        empresa.nome || "",
-
-      nome_fantasia:
-        empresa.nome_fantasia || "",
-
-      cor_primaria:
-        empresa.cor_primaria ||
-        "#0d6efd",
-
-      cor_secundaria:
-        empresa.cor_secundaria ||
-        "#1a1a1a",
-
-      logo_url:
-        empresa.logo_url || "",
-
-      fundo_url:
-        empresa.fundo_url || "",
-    });
-
-    setLogoPreview(
-      empresa.logo_url || ""
-    );
-
-    setFundoPreview(
-      empresa.fundo_url || ""
-    );
 
     setMostrarFormulario(true);
 
@@ -264,6 +264,44 @@ export default function Empresas() {
       behavior: "smooth",
     });
   };
+
+  /* =======================================================
+     EDITAR EMPRESA
+  ======================================================= */
+
+  const abrirEditarEmpresa = (empresa) => {
+    limparMensagens();
+    limparImagensFormulario();
+
+    setEmpresaEditando(empresa);
+
+    setForm({
+      nome: empresa.nome || "",
+
+      nome_fantasia:
+        empresa.nome_fantasia || "",
+
+      cor_primaria:
+        empresa.cor_primaria || "#0d6efd",
+
+      cor_secundaria:
+        empresa.cor_secundaria || "#1a1a1a",
+    });
+
+    setLogoPreview(getLogoUrl(empresa));
+    setFundoPreview(getFundoUrl(empresa));
+
+    setMostrarFormulario(true);
+
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  /* =======================================================
+     CANCELAR FORMULÁRIO
+  ======================================================= */
 
   const cancelarFormulario = () => {
     limparImagensFormulario();
@@ -275,49 +313,59 @@ export default function Empresas() {
   };
 
   /* =======================================================
+     VALIDAR IMAGEM
+  ======================================================= */
+
+  const validarImagem = (arquivo, tipo) => {
+    const tiposPermitidos = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!tiposPermitidos.includes(arquivo.type)) {
+      mostrarErro(
+        "Selecione uma imagem JPG, JPEG, PNG ou WEBP."
+      );
+
+      return false;
+    }
+
+    if (arquivo.size > 10 * 1024 * 1024) {
+      mostrarErro(
+        `${tipo} não pode ultrapassar 10MB.`
+      );
+
+      return false;
+    }
+
+    return true;
+  };
+
+  /* =======================================================
      SELECIONAR LOGO
   ======================================================= */
 
   const selecionarLogo = (e) => {
-    const arquivo =
-      e.target.files?.[0];
+    const arquivo = e.target.files?.[0];
 
     if (!arquivo) {
       return;
     }
 
-    if (!arquivo.type.startsWith("image/")) {
-      mostrarErro(
-        "Selecione uma imagem válida para a logo."
-      );
-
+    if (!validarImagem(arquivo, "A logo")) {
       e.target.value = "";
-
       return;
     }
 
-    if (arquivo.size > 10 * 1024 * 1024) {
-      mostrarErro(
-        "A logo não pode ultrapassar 10MB."
-      );
+    liberarBlob(logoPreview);
 
-      e.target.value = "";
-
-      return;
-    }
-
-    if (
-      logoPreview &&
-      logoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(logoPreview);
-    }
-
-    const preview =
-      URL.createObjectURL(arquivo);
+    const preview = URL.createObjectURL(arquivo);
 
     setLogoArquivo(arquivo);
     setLogoPreview(preview);
+
+    limparMensagens();
   };
 
   /* =======================================================
@@ -325,127 +373,91 @@ export default function Empresas() {
   ======================================================= */
 
   const selecionarFundo = (e) => {
-    const arquivo =
-      e.target.files?.[0];
+    const arquivo = e.target.files?.[0];
 
     if (!arquivo) {
       return;
     }
 
-    if (!arquivo.type.startsWith("image/")) {
-      mostrarErro(
-        "Selecione uma imagem válida para o fundo."
-      );
-
+    if (!validarImagem(arquivo, "A imagem de fundo")) {
       e.target.value = "";
-
       return;
     }
 
-    if (arquivo.size > 10 * 1024 * 1024) {
-      mostrarErro(
-        "A imagem de fundo não pode ultrapassar 10MB."
-      );
+    liberarBlob(fundoPreview);
 
-      e.target.value = "";
-
-      return;
-    }
-
-    if (
-      fundoPreview &&
-      fundoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(fundoPreview);
-    }
-
-    const preview =
-      URL.createObjectURL(arquivo);
+    const preview = URL.createObjectURL(arquivo);
 
     setFundoArquivo(arquivo);
     setFundoPreview(preview);
+
+    limparMensagens();
   };
 
   /* =======================================================
-     REMOVER NOVA LOGO SELECIONADA
+     CANCELAR NOVA LOGO
   ======================================================= */
 
   const cancelarNovaLogo = () => {
-    if (
-      logoPreview &&
-      logoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(logoPreview);
-    }
+    liberarBlob(logoPreview);
 
     setLogoArquivo(null);
 
     setLogoPreview(
-      empresaEditando?.logo_url || ""
+      empresaEditando
+        ? getLogoUrl(empresaEditando)
+        : ""
     );
   };
 
   /* =======================================================
-     REMOVER NOVO FUNDO SELECIONADO
+     CANCELAR NOVO FUNDO
   ======================================================= */
 
   const cancelarNovoFundo = () => {
-    if (
-      fundoPreview &&
-      fundoPreview.startsWith("blob:")
-    ) {
-      URL.revokeObjectURL(fundoPreview);
-    }
+    liberarBlob(fundoPreview);
 
     setFundoArquivo(null);
 
     setFundoPreview(
-      empresaEditando?.fundo_url || ""
+      empresaEditando
+        ? getFundoUrl(empresaEditando)
+        : ""
     );
   };
 
   /* =======================================================
-     UPLOAD DAS IMAGENS
+     ENVIAR IMAGENS
+
+     NOVA ROTA DO BACKEND:
+
+     POST /api/empresas/:id/imagens
+
+     multipart/form-data
+
+     logo
+     fundo
   ======================================================= */
 
-  const enviarImagens = async (
-    empresaId
-  ) => {
-    if (
-      !logoArquivo &&
-      !fundoArquivo
-    ) {
+  const enviarImagens = async (empresaId) => {
+    if (!logoArquivo && !fundoArquivo) {
       return null;
     }
 
-    const formData =
-      new FormData();
+    const formData = new FormData();
 
     if (logoArquivo) {
-      formData.append(
-        "logo",
-        logoArquivo
-      );
+      formData.append("logo", logoArquivo);
     }
 
     if (fundoArquivo) {
-      formData.append(
-        "fundo",
-        fundoArquivo
-      );
+      formData.append("fundo", fundoArquivo);
     }
 
-    const { data } =
-      await api.post(
-        `/empresas/${empresaId}/imagens`,
-        formData,
-        {
-          headers: {
-            "Content-Type":
-              "multipart/form-data",
-          },
-        }
-      );
+    const { data } = await api.post(
+      `/empresas/${empresaId}/imagens`,
+      formData
+    );
 
     return data;
   };
@@ -458,10 +470,21 @@ export default function Empresas() {
     e.preventDefault();
 
     if (!form.nome.trim()) {
-      mostrarErro(
-        "Informe o nome da empresa."
-      );
+      mostrarErro("Informe o nome da empresa.");
+      return;
+    }
 
+    if (
+      !/^#[0-9A-Fa-f]{6}$/.test(form.cor_primaria)
+    ) {
+      mostrarErro("Cor principal inválida.");
+      return;
+    }
+
+    if (
+      !/^#[0-9A-Fa-f]{6}$/.test(form.cor_secundaria)
+    ) {
+      mostrarErro("Cor secundária inválida.");
       return;
     }
 
@@ -470,64 +493,47 @@ export default function Empresas() {
       limparMensagens();
 
       const payload = {
-        nome:
-          form.nome.trim(),
+        nome: form.nome.trim(),
 
         nome_fantasia:
-          form.nome_fantasia.trim() ||
-          null,
+          form.nome_fantasia.trim() || null,
 
-        cor_primaria:
-          form.cor_primaria,
+        cor_primaria: form.cor_primaria,
 
-        cor_secundaria:
-          form.cor_secundaria,
+        cor_secundaria: form.cor_secundaria,
       };
 
       let empresaId;
+      let mensagemSucesso;
 
-      /* -----------------------------------------
-         EDITANDO
-      ----------------------------------------- */
+      /* ===================================================
+         EDITAR
+      =================================================== */
 
       if (empresaEditando) {
-        const { data } =
-          await api.put(
-            `/empresas/${empresaEditando.id}`,
-            payload
-          );
-
-        empresaId =
-          empresaEditando.id;
-
-        if (
-          logoArquivo ||
-          fundoArquivo
-        ) {
-          await enviarImagens(
-            empresaId
-          );
-        }
-
-        mostrarSucesso(
-          data.message ||
-            "Empresa atualizada com sucesso."
+        const { data } = await api.put(
+          `/empresas/${empresaEditando.id}`,
+          payload
         );
+
+        empresaId = empresaEditando.id;
+
+        mensagemSucesso =
+          data.message ||
+          "Empresa atualizada com sucesso.";
       }
 
-      /* -----------------------------------------
-         NOVA EMPRESA
-      ----------------------------------------- */
+      /* ===================================================
+         CRIAR
+      =================================================== */
 
       else {
-        const { data } =
-          await api.post(
-            "/empresas",
-            payload
-          );
+        const { data } = await api.post(
+          "/empresas",
+          payload
+        );
 
-        empresaId =
-          data.empresa?.id;
+        empresaId = data?.empresa?.id;
 
         if (!empresaId) {
           throw new Error(
@@ -535,29 +541,28 @@ export default function Empresas() {
           );
         }
 
-        if (
-          logoArquivo ||
-          fundoArquivo
-        ) {
-          await enviarImagens(
-            empresaId
-          );
-        }
-
-        mostrarSucesso(
+        mensagemSucesso =
           data.message ||
-            "Empresa cadastrada com sucesso."
-        );
+          "Empresa cadastrada com sucesso.";
       }
+
+      /* ===================================================
+         UPLOAD DA LOGO/FUNDO
+      =================================================== */
+
+      await enviarImagens(empresaId);
+
+      /* ===================================================
+         LIMPAR
+      =================================================== */
 
       cancelarFormulario();
 
       await carregarEmpresas();
+
+      mostrarSucesso(mensagemSucesso);
     } catch (err) {
-      console.error(
-        "Erro ao salvar empresa:",
-        err
-      );
+      console.error("Erro ao salvar empresa:", err);
 
       mostrarErro(
         err.response?.data?.error ||
@@ -570,25 +575,21 @@ export default function Empresas() {
   };
 
   /* =======================================================
-     ATIVAR / DESATIVAR
+     ALTERAR STATUS
   ======================================================= */
 
   const alterarStatus = async (empresa) => {
-    const novoStatus =
-      !empresa.ativo;
+    const novoStatus = !empresa.ativo;
 
-    const texto =
-      novoStatus
-        ? "ativar"
-        : "desativar";
+    const texto = novoStatus
+      ? "ativar"
+      : "desativar";
 
-    const confirmou =
-      window.confirm(
-        `Deseja realmente ${texto} a empresa "${
-          empresa.nome_fantasia ||
-          empresa.nome
-        }"?`
-      );
+    const confirmou = window.confirm(
+      `Deseja realmente ${texto} a empresa "${
+        empresa.nome_fantasia || empresa.nome
+      }"?`
+    );
 
     if (!confirmou) {
       return;
@@ -597,14 +598,12 @@ export default function Empresas() {
     try {
       limparMensagens();
 
-      const { data } =
-        await api.patch(
-          `/empresas/${empresa.id}/status`,
-          {
-            ativo:
-              novoStatus,
-          }
-        );
+      const { data } = await api.patch(
+        `/empresas/${empresa.id}/status`,
+        {
+          ativo: novoStatus,
+        }
+      );
 
       mostrarSucesso(
         data.message ||
@@ -626,28 +625,34 @@ export default function Empresas() {
   };
 
   /* =======================================================
-     ABRIR GERENCIAMENTO DE CNPJ
+     ABRIR CNPJS
   ======================================================= */
 
   const abrirCnpjs = (empresa) => {
     limparMensagens();
 
     setEmpresaCnpj(empresa);
-
     setCnpjEditando(null);
+
+    const possuiCnpjAtivo =
+      empresa.cnpjs?.some(
+        (item) => item.ativo !== false
+      );
 
     setCnpjForm({
       cnpj: "",
       nome: "",
-      principal:
-        !empresa.cnpjs?.length,
+      principal: !possuiCnpjAtivo,
       ativo: true,
     });
   };
 
+  /* =======================================================
+     FECHAR CNPJS
+  ======================================================= */
+
   const fecharCnpjs = () => {
     setEmpresaCnpj(null);
-
     setCnpjEditando(null);
 
     setCnpjForm({
@@ -659,7 +664,7 @@ export default function Empresas() {
   };
 
   /* =======================================================
-     FORMULÁRIO CNPJ
+     ALTERAR FORM CNPJ
   ======================================================= */
 
   const alterarCnpjForm = (e) => {
@@ -671,30 +676,22 @@ export default function Empresas() {
     } = e.target;
 
     if (name === "cnpj") {
-      setCnpjForm(
-        (anterior) => ({
-          ...anterior,
-
-          cnpj:
-            formatarCnpj(
-              value
-            ),
-        })
-      );
+      setCnpjForm((anterior) => ({
+        ...anterior,
+        cnpj: formatarCnpj(value),
+      }));
 
       return;
     }
 
-    setCnpjForm(
-      (anterior) => ({
-        ...anterior,
+    setCnpjForm((anterior) => ({
+      ...anterior,
 
-        [name]:
-          type === "checkbox"
-            ? checked
-            : value,
-      })
-    );
+      [name]:
+        type === "checkbox"
+          ? checked
+          : value,
+    }));
   };
 
   /* =======================================================
@@ -705,33 +702,50 @@ export default function Empresas() {
     setCnpjEditando(cnpj);
 
     setCnpjForm({
-      cnpj:
-        formatarCnpj(
-          cnpj.cnpj
-        ),
+      cnpj: formatarCnpj(cnpj.cnpj),
 
-      nome:
-        cnpj.nome || "",
+      nome: cnpj.nome || "",
 
-      principal:
-        Boolean(
-          cnpj.principal
-        ),
+      principal: Boolean(cnpj.principal),
 
-      ativo:
-        cnpj.ativo !== false,
+      ativo: cnpj.ativo !== false,
     });
   };
+
+  /* =======================================================
+     CANCELAR EDIÇÃO CNPJ
+  ======================================================= */
 
   const cancelarEdicaoCnpj = () => {
     setCnpjEditando(null);
 
+    const possuiCnpjAtivo =
+      empresaCnpj?.cnpjs?.some(
+        (item) => item.ativo !== false
+      );
+
     setCnpjForm({
       cnpj: "",
       nome: "",
-      principal: false,
+      principal: !possuiCnpjAtivo,
       ativo: true,
     });
+  };
+
+  /* =======================================================
+     ATUALIZAR EMPRESA ABERTA NO MODAL
+  ======================================================= */
+
+  const atualizarEmpresaModal = async () => {
+    if (!empresaCnpj?.id) {
+      return;
+    }
+
+    const { data } = await api.get(
+      `/empresas/${empresaCnpj.id}`
+    );
+
+    setEmpresaCnpj(data);
   };
 
   /* =======================================================
@@ -746,13 +760,9 @@ export default function Empresas() {
     }
 
     const cnpjLimpo =
-      somenteNumeros(
-        cnpjForm.cnpj
-      );
+      somenteNumeros(cnpjForm.cnpj);
 
-    if (
-      cnpjLimpo.length !== 14
-    ) {
+    if (cnpjLimpo.length !== 14) {
       mostrarErro(
         "O CNPJ precisa possuir 14 números."
       );
@@ -765,58 +775,56 @@ export default function Empresas() {
       limparMensagens();
 
       const payload = {
-        cnpj:
-          cnpjLimpo,
+        cnpj: cnpjLimpo,
 
         nome:
-          cnpjForm.nome.trim() ||
-          null,
+          cnpjForm.nome.trim() || null,
 
-        principal:
-          Boolean(
-            cnpjForm.principal
-          ),
+        principal: Boolean(
+          cnpjForm.principal
+        ),
 
-        ativo:
-          Boolean(
-            cnpjForm.ativo
-          ),
+        ativo: Boolean(cnpjForm.ativo),
       };
 
+      let mensagemSucesso;
+
+      /* ===================================================
+         EDITAR
+      =================================================== */
+
       if (cnpjEditando) {
-        const { data } =
-          await api.put(
-            `/empresas/${empresaCnpj.id}/cnpjs/${cnpjEditando.id}`,
-            payload
-          );
-
-        mostrarSucesso(
-          data.message ||
-            "CNPJ atualizado com sucesso."
+        const { data } = await api.put(
+          `/empresas/${empresaCnpj.id}/cnpjs/${cnpjEditando.id}`,
+          payload
         );
-      } else {
-        const { data } =
-          await api.post(
-            `/empresas/${empresaCnpj.id}/cnpjs`,
-            payload
-          );
 
-        mostrarSucesso(
+        mensagemSucesso =
           data.message ||
-            "CNPJ adicionado com sucesso."
-        );
+          "CNPJ atualizado com sucesso.";
       }
 
-      await carregarEmpresas();
+      /* ===================================================
+         NOVO
+      =================================================== */
 
-      const { data } =
-        await api.get(
-          `/empresas/${empresaCnpj.id}`
+      else {
+        const { data } = await api.post(
+          `/empresas/${empresaCnpj.id}/cnpjs`,
+          payload
         );
 
-      setEmpresaCnpj(data);
+        mensagemSucesso =
+          data.message ||
+          "CNPJ adicionado com sucesso.";
+      }
+
+      await atualizarEmpresaModal();
+      await carregarEmpresas();
 
       cancelarEdicaoCnpj();
+
+      mostrarSucesso(mensagemSucesso);
     } catch (err) {
       console.error(
         "Erro ao salvar CNPJ:",
@@ -841,12 +849,11 @@ export default function Empresas() {
       return;
     }
 
-    const confirmou =
-      window.confirm(
-        `Deseja remover o CNPJ ${formatarCnpj(
-          cnpj.cnpj
-        )}?`
-      );
+    const confirmou = window.confirm(
+      `Deseja remover o CNPJ ${formatarCnpj(
+        cnpj.cnpj
+      )}?`
+    );
 
     if (!confirmou) {
       return;
@@ -855,26 +862,23 @@ export default function Empresas() {
     try {
       limparMensagens();
 
-      const { data } =
-        await api.delete(
-          `/empresas/${empresaCnpj.id}/cnpjs/${cnpj.id}`
-        );
+      const { data } = await api.delete(
+        `/empresas/${empresaCnpj.id}/cnpjs/${cnpj.id}`
+      );
+
+      await atualizarEmpresaModal();
+      await carregarEmpresas();
+
+      if (
+        cnpjEditando?.id === cnpj.id
+      ) {
+        cancelarEdicaoCnpj();
+      }
 
       mostrarSucesso(
         data.message ||
           "CNPJ removido com sucesso."
       );
-
-      const empresaAtualizada =
-        await api.get(
-          `/empresas/${empresaCnpj.id}`
-        );
-
-      setEmpresaCnpj(
-        empresaAtualizada.data
-      );
-
-      await carregarEmpresas();
     } catch (err) {
       console.error(
         "Erro ao remover CNPJ:",
@@ -888,14 +892,15 @@ export default function Empresas() {
     }
   };
 
-  /* =======================================================
+  /* =========================================================
      JSX
-  ======================================================= */
+  ========================================================= */
 
   return (
     <div className="empresasPage">
-
-      {/* CABEÇALHO */}
+      {/* =====================================================
+          CABEÇALHO
+      ===================================================== */}
 
       <section className="empresasHeader">
         <div>
@@ -911,9 +916,13 @@ export default function Empresas() {
             type="button"
             className="empresasRefreshButton"
             onClick={carregarEmpresas}
+            disabled={carregando}
           >
             <FaSyncAlt />
-            Atualizar
+
+            {carregando
+              ? "Atualizando..."
+              : "Atualizar"}
           </button>
 
           <button
@@ -927,7 +936,9 @@ export default function Empresas() {
         </div>
       </section>
 
-      {/* MENSAGENS */}
+      {/* =====================================================
+          MENSAGENS
+      ===================================================== */}
 
       {mensagem && (
         <div className="empresasMensagem empresasMensagemSucesso">
@@ -941,7 +952,9 @@ export default function Empresas() {
         </div>
       )}
 
-      {/* FORMULÁRIO */}
+      {/* =====================================================
+          FORMULÁRIO
+      ===================================================== */}
 
       {mostrarFormulario && (
         <section className="empresaFormCard">
@@ -953,7 +966,8 @@ export default function Empresas() {
             </h2>
 
             <p>
-              Configure os dados e a identidade visual da empresa.
+              Configure os dados e a identidade visual da
+              empresa.
             </p>
           </div>
 
@@ -961,6 +975,8 @@ export default function Empresas() {
             className="empresaForm"
             onSubmit={salvarEmpresa}
           >
+            {/* RAZÃO SOCIAL */}
+
             <div className="empresaFormGroup">
               <label>Razão social *</label>
 
@@ -973,6 +989,8 @@ export default function Empresas() {
               />
             </div>
 
+            {/* NOME FANTASIA */}
+
             <div className="empresaFormGroup">
               <label>Nome fantasia</label>
 
@@ -980,16 +998,14 @@ export default function Empresas() {
                 name="nome_fantasia"
                 value={form.nome_fantasia}
                 onChange={alterarForm}
-                placeholder="Ex.: Maranto Hotel"
+                placeholder="Ex.: Hotel San Marinho"
               />
             </div>
 
-            {/* CORES */}
+            {/* COR PRINCIPAL */}
 
             <div className="empresaFormGroup">
-              <label>
-                Cor principal
-              </label>
+              <label>Cor principal</label>
 
               <div className="empresaColorField">
                 <input
@@ -1008,10 +1024,10 @@ export default function Empresas() {
               </div>
             </div>
 
+            {/* COR SECUNDÁRIA */}
+
             <div className="empresaFormGroup">
-              <label>
-                Cor secundária
-              </label>
+              <label>Cor secundária</label>
 
               <div className="empresaColorField">
                 <input
@@ -1033,15 +1049,15 @@ export default function Empresas() {
             {/* LOGO */}
 
             <div className="empresaFormGroup empresaUploadGroup">
-              <label>
-                Logo da empresa
-              </label>
+              <label>Logo da empresa</label>
 
               <label className="empresaUploadButton">
                 <FaUpload />
 
                 {logoArquivo
                   ? "Trocar logo"
+                  : logoPreview
+                  ? "Alterar logo"
                   : "Selecionar logo"}
 
                 <input
@@ -1054,13 +1070,12 @@ export default function Empresas() {
 
               {logoArquivo && (
                 <div className="empresaArquivoSelecionado">
-                  <span>
-                    {logoArquivo.name}
-                  </span>
+                  <span>{logoArquivo.name}</span>
 
                   <button
                     type="button"
                     onClick={cancelarNovaLogo}
+                    title="Cancelar nova logo"
                   >
                     <FaTimes />
                   </button>
@@ -1071,15 +1086,15 @@ export default function Empresas() {
             {/* FUNDO */}
 
             <div className="empresaFormGroup empresaUploadGroup">
-              <label>
-                Imagem de fundo
-              </label>
+              <label>Imagem de fundo</label>
 
               <label className="empresaUploadButton">
                 <FaImage />
 
                 {fundoArquivo
                   ? "Trocar imagem"
+                  : fundoPreview
+                  ? "Alterar imagem"
                   : "Selecionar imagem"}
 
                 <input
@@ -1092,13 +1107,12 @@ export default function Empresas() {
 
               {fundoArquivo && (
                 <div className="empresaArquivoSelecionado">
-                  <span>
-                    {fundoArquivo.name}
-                  </span>
+                  <span>{fundoArquivo.name}</span>
 
                   <button
                     type="button"
                     onClick={cancelarNovoFundo}
+                    title="Cancelar nova imagem"
                   >
                     <FaTimes />
                   </button>
@@ -1117,14 +1131,13 @@ export default function Empresas() {
                 "--preview-secondary":
                   form.cor_secundaria,
 
-                backgroundImage:
-                  fundoPreview
-                    ? `linear-gradient(
-                        rgba(0,0,0,.35),
-                        rgba(0,0,0,.35)
-                      ),
-                      url("${fundoPreview}")`
-                    : undefined,
+                backgroundImage: fundoPreview
+                  ? `linear-gradient(
+                      rgba(0,0,0,.35),
+                      rgba(0,0,0,.35)
+                    ),
+                    url("${fundoPreview}")`
+                  : undefined,
               }}
             >
               <div className="empresaPreviewLogo">
@@ -1144,20 +1157,21 @@ export default function Empresas() {
                   "Sua empresa"}
               </strong>
 
-              <span>
-                Pré-visualização
-              </span>
+              <span>Pré-visualização</span>
 
               <button type="button">
                 Exemplo de botão
               </button>
             </div>
 
+            {/* AÇÕES */}
+
             <div className="empresaFormActions">
               <button
                 type="button"
                 className="empresaCancelButton"
                 onClick={cancelarFormulario}
+                disabled={salvando}
               >
                 Cancelar
               </button>
@@ -1178,14 +1192,14 @@ export default function Empresas() {
         </section>
       )}
 
-      {/* LISTA */}
+      {/* =====================================================
+          LISTA
+      ===================================================== */}
 
       <section className="empresasListCard">
         <div className="empresasListHeader">
           <div>
-            <h2>
-              Empresas cadastradas
-            </h2>
+            <h2>Empresas cadastradas</h2>
 
             <span>
               {empresas.length} empresa(s)
@@ -1201,9 +1215,7 @@ export default function Empresas() {
           <div className="empresasEmpty">
             <FaBuilding />
 
-            <h3>
-              Nenhuma empresa cadastrada
-            </h3>
+            <h3>Nenhuma empresa cadastrada</h3>
 
             <p>
               Cadastre a primeira empresa para começar.
@@ -1221,16 +1233,23 @@ export default function Empresas() {
                     "#0d6efd",
                 }}
               >
+                {/* LOGO */}
+
                 <div className="empresaCardIcon">
                   {empresa.logo_url ? (
                     <img
-                      src={empresa.logo_url}
-                      alt=""
+                      src={getLogoUrl(empresa)}
+                      alt={
+                        empresa.nome_fantasia ||
+                        empresa.nome
+                      }
                     />
                   ) : (
                     <FaBuilding />
                   )}
                 </div>
+
+                {/* CONTEÚDO */}
 
                 <div className="empresaCardContent">
                   <div className="empresaCardTop">
@@ -1241,9 +1260,7 @@ export default function Empresas() {
                       </h3>
 
                       {empresa.nome_fantasia && (
-                        <p>
-                          {empresa.nome}
-                        </p>
+                        <p>{empresa.nome}</p>
                       )}
                     </div>
 
@@ -1260,6 +1277,8 @@ export default function Empresas() {
                     </span>
                   </div>
 
+                  {/* CNPJ */}
+
                   <div className="empresaResumoCnpj">
                     <FaIdCard />
 
@@ -1267,11 +1286,12 @@ export default function Empresas() {
                       <span>CNPJs</span>
 
                       <strong>
-                        {empresa.cnpjs?.length ||
-                          0}
+                        {empresa.cnpjs?.length || 0}
                       </strong>
                     </div>
                   </div>
+
+                  {/* CORES */}
 
                   <div className="empresaCores">
                     <div>
@@ -1299,6 +1319,8 @@ export default function Empresas() {
                     </div>
                   </div>
 
+                  {/* BOTÕES */}
+
                   <div className="empresaCardActions">
                     <button
                       type="button"
@@ -1315,9 +1337,7 @@ export default function Empresas() {
                       type="button"
                       className="empresaActionEdit"
                       onClick={() =>
-                        abrirEditarEmpresa(
-                          empresa
-                        )
+                        abrirEditarEmpresa(empresa)
                       }
                     >
                       <FaEdit />
@@ -1332,9 +1352,7 @@ export default function Empresas() {
                           : "empresaActionEnable"
                       }
                       onClick={() =>
-                        alterarStatus(
-                          empresa
-                        )
+                        alterarStatus(empresa)
                       }
                     >
                       <FaPowerOff />
@@ -1351,26 +1369,25 @@ export default function Empresas() {
         )}
       </section>
 
-      {/* MODAL CNPJ */}
+      {/* =====================================================
+          MODAL CNPJ
+      ===================================================== */}
 
       {empresaCnpj && (
         <div
           className="empresaModalOverlay"
           onMouseDown={(e) => {
-            if (
-              e.target ===
-              e.currentTarget
-            ) {
+            if (e.target === e.currentTarget) {
               fecharCnpjs();
             }
           }}
         >
           <div className="empresaModal">
+            {/* CABEÇALHO */}
+
             <div className="empresaModalHeader">
               <div>
-                <h2>
-                  CNPJs da empresa
-                </h2>
+                <h2>CNPJs da empresa</h2>
 
                 <p>
                   {empresaCnpj.nome_fantasia ||
@@ -1386,6 +1403,8 @@ export default function Empresas() {
                 <FaTimes />
               </button>
             </div>
+
+            {/* LISTA */}
 
             <div className="empresaCnpjLista">
               {!empresaCnpj.cnpjs?.length ? (
@@ -1404,9 +1423,7 @@ export default function Empresas() {
                   >
                     <div className="empresaCnpjInfo">
                       <strong>
-                        {formatarCnpj(
-                          item.cnpj
-                        )}
+                        {formatarCnpj(item.cnpj)}
                       </strong>
 
                       <span>
@@ -1442,6 +1459,7 @@ export default function Empresas() {
                         onClick={() =>
                           editarCnpj(item)
                         }
+                        title="Editar CNPJ"
                       >
                         <FaEdit />
                       </button>
@@ -1452,6 +1470,7 @@ export default function Empresas() {
                         onClick={() =>
                           removerCnpj(item)
                         }
+                        title="Remover CNPJ"
                       >
                         <FaTrash />
                       </button>
@@ -1460,6 +1479,8 @@ export default function Empresas() {
                 ))
               )}
             </div>
+
+            {/* FORM CNPJ */}
 
             <form
               className="empresaCnpjForm"
@@ -1481,14 +1502,13 @@ export default function Empresas() {
                     onChange={alterarCnpjForm}
                     placeholder="00.000.000/0000-00"
                     maxLength={18}
+                    inputMode="numeric"
                     required
                   />
                 </div>
 
                 <div>
-                  <label>
-                    Identificação
-                  </label>
+                  <label>Identificação</label>
 
                   <input
                     name="nome"
@@ -1498,6 +1518,8 @@ export default function Empresas() {
                   />
                 </div>
               </div>
+
+              {/* CHECKBOXES */}
 
               <div className="empresaCnpjChecks">
                 <label>
@@ -1524,6 +1546,8 @@ export default function Empresas() {
                   </label>
                 )}
               </div>
+
+              {/* BOTÕES */}
 
               <div className="empresaCnpjFormActions">
                 {cnpjEditando && (
