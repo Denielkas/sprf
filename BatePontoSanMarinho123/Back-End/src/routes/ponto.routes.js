@@ -12,6 +12,7 @@ const {
   somentePonto,
 } = require("../middlewares/auth");
 
+
 /* =========================================================
    ROTAS DO TERMINAL DE PONTO
 
@@ -19,10 +20,12 @@ const {
 
    role = "ponto_empresa"
 
-   O empresa_id NÃO deve ser escolhido pelo usuário.
-   Ele vem do token:
+   IMPORTANTE:
 
-   req.user.empresa_id
+   O empresa_id do terminal deve ser obtido
+   através do usuário autenticado no backend.
+
+   req.user só existe DEPOIS do middleware auth.
 ========================================================= */
 
 
@@ -41,9 +44,7 @@ router.get(
 
 
 /* =========================================================
-   STATUS DAS BATIDAS
-
-   Rota antiga mantida por compatibilidade.
+   STATUS DAS BATIDAS - COMPATIBILIDADE
 
    GET /api/ponto/status/:funcionario_id
 ========================================================= */
@@ -88,8 +89,6 @@ router.post(
    BUSCAR FUNCIONÁRIO PELO CPF
 
    GET /api/ponto/cpf/:cpf
-
-   Utilizada no terminal de ponto.
 ========================================================= */
 
 router.get(

@@ -33,25 +33,35 @@ const bancoHorasRoutes =
 const empresaRoutes =
   require("./routes/empresa.routes");
 
-/*
-  Rotas específicas para:
+/* =========================================================
+   CNPJS DAS EMPRESAS
+========================================================= */
 
-  POST /api/empresas/:id/logo
-  POST /api/empresas/:id/fundo
+const empresaCnpjRoutes =
+  require("./routes/empresaCnpj.routes");
 
-  GET /api/empresas/:id/logo
-  GET /api/empresas/:id/fundo
-*/
+/* =========================================================
+   UPLOADS DAS EMPRESAS
+========================================================= */
 
 const empresaUploadRoutes =
   require("./routes/empresaUpload.routes");
 
 /* =========================================================
+   LOGS DO SISTEMA
+
+   NOVO:
+   Painel de logs acessível pelo Super Admin.
+========================================================= */
+
+const logRoutes =
+  require("./routes/log.routes");
+
+/* =========================================================
    APP
 ========================================================= */
 
-const app =
-  express();
+const app = express();
 
 /* =========================================================
    MIDDLEWARES
@@ -79,11 +89,6 @@ app.use(
 
 /* =========================================================
    PASTA DE UPLOADS
-
-   IMPORTANTE:
-
-   empresaUpload.routes.js precisa usar exatamente a mesma
-   pasta base.
 
    Se UPLOADS_DIR não estiver definido:
 
@@ -167,8 +172,6 @@ if (
 
 /* =========================================================
    DEBUG DAS PASTAS
-
-   Quando iniciar o backend você deverá ver estes caminhos.
 ========================================================= */
 
 console.log(
@@ -196,10 +199,6 @@ console.log(
 
 /* =========================================================
    ARQUIVOS ESTÁTICOS
-
-   Permite abrir:
-
-   http://localhost:4000/uploads/empresas/arquivo.png
 ========================================================= */
 
 app.use(
@@ -235,11 +234,6 @@ app.get(
 
 /* =========================================================
    TESTE DE UPLOADS
-
-   Abra:
-   http://localhost:4000/api/teste-uploads
-
-   para conferir qual pasta o backend está utilizando.
 ========================================================= */
 
 app.get(
@@ -288,22 +282,6 @@ app.use(
 
 /* =========================================================
    EMPRESAS
-
-   IMPORTANTE:
-
-   As DUAS usam /api/empresas.
-
-   empresaRoutes:
-   GET /
-   POST /
-   PUT /:id
-   etc.
-
-   empresaUploadRoutes:
-   POST /:id/logo
-   POST /:id/fundo
-   GET /:id/logo
-   GET /:id/fundo
 ========================================================= */
 
 app.use(
@@ -314,6 +292,30 @@ app.use(
 app.use(
   "/api/empresas",
   empresaRoutes
+);
+
+/* =========================================================
+   CNPJS DAS EMPRESAS
+
+   GET
+   /api/empresa-cnpjs
+
+   POST
+   /api/empresa-cnpjs
+
+   PUT
+   /api/empresa-cnpjs/:id
+
+   PATCH
+   /api/empresa-cnpjs/:id/principal
+
+   DELETE
+   /api/empresa-cnpjs/:id
+========================================================= */
+
+app.use(
+  "/api/empresa-cnpjs",
+  empresaCnpjRoutes
 );
 
 /* =========================================================
@@ -371,7 +373,24 @@ app.use(
 );
 
 /* =========================================================
+   LOGS DO SISTEMA
+
+   GET /api/logs
+   GET /api/logs/tipos
+
+   IMPORTANTE:
+   A proteção de Super Admin fica dentro de log.routes.js.
+========================================================= */
+
+app.use(
+  "/api/logs",
+  logRoutes
+);
+
+/* =========================================================
    404
+
+   SEMPRE DEVE FICAR DEPOIS DE TODAS AS ROTAS
 ========================================================= */
 
 app.use(
@@ -531,6 +550,14 @@ app.listen(
 
     console.log(
       `🖼 Teste uploads: http://127.0.0.1:${PORT}/api/teste-uploads`
+    );
+
+    console.log(
+      `🏢 CNPJs: http://127.0.0.1:${PORT}/api/empresa-cnpjs`
+    );
+
+    console.log(
+      `📋 Logs: http://127.0.0.1:${PORT}/api/logs`
     );
   }
 );

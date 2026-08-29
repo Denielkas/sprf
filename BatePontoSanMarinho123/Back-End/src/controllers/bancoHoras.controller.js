@@ -52,61 +52,126 @@ function nomeMes(mes) {
 
 /* =========================================================
    OBTER EMPRESA DA REQUISIÇÃO
+
+   REGRA PRINCIPAL:
+   O SISTEMA DEVE IDENTIFICAR AUTOMATICAMENTE A EMPRESA
+   DO USUÁRIO QUE ESTÁ LOGADO.
 ========================================================= */
 
 function obterEmpresaIdDaRequisicao(req) {
   /*
-    ADMIN DA EMPRESA
+    =======================================================
+    1. PRIMEIRO TENTA PEGAR A EMPRESA DO USUÁRIO LOGADO
+    =======================================================
 
-    Sempre usa empresa_id do token.
-    Mesmo que mande ?empresa_id=999,
-    esse valor será ignorado.
+    Dependendo do middleware utilizado no projeto,
+    os dados podem estar em:
+
+    req.user
+    req.usuario
+    req.admin
+
+    Por isso verificamos todos.
   */
 
-  if (req.user?.role === "admin_empresa") {
-    const empresaId = Number(
-      req.user.empresa_id
-    );
+  const empresaIdUsuario = Number(
+    req.user?.empresa_id ||
+    req.usuario?.empresa_id ||
+    req.admin?.empresa_id
+  );
 
-    if (
-      Number.isInteger(empresaId) &&
-      empresaId > 0
-    ) {
-      return empresaId;
-    }
-
-    return null;
+  if (
+    Number.isInteger(empresaIdUsuario) &&
+    empresaIdUsuario > 0
+  ) {
+    return empresaIdUsuario;
   }
 
 
   /*
-    SUPER ADMIN
-
-    Pode escolher a empresa através de:
-
-    ?empresa_id=1
-
-    ou no POST pelo body:
-    {
-      "empresa_id": 1
-    }
+    =======================================================
+    DESCOBRIR ROLE
+    =======================================================
   */
 
-  if (req.user?.role === "super_admin") {
-    const empresaId = Number(
+  const role = String(
+    req.user?.role ||
+    req.usuario?.role ||
+    req.admin?.role ||
+    ""
+  ).trim();
+
+
+  /*
+    =======================================================
+    2. SUPER ADMIN
+
+    O super admin pode não possuir empresa fixa.
+
+    Nesse caso ele pode informar empresa_id pela query,
+    body ou params.
+    =======================================================
+  */
+
+  if (role === "super_admin") {
+    const empresaIdSelecionada = Number(
       req.query?.empresa_id ||
-      req.body?.empresa_id
+      req.body?.empresa_id ||
+      req.params?.empresa_id
     );
 
     if (
-      Number.isInteger(empresaId) &&
-      empresaId > 0
+      Number.isInteger(empresaIdSelecionada) &&
+      empresaIdSelecionada > 0
     ) {
-      return empresaId;
+      return empresaIdSelecionada;
     }
-
-    return null;
   }
+
+
+  /*
+    =======================================================
+    3. FALLBACK
+
+    Mantemos compatibilidade com endpoints antigos que
+    ainda estejam enviando empresa_id diretamente.
+    =======================================================
+  */
+
+  const empresaIdRequisicao = Number(
+    req.query?.empresa_id ||
+    req.body?.empresa_id ||
+    req.params?.empresa_id
+  );
+
+  if (
+    Number.isInteger(empresaIdRequisicao) &&
+    empresaIdRequisicao > 0
+  ) {
+    return empresaIdRequisicao;
+  }
+
+
+  /*
+    =======================================================
+    DEBUG
+
+    Se chegar aqui significa que o middleware/token
+    não disponibilizou empresa_id.
+    =======================================================
+  */
+
+  console.error(
+    "❌ Não foi possível identificar a empresa da requisição.",
+    {
+      user: req.user,
+      usuario: req.usuario,
+      admin: req.admin,
+      query: req.query,
+      body: req.body,
+      params: req.params,
+    }
+  );
 
   return null;
 }
@@ -118,11 +183,6 @@ function obterEmpresaIdDaRequisicao(req) {
 ========================================================= */
 
 async function ensureBancoHorasTable() {
-  /*
-    Cria a tabela nova caso ela ainda
-    não exista.
-  */
-
   await pool.query(`
     CREATE TABLE IF NOT EXISTS banco_horas_ajustes (
       id BIGSERIAL PRIMARY KEY,
@@ -153,8 +213,8 @@ async function ensureBancoHorasTable() {
 
 
   /*
-    Caso a tabela já existisse no sistema
-    antigo, adicionamos empresa_id.
+    Caso a tabela seja de uma versão antiga do sistema,
+    adiciona empresa_id.
   */
 
   await pool.query(`
@@ -168,7 +228,7 @@ async function ensureBancoHorasTable() {
   /* =====================================================
      MIGRAR AJUSTES ANTIGOS
 
-     Descobre a empresa através do funcionário.
+     Descobre empresa_id através do funcionário.
   ===================================================== */
 
   const migracao = await pool.query(`
@@ -183,6 +243,7 @@ async function ensureBancoHorasTable() {
       AND f.empresa_id IS NOT NULL
   `);
 
+
   if (migracao.rowCount > 0) {
     console.log(
       `✅ ${migracao.rowCount} ajuste(s) antigo(s) do banco de horas migrado(s) para empresas.`
@@ -192,19 +253,6 @@ async function ensureBancoHorasTable() {
 
   /* =====================================================
      REMOVER UNIQUE ANTIGO
-
-     Seu sistema antigo tinha:
-
-     UNIQUE(funcionario_id, mes, ano)
-
-     Agora queremos:
-
-     UNIQUE(
-       empresa_id,
-       funcionario_id,
-       mes,
-       ano
-     )
   ===================================================== */
 
   await pool.query(`
@@ -220,7 +268,8 @@ async function ensureBancoHorasTable() {
 
       WHERE tc.table_name = 'banco_horas_ajustes'
         AND tc.constraint_type = 'UNIQUE'
-        AND tc.constraint_name <> 'banco_horas_ajustes_empresa_func_mes_ano_key'
+        AND tc.constraint_name <>
+          'banco_horas_ajustes_empresa_func_mes_ano_key'
 
       LIMIT 1;
 
@@ -274,7 +323,7 @@ async function ensureBancoHorasTable() {
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
-    idx_banco_horas_empresa
+      idx_banco_horas_empresa
 
     ON banco_horas_ajustes(
       empresa_id
@@ -284,7 +333,7 @@ async function ensureBancoHorasTable() {
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
-    idx_banco_horas_empresa_funcionario
+      idx_banco_horas_empresa_funcionario
 
     ON banco_horas_ajustes(
       empresa_id,
@@ -295,7 +344,7 @@ async function ensureBancoHorasTable() {
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
-    idx_banco_horas_empresa_periodo
+      idx_banco_horas_empresa_periodo
 
     ON banco_horas_ajustes(
       empresa_id,
@@ -307,10 +356,20 @@ async function ensureBancoHorasTable() {
 
 
 /* =========================================================
-   VERIFICAR EMPRESA
+   BUSCAR EMPRESA
 ========================================================= */
 
 async function buscarEmpresaPorId(empresaId) {
+  const empresaIdNum = Number(empresaId);
+
+  if (
+    !Number.isInteger(empresaIdNum) ||
+    empresaIdNum <= 0
+  ) {
+    return null;
+  }
+
+
   const { rows } = await pool.query(
     `
     SELECT
@@ -325,8 +384,9 @@ async function buscarEmpresaPorId(empresaId) {
 
     LIMIT 1
     `,
-    [empresaId]
+    [empresaIdNum]
   );
+
 
   return rows[0] || null;
 }
@@ -346,6 +406,7 @@ async function buscarFuncionarioDaEmpresa(
   const empresaIdNum =
     Number(empresaId);
 
+
   if (
     !Number.isInteger(funcionarioIdNum) ||
     funcionarioIdNum <= 0 ||
@@ -354,6 +415,7 @@ async function buscarFuncionarioDaEmpresa(
   ) {
     return null;
   }
+
 
   const { rows } = await pool.query(
     `
@@ -377,13 +439,13 @@ async function buscarFuncionarioDaEmpresa(
     ]
   );
 
+
   return rows[0] || null;
 }
 
 
 /* =========================================================
    GERAR RELATÓRIO DO FUNCIONÁRIO
-   COMPATÍVEL COM MULTIEMPRESA
 ========================================================= */
 
 async function gerarRelatorioSeguro(
@@ -392,20 +454,6 @@ async function gerarRelatorioSeguro(
   ano,
   empresaId
 ) {
-  /*
-    IMPORTANTE:
-
-    O seu relatorio.controller já foi
-    adaptado para multiempresa.
-
-    Caso gerarRelatorioFuncionario aceite
-    empresaId como quarto argumento, ele
-    será utilizado.
-
-    Argumentos extras em JavaScript não
-    quebram funções antigas.
-  */
-
   const relatorio =
     await gerarRelatorioFuncionario(
       funcionarioId,
@@ -413,6 +461,7 @@ async function gerarRelatorioSeguro(
       ano,
       empresaId
     );
+
 
   return Array.isArray(relatorio)
     ? relatorio
@@ -422,7 +471,6 @@ async function gerarRelatorioSeguro(
 
 /* =========================================================
    BUSCAR BANCO DE HORAS
-   MULTIEMPRESA
 ========================================================= */
 
 async function buscarBancoHorasInterno(
@@ -459,15 +507,15 @@ async function buscarBancoHorasInterno(
         ORDER BY nome ASC
         `,
         [
-          funcionarioId,
-          empresaId,
+          Number(funcionarioId),
+          Number(empresaId),
         ]
       );
   }
 
 
   /* =====================================================
-     TODOS DA EMPRESA
+     TODOS OS FUNCIONÁRIOS DA EMPRESA
   ===================================================== */
 
   else {
@@ -486,13 +534,14 @@ async function buscarBancoHorasInterno(
 
         ORDER BY nome ASC
         `,
-        [empresaId]
+        [Number(empresaId)]
       );
   }
 
 
   const funcionarios =
     funcionariosQuery.rows;
+
 
   const resultado = [];
 
@@ -517,13 +566,16 @@ async function buscarBancoHorasInterno(
 
     const saldoSistema =
       relatorio.reduce(
-        (acc, item) =>
-          acc +
-          (
-            Number(
-              item.saldo_bruto
-            ) || 0
-          ),
+        (acc, item) => {
+          return (
+            acc +
+            (
+              Number(
+                item.saldo_bruto
+              ) || 0
+            )
+          );
+        },
         0
       );
 
@@ -549,7 +601,7 @@ async function buscarBancoHorasInterno(
         LIMIT 1
         `,
         [
-          empresaId,
+          Number(empresaId),
           funcionario.id,
           Number(mes),
           Number(ano),
@@ -577,17 +629,14 @@ async function buscarBancoHorasInterno(
 
 
     /*
-      Mantendo sua regra existente:
-
-      se observação for exatamente "pago",
+      Se a observação for exatamente "pago",
       o saldo final fica zerado.
     */
 
     const saldoFinal =
       observacao.toLowerCase() === "pago"
         ? 0
-        : saldoSistema +
-          ajusteMinutos;
+        : saldoSistema + ajusteMinutos;
 
 
     resultado.push({
@@ -631,6 +680,7 @@ async function buscarBancoHorasInterno(
     });
   }
 
+
   return resultado;
 }
 
@@ -642,6 +692,7 @@ async function buscarBancoHorasInterno(
 async function listarBancoHoras(req, res) {
   try {
     await ensureBancoHorasTable();
+
 
     const {
       mes,
@@ -659,7 +710,7 @@ async function listarBancoHoras(req, res) {
 
 
     /* ===================================================
-       DESCOBRIR EMPRESA
+       IDENTIFICAR EMPRESA AUTOMATICAMENTE
     =================================================== */
 
     const empresaId =
@@ -669,13 +720,13 @@ async function listarBancoHoras(req, res) {
     if (!empresaId) {
       return res.status(400).json({
         error:
-          "Empresa não informada.",
+          "Não foi possível identificar a empresa do usuário logado.",
       });
     }
 
 
     /* ===================================================
-       VERIFICAR SE EMPRESA EXISTE
+       VERIFICAR EMPRESA
     =================================================== */
 
     const empresa =
@@ -701,8 +752,7 @@ async function listarBancoHoras(req, res) {
 
 
     /* ===================================================
-       SE INFORMOU FUNCIONÁRIO,
-       VERIFICA SE PERTENCE À EMPRESA
+       VERIFICAR FUNCIONÁRIO
     =================================================== */
 
     if (
@@ -742,9 +792,13 @@ async function listarBancoHoras(req, res) {
       err
     );
 
+
     return res.status(500).json({
       error:
         "Erro ao listar banco de horas.",
+
+      detalhe:
+        err.message,
     });
   }
 }
@@ -784,7 +838,7 @@ async function salvarAjusteBancoHoras(
 
 
     /* ===================================================
-       EMPRESA
+       IDENTIFICAR EMPRESA AUTOMATICAMENTE
     =================================================== */
 
     const empresaId =
@@ -794,10 +848,14 @@ async function salvarAjusteBancoHoras(
     if (!empresaId) {
       return res.status(400).json({
         error:
-          "Empresa não informada.",
+          "Não foi possível identificar a empresa do usuário logado.",
       });
     }
 
+
+    /* ===================================================
+       VERIFICAR EMPRESA
+    =================================================== */
 
     const empresa =
       await buscarEmpresaPorId(
@@ -822,10 +880,7 @@ async function salvarAjusteBancoHoras(
 
 
     /* ===================================================
-       SEGURANÇA
-
-       Confirma que funcionário pertence
-       à empresa.
+       VERIFICAR FUNCIONÁRIO
     =================================================== */
 
     const funcionario =
@@ -895,7 +950,7 @@ async function salvarAjusteBancoHoras(
           NOW()
       `,
       [
-        empresaId,
+        Number(empresaId),
         funcionario.id,
         Number(mes),
         Number(ano),
@@ -926,9 +981,13 @@ async function salvarAjusteBancoHoras(
       err
     );
 
+
     return res.status(500).json({
       error:
         "Erro ao salvar ajuste.",
+
+      detalhe:
+        err.message,
     });
   }
 }
@@ -962,7 +1021,7 @@ async function gerarPdfBancoHoras(
 
 
     /* ===================================================
-       EMPRESA
+       IDENTIFICAR EMPRESA AUTOMATICAMENTE
     =================================================== */
 
     const empresaId =
@@ -972,10 +1031,14 @@ async function gerarPdfBancoHoras(
     if (!empresaId) {
       return res.status(400).json({
         error:
-          "Empresa não informada.",
+          "Não foi possível identificar a empresa do usuário logado.",
       });
     }
 
+
+    /* ===================================================
+       EMPRESA
+    =================================================== */
 
     const empresa =
       await buscarEmpresaPorId(
@@ -987,6 +1050,14 @@ async function gerarPdfBancoHoras(
       return res.status(404).json({
         error:
           "Empresa não encontrada.",
+      });
+    }
+
+
+    if (!empresa.ativo) {
+      return res.status(403).json({
+        error:
+          "Empresa desativada.",
       });
     }
 
@@ -1108,6 +1179,7 @@ async function gerarPdfBancoHoras(
     function desenharCabecalho() {
       doc.save();
 
+
       doc
         .rect(
           30,
@@ -1116,6 +1188,7 @@ async function gerarPdfBancoHoras(
           24
         )
         .fill("#1E293B");
+
 
       doc.restore();
 
@@ -1163,6 +1236,7 @@ async function gerarPdfBancoHoras(
 
       doc.fillColor("#000000");
 
+
       y += 26;
     }
 
@@ -1180,7 +1254,9 @@ async function gerarPdfBancoHoras(
             layout: "landscape",
           });
 
+
           y = 40;
+
 
           desenharCabecalho();
         }
@@ -1188,6 +1264,7 @@ async function gerarPdfBancoHoras(
 
         if (index % 2 === 0) {
           doc.save();
+
 
           doc
             .rect(
@@ -1197,6 +1274,7 @@ async function gerarPdfBancoHoras(
               22
             )
             .fill("#F8FAFC");
+
 
           doc.restore();
         }
@@ -1316,7 +1394,7 @@ async function gerarExcelBancoHoras(
 
 
     /* ===================================================
-       EMPRESA
+       IDENTIFICAR EMPRESA AUTOMATICAMENTE
     =================================================== */
 
     const empresaId =
@@ -1326,10 +1404,14 @@ async function gerarExcelBancoHoras(
     if (!empresaId) {
       return res.status(400).json({
         error:
-          "Empresa não informada.",
+          "Não foi possível identificar a empresa do usuário logado.",
       });
     }
 
+
+    /* ===================================================
+       EMPRESA
+    =================================================== */
 
     const empresa =
       await buscarEmpresaPorId(
@@ -1343,11 +1425,14 @@ async function gerarExcelBancoHoras(
           "Empresa não encontrada.",
       });
     }
+
+
     if (!empresa.ativo) {
-  return res.status(403).json({
-    error: "Empresa desativada.",
-  });
-}
+      return res.status(403).json({
+        error:
+          "Empresa desativada.",
+      });
+    }
 
 
     /* ===================================================
@@ -1413,39 +1498,15 @@ async function gerarExcelBancoHoras(
       );
 
 
-    sheet.columns = [
-      {
-        header: "Funcionário",
-        key: "nome",
-        width: 35,
-      },
+    /* ===================================================
+       LARGURA DAS COLUNAS
+    =================================================== */
 
-      {
-        header: "Horas",
-        key:
-          "saldo_sistema_formatado",
-        width: 18,
-      },
-
-      {
-        header: "Ajuste",
-        key: "ajuste_formatado",
-        width: 18,
-      },
-
-      {
-        header: "Observação",
-        key: "observacao",
-        width: 25,
-      },
-
-      {
-        header: "Saldo",
-        key:
-          "saldo_final_formatado",
-        width: 18,
-      },
-    ];
+    sheet.getColumn("A").width = 35;
+    sheet.getColumn("B").width = 18;
+    sheet.getColumn("C").width = 18;
+    sheet.getColumn("D").width = 25;
+    sheet.getColumn("E").width = 18;
 
 
     /* ===================================================
@@ -1453,6 +1514,7 @@ async function gerarExcelBancoHoras(
     =================================================== */
 
     sheet.mergeCells("A1:E1");
+
 
     sheet.getCell("A1").value =
       "Banco de Horas";
@@ -1466,10 +1528,12 @@ async function gerarExcelBancoHoras(
 
     sheet.getCell("A1").alignment = {
       horizontal: "center",
+      vertical: "middle",
     };
 
 
     sheet.mergeCells("A2:E2");
+
 
     sheet.getCell("A2").value =
       `Empresa: ${
@@ -1480,10 +1544,12 @@ async function gerarExcelBancoHoras(
 
     sheet.getCell("A2").alignment = {
       horizontal: "center",
+      vertical: "middle",
     };
 
 
     sheet.mergeCells("A3:E3");
+
 
     sheet.getCell("A3").value =
       `Período: ${nomeMes(mes)}/${ano}`;
@@ -1491,6 +1557,7 @@ async function gerarExcelBancoHoras(
 
     sheet.getCell("A3").alignment = {
       horizontal: "center",
+      vertical: "middle",
     };
 
 
@@ -1513,14 +1580,17 @@ async function gerarExcelBancoHoras(
 
     headerRow.eachCell(
       (cell) => {
+
         cell.font = {
           bold: true,
         };
+
 
         cell.alignment = {
           horizontal: "center",
           vertical: "middle",
         };
+
 
         cell.fill = {
           type: "pattern",
@@ -1530,6 +1600,7 @@ async function gerarExcelBancoHoras(
             argb: "D9E1F2",
           },
         };
+
 
         cell.border = {
           top: {
@@ -1618,7 +1689,7 @@ async function gerarExcelBancoHoras(
 
 
     /* ===================================================
-       ENVIAR
+       ENVIAR EXCEL
     =================================================== */
 
     res.setHeader(
@@ -1633,9 +1704,7 @@ async function gerarExcelBancoHoras(
     );
 
 
-    await workbook.xlsx.write(
-      res
-    );
+    await workbook.xlsx.write(res);
 
 
     return res.end();

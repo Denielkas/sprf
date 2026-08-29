@@ -1,184 +1,564 @@
+/* ==========================================================
+   PÁGINA — CADASTRO DE ROSTO
+========================================================== */
+
 .rostocadPage {
+  width: 100%;
+  max-width: 900px;
+
+  min-height: 100vh;
+
+  margin: 0 auto;
+
   padding: 18px;
+
+  box-sizing: border-box;
+
   display: flex;
   flex-direction: column;
+
   align-items: center;
+
   gap: 14px;
-  max-width: 900px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  min-height: 100vh;
 }
+
+
+/* ==========================================================
+   TÍTULO
+========================================================== */
 
 .rostocadPage h2 {
+  margin: 0 0 5px;
+
   font-size: 28px;
   font-weight: 700;
+
   text-align: center;
-  margin: 0;
-  color: #fff;
+
+  color: #ffffff;
 }
 
+
+/* ==========================================================
+   ÁREA DA CÂMERA
+========================================================== */
+
 .videoArea {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 18px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.55);
-  padding: 10px;
   width: 100%;
   max-width: 700px;
+
   margin: 0 auto;
+
+  padding: 10px;
+
   box-sizing: border-box;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+
+  display: flex;
+
+  justify-content: center;
+  align-items: center;
+
+  border:
+    2px solid
+    color-mix(
+      in srgb,
+      var(--cor-primaria, #0d6efd) 35%,
+      transparent
+    );
+
+  border-radius: 18px;
+
+  overflow: hidden;
+
+  background:
+    rgba(0, 0, 0, 0.55);
+
+  box-shadow:
+    0 10px 24px
+    rgba(0, 0, 0, 0.35);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+
+/* ==========================================================
+   VÍDEO
+========================================================== */
 
 .rostocadVideo {
   width: 100%;
   max-width: 660px;
+
   height: 520px;
-  object-fit: cover;
-  border-radius: 14px;
-  background: black;
+
   display: block;
+
+  object-fit: cover;
+
+  border-radius: 14px;
+
+  background: #000000;
 }
+
+
+/* ==========================================================
+   MENSAGEM
+========================================================== */
 
 .msg {
-  color: #fff;
-  text-align: center;
-  font-size: 16px;
-  line-height: 1.4;
   max-width: 95%;
+
+  margin: 2px 0;
+
+  color: #ffffff;
+
+  text-align: center;
+
+  font-size: 16px;
+
+  line-height: 1.4;
 }
+
+
+/* ==========================================================
+   BOTÃO CADASTRAR ROSTO
+   COR PRIMÁRIA DA EMPRESA
+========================================================== */
 
 .rostocadBtn {
-  background: #0d6efd;
-  color: white;
-  font-weight: 600;
-  padding: 15px 18px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
-  font-size: 17px;
   width: 100%;
   max-width: 660px;
-  transition: all 0.2s;
+
+  padding: 15px 18px;
+
+  border: none;
+
+  border-radius: 12px;
+
+  background:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, 0.20);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.rostocadBtn:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
+
+/* ==========================================================
+   BOTÃO CADASTRAR — HOVER
+   COR SECUNDÁRIA DA EMPRESA
+========================================================== */
+
+.rostocadBtn:hover:not(:disabled) {
+  background:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 11px 26px
+    rgba(0, 0, 0, 0.28);
 }
+
+
+/* ==========================================================
+   BOTÃO CADASTRAR — ACTIVE
+========================================================== */
+
+.rostocadBtn:active:not(:disabled) {
+  transform:
+    scale(0.98);
+}
+
+
+/* ==========================================================
+   BOTÃO DESABILITADO
+========================================================== */
 
 .rostocadBtn:disabled {
-  opacity: 0.7;
+  opacity: 0.55;
+
   cursor: not-allowed;
+
+  transform: none;
+
+  box-shadow: none;
 }
+
+
+/* ==========================================================
+   BOTÃO VOLTAR
+========================================================== */
 
 .rostocadBack {
-  background: rgba(60, 60, 60, 0.9);
-  color: white;
-  padding: 14px 18px;
-  border: none;
-  border-radius: 12px;
-  cursor: pointer;
   width: 100%;
   max-width: 660px;
+
+  padding: 14px 18px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.18);
+
+  border-radius: 12px;
+
+  background:
+    rgba(60, 60, 60, 0.90);
+
+  color: #ffffff;
+
+  font-family: inherit;
+
   font-size: 17px;
-  transition: 0.2s;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
 }
 
+
+/* ==========================================================
+   BOTÃO VOLTAR — HOVER
+========================================================== */
+
 .rostocadBack:hover {
-  background: #666;
+  background:
+    color-mix(
+      in srgb,
+      var(--cor-secundaria, #084298) 35%,
+      rgba(60, 60, 60, 0.95)
+    );
+
+  border-color:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-1px);
 }
+
+
+/* ==========================================================
+   BOTÃO VOLTAR — ACTIVE
+========================================================== */
+
+.rostocadBack:active {
+  transform:
+    scale(0.98);
+}
+
+
+/* ==========================================================
+   MODAL — FUNDO
+========================================================== */
 
 .modal-ponto {
   position: fixed;
+
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+
+  z-index: 99999;
+
+  padding: 20px;
+
   display: flex;
+
   align-items: center;
   justify-content: center;
-  z-index: 999;
-  animation: fadeIn 0.3s ease;
-  padding: 20px;
+
+  background:
+    rgba(0, 0, 0, 0.58);
+
+  backdrop-filter:
+    blur(3px);
+
+  -webkit-backdrop-filter:
+    blur(3px);
+
+  animation:
+    fadeIn 0.3s ease;
 }
+
+
+/* ==========================================================
+   MODAL — CAIXA
+========================================================== */
 
 .modal-box {
-  background: #ffffffee;
-  padding: 24px 20px;
-  border-radius: 18px;
-  text-align: center;
-  color: #000;
-  animation: scaleIn 0.25s ease;
   width: 100%;
   max-width: 360px;
+
+  box-sizing: border-box;
+
+  padding: 24px 20px;
+
+  border:
+    2px solid
+    color-mix(
+      in srgb,
+      var(--cor-primaria, #0d6efd) 35%,
+      transparent
+    );
+
+  border-radius: 18px;
+
+  background:
+    rgba(255, 255, 255, 0.96);
+
+  color: #000000;
+
+  text-align: center;
+
+  box-shadow:
+    0 20px 55px
+    rgba(0, 0, 0, 0.35);
+
+  animation:
+    scaleIn 0.25s ease;
 }
+
+
+/* ==========================================================
+   MODAL — ERRO
+========================================================== */
 
 .modal-box-erro {
-  background: rgba(255, 240, 240, 0.96);
+  border-color:
+    rgba(231, 76, 60, 0.45);
+
+  background:
+    rgba(255, 240, 240, 0.96);
 }
+
+
+/* ==========================================================
+   ÍCONE SUCESSO
+========================================================== */
 
 .modal-icon {
-  font-size: 52px;
-  color: #2ecc71;
   margin-bottom: 10px;
+
+  font-size: 52px;
+
+  color: #2ecc71;
 }
 
+
+/* ==========================================================
+   ÍCONE ERRO
+========================================================== */
+
 .modal-icon-erro {
+  margin-bottom: 10px;
+
+  font-size: 52px;
+
   color: #e74c3c;
 }
 
+
+/* ==========================================================
+   TÍTULO DO MODAL
+========================================================== */
+
 .modal-box h3 {
+  margin:
+    0 0 8px;
+
   font-size: 22px;
-  font-weight: bold;
-  margin-bottom: 8px;
+
+  font-weight: 800;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 }
 
-.modal-box p {
-  font-size: 15px;
-  font-weight: 600;
+
+/* ==========================================================
+   TÍTULO MODAL DE ERRO
+========================================================== */
+
+.modal-box-erro h3 {
+  color: #e74c3c;
 }
+
+
+/* ==========================================================
+   TEXTO DO MODAL
+========================================================== */
+
+.modal-box p {
+  margin: 0;
+
+  color: #374151;
+
+  font-size: 15px;
+
+  font-weight: 600;
+
+  line-height: 1.45;
+}
+
+
+/* ==========================================================
+   ANIMAÇÕES
+========================================================== */
 
 @keyframes fadeIn {
   from {
     opacity: 0;
   }
+
   to {
     opacity: 1;
   }
 }
 
+
 @keyframes scaleIn {
   from {
-    transform: scale(0.6);
+    opacity: 0;
+
+    transform:
+      scale(0.75);
   }
+
   to {
-    transform: scale(1);
+    opacity: 1;
+
+    transform:
+      scale(1);
   }
 }
 
-/* Tablet */
-@media (max-width: 1024px) {
+
+/* ==========================================================
+   TABLET
+========================================================== */
+
+@media (
+  max-width: 1024px
+) {
+
   .rostocadVideo {
     max-width: 620px;
+
     height: 460px;
   }
 }
 
-/* Celular */
-@media (max-width: 768px) {
-  .rostocadVideo {
-    max-width: 100%;
-    height: 340px;
+
+/* ==========================================================
+   CELULAR
+========================================================== */
+
+@media (
+  max-width: 768px
+) {
+
+  .rostocadPage {
+    padding: 14px;
+
+    gap: 12px;
   }
+
 
   .rostocadPage h2 {
     font-size: 22px;
   }
 
+
+  .videoArea {
+    padding: 7px;
+
+    border-radius: 15px;
+  }
+
+
+  .rostocadVideo {
+    width: 100%;
+
+    max-width: 100%;
+
+    height: 340px;
+
+    border-radius: 11px;
+  }
+
+
   .rostocadBtn,
   .rostocadBack {
     max-width: 100%;
+  }
+}
+
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (
+  max-width: 420px
+) {
+
+  .rostocadPage {
+    padding: 10px;
+  }
+
+
+  .rostocadPage h2 {
+    font-size: 20px;
+  }
+
+
+  .rostocadVideo {
+    height: 290px;
+  }
+
+
+  .rostocadBtn,
+  .rostocadBack {
+    padding: 13px 15px;
+
+    font-size: 15px;
+  }
+
+
+  .modal-box {
+    max-width: 330px;
+
+    padding: 22px 18px;
   }
 }

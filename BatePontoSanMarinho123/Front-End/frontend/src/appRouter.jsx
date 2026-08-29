@@ -41,6 +41,7 @@ import BancoHoras from "./pages/BancoHoras";
 
 import Empresas from "./pages/Empresas";
 import AcessosEmpresas from "./pages/AcessosEmpresas";
+import LogsSistema from "./pages/LogsSistema";
 
 /* =========================================================
    LAYOUT
@@ -87,17 +88,11 @@ function limparSessao() {
 
 /* =========================================================
    ROTA PRIVADA
-
-   Permite:
-   - super_admin
-   - rh_empresa
-   - ponto_empresa
-
-   As rotas específicas abaixo controlam
-   exatamente onde cada usuário pode entrar.
 ========================================================= */
 
-function PrivateRoute({ children }) {
+function PrivateRoute({
+  children,
+}) {
   const token =
     localStorage.getItem("token");
 
@@ -369,8 +364,6 @@ function PontoRoute({
 
 /* =========================================================
    REDIRECIONAMENTO AUTOMÁTICO
-
-   Decide para onde cada login vai.
 ========================================================= */
 
 function RedirecionarApp() {
@@ -486,11 +479,6 @@ export default function AppRouter() {
 
         {/* =================================================
             LOGIN PRINCIPAL
-
-            Login único para:
-            - super_admin
-            - rh_empresa
-            - ponto_empresa
         ================================================= */}
 
         <Route
@@ -580,12 +568,6 @@ export default function AppRouter() {
 
         {/* =================================================
             DASHBOARD
-
-            Aqui entram:
-            - super_admin
-            - rh_empresa
-
-            ponto_empresa não usa dashboard.
         ================================================= */}
 
         <Route
@@ -630,6 +612,19 @@ export default function AppRouter() {
             element={
               <SuperAdminRoute>
                 <AcessosEmpresas />
+              </SuperAdminRoute>
+            }
+          />
+
+          {/* ===============================================
+              SUPER ADMIN - LOGS DO SISTEMA
+          =============================================== */}
+
+          <Route
+            path="logs"
+            element={
+              <SuperAdminRoute>
+                <LogsSistema />
               </SuperAdminRoute>
             }
           />

@@ -2,6 +2,10 @@ const pool = require("../database/pool");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
+const {
+  registrarLog,
+} = require("../services/log.service");
+
 /* =========================================================
    ROLES
 ========================================================= */
@@ -314,8 +318,6 @@ async function login(req, res) {
 
     /* =====================================================
        DEBUG
-
-       IMPORTANTE PARA CONFERIR LOGO/FUNDO
     ===================================================== */
 
     console.log(
@@ -548,9 +550,56 @@ async function login(req, res) {
       null;
 
     /* =====================================================
-       OBJETO DA EMPRESA
+       REGISTRAR LOG DE LOGIN
 
-       ESSA É A PARTE PRINCIPAL PARA A HOME.
+       SUPER ADMIN:
+       empresa_id = NULL
+
+       RH / PONTO:
+       empresa_id = empresa do usuário
+    ===================================================== */
+
+    await registrarLog({
+      req,
+
+      empresa_id:
+        empresaId,
+
+      usuario_id:
+        admin.id,
+
+      username:
+        admin.username,
+
+      role:
+        admin.role,
+
+      tipo:
+        "LOGIN",
+
+      acao:
+        "LOGIN_REALIZADO",
+
+      descricao:
+        admin.role ===
+        ROLES.SUPER_ADMIN
+          ? "Super Admin realizou login no sistema."
+          : `${admin.username} realizou login no sistema.`,
+
+      dados: {
+        role:
+          admin.role,
+
+        empresa_id:
+          empresaId,
+
+        empresa_nome:
+          empresaNome,
+      },
+    });
+
+    /* =====================================================
+       OBJETO DA EMPRESA
     ===================================================== */
 
     let empresa = null;
@@ -596,9 +645,6 @@ async function login(req, res) {
 
         /* ===============================================
            ROTAS PÚBLICAS DAS IMAGENS
-
-           Mesmo que o arquivo tenha outro nome,
-           o frontend sempre acessa estas URLs.
         =============================================== */
 
         logo_url:
@@ -834,6 +880,46 @@ async function criarPrimeiroSuperAdmin(
         ]
       );
 
+    /* =====================================================
+       REGISTRAR LOG
+
+       Como é a criação do primeiro Super Admin,
+       ainda não existe usuário autenticado.
+    ===================================================== */
+
+    await registrarLog({
+      req,
+
+      empresa_id:
+        null,
+
+      usuario_id:
+        rows[0].id,
+
+      username:
+        rows[0].username,
+
+      role:
+        ROLES.SUPER_ADMIN,
+
+      tipo:
+        "ADMINISTRACAO",
+
+      acao:
+        "SUPER_ADMIN_CRIADO",
+
+      descricao:
+        "Primeiro Super Admin criado no sistema.",
+
+      dados: {
+        admin_id:
+          rows[0].id,
+
+        username:
+          rows[0].username,
+      },
+    });
+
     return res
       .status(201)
       .json({
@@ -946,6 +1032,27 @@ async function criarAdminEmpresa(
     }
 
     /* =====================================================
+       EMPRESA ID
+    ===================================================== */
+
+    const empresaId =
+      Number(
+        empresa_id
+      );
+
+    if (
+      !Number.isInteger(
+        empresaId
+      ) ||
+      empresaId <= 0
+    ) {
+      return res.status(400).json({
+        error:
+          "Empresa inválida.",
+      });
+    }
+
+    /* =====================================================
        EMPRESA
     ===================================================== */
 
@@ -965,7 +1072,7 @@ async function criarAdminEmpresa(
         LIMIT 1
         `,
         [
-          empresa_id,
+          empresaId,
         ]
       );
 
@@ -1039,7 +1146,7 @@ async function criarAdminEmpresa(
         LIMIT 1
         `,
         [
-          empresa_id,
+          empresaId,
           role,
         ]
       );
@@ -1105,7 +1212,7 @@ async function criarAdminEmpresa(
           usuario,
           hash,
           role,
-          empresa_id,
+          empresaId,
         ]
       );
 
@@ -1118,6 +1225,71 @@ async function criarAdminEmpresa(
       ROLES.RH_EMPRESA
         ? "RH"
         : "Ponto";
+
+    /* =====================================================
+       REGISTRAR LOG DA CRIAÇÃO DO ACESSO
+
+       req.user é o Super Admin autenticado.
+
+       empresa_id é a empresa que recebeu o acesso.
+    ===================================================== */
+
+    await registrarLog({
+      req,
+
+      empresa_id:
+        empresaId,
+
+      usuario_id:
+        req.user?.id ||
+        null,
+
+      username:
+        req.user?.username ||
+        null,
+
+      role:
+        req.user?.role ||
+        ROLES.SUPER_ADMIN,
+
+      tipo:
+        "ACESSO",
+
+      acao:
+        "ACESSO_EMPRESA_CRIADO",
+
+      descricao:
+        `Super Admin criou acesso de ${nomeTipo} para ${
+          empresa.nome_fantasia ||
+          empresa.nome
+        }.`,
+
+      dados: {
+        admin_criado_id:
+          rows[0].id,
+
+        username_criado:
+          rows[0].username,
+
+        role_criada:
+          rows[0].role,
+
+        empresa_id:
+          empresaId,
+
+        empresa_nome:
+          empresa.nome_fantasia ||
+          empresa.nome,
+
+        criado_por_id:
+          req.user?.id ||
+          null,
+
+        criado_por_username:
+          req.user?.username ||
+          null,
+      },
+    });
 
     /* =====================================================
        RESPOSTA

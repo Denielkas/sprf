@@ -1,129 +1,417 @@
-/* ==============================
-   TELA INTEIRA — FUNDO HOTEL
-============================== */
+/* ==========================================================
+   CONSULTAR PONTOS
+   IDENTIDADE VISUAL DINÂMICA
+========================================================== */
+
+
+/* ==========================================================
+   TELA INTEIRA
+
+   O FUNDO É COLOCADO PELO JSX:
+
+   backgroundImage: url(...)
+========================================================== */
+
 .buscarContainer {
+  width: 100%;
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  background: url("../../assets/logo/hotel.jpg") center/cover no-repeat fixed;
+
+  position: relative;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
   padding: 24px;
+
+  box-sizing: border-box;
+
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+
+  overflow: hidden;
+
+  isolation: isolate;
 }
 
-/* ==============================
-   CARD CENTRAL
-============================== */
+
+/* ==========================================================
+   CAMADA SOBRE A IMAGEM
+
+   MESMO CONCEITO DA HOME
+========================================================== */
+
+.buscarContainer::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: -1;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.12) 45%,
+      rgba(0, 0, 0, 0.22) 100%
+    );
+
+  pointer-events: none;
+}
+
+
+/* ==========================================================
+   CARD
+========================================================== */
+
 .buscarCard {
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 18px;
-  padding: 36px 32px;          /* 🔼 maior */
+  position: relative;
+
+  z-index: 2;
+
   width: 100%;
-  max-width: 420px;            /* 🔼 maior */
+  max-width: 420px;
 
   display: flex;
   flex-direction: column;
-  gap: 22px;                   /* 🔼 mais espaço */
 
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.3);
+  gap: 20px;
+
+  padding: 36px 32px;
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.7
+    );
+
+  border-radius: 20px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.93
+    );
+
+  -webkit-backdrop-filter:
+    blur(12px);
+
+  backdrop-filter:
+    blur(12px);
+
+  box-shadow:
+    0 20px 55px
+    rgba(
+      0,
+      0,
+      0,
+      0.28
+    );
 }
 
-/* ==============================
+
+/* ==========================================================
    TÍTULO
-============================== */
+
+   COR EXATAMENTE DA EMPRESA
+========================================================== */
+
 .buscarCard h2 {
+  margin:
+    0 0 4px;
+
   text-align: center;
-  color: #0d6efd;
+
+  color:
+    var(
+      --buscar-cor-primaria,
+      #0d6efd
+    );
+
+  font-size: 25px;
+
   font-weight: 700;
-  font-size: 24px;             /* 🔼 maior */
+
+  line-height: 1.2;
 }
 
-/* ==============================
-   INPUT CPF
-============================== */
+
+/* ==========================================================
+   INPUT
+========================================================== */
+
 .buscarCard input {
-  padding: 16px;               /* 🔼 maior */
+  width: 100%;
+  height: 56px;
+
+  box-sizing: border-box;
+
+  padding:
+    0 17px;
+
+  border:
+    2px solid
+    #d5ddea;
+
   border-radius: 12px;
-  border: 1px solid #cbd5e1;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.96
+    );
+
+  color: #111827;
+
+  font-family: inherit;
+
+  font-size: 16px;
+
   outline: none;
-  font-size: 17px;             /* 🔼 maior */
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+
+/* ==========================================================
+   PLACEHOLDER
+========================================================== */
+
+.buscarCard input::placeholder {
+  color: #94a3b8;
+}
+
+
+/* ==========================================================
+   INPUT FOCUS
+========================================================== */
 
 .buscarCard input:focus {
-  border-color: #0d6efd;
+  border-color:
+    var(
+      --buscar-cor-primaria,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(
+        --buscar-cor-primaria,
+        #0d6efd
+      ) 18%,
+      transparent
+    );
 }
 
-/* ==============================
-   BOTÃO BUSCAR
-============================== */
+
+/* ==========================================================
+   BOTÕES
+========================================================== */
+
 .buscarCard button {
-  background: #0d6efd;
-  color: #fff;
+  width: 100%;
+  height: 54px;
+
+  box-sizing: border-box;
+
   border: none;
+
   border-radius: 12px;
-  padding: 16px;               /* 🔼 maior */
-  font-size: 17px;             /* 🔼 maior */
-  font-weight: 600;
+
+  background:
+    var(
+      --buscar-cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 16px;
+
+  font-weight: 700;
+
   cursor: pointer;
-  transition: all 0.15s ease;
+
+  box-shadow:
+    0 8px 22px
+    rgba(
+      0,
+      0,
+      0,
+      0.18
+    );
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+
+/* ==========================================================
+   HOVER
+
+   COR SECUNDÁRIA DA EMPRESA
+========================================================== */
 
 .buscarCard button:hover {
-  background: #084298;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  background:
+    var(
+      --buscar-cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-2px);
+
+  box-shadow:
+    0 12px 28px
+    rgba(
+      0,
+      0,
+      0,
+      0.25
+    );
 }
+
+
+/* ==========================================================
+   CLIQUE
+========================================================== */
 
 .buscarCard button:active {
-  transform: scale(0.97);
+  transform:
+    scale(0.98);
 }
 
-/* ==============================
+
+/* ==========================================================
    ERRO
-============================== */
+========================================================== */
+
 .buscarErro {
+  margin: 0;
+
+  padding: 10px 12px;
+
+  border-radius: 9px;
+
+  background:
+    rgba(
+      254,
+      242,
+      242,
+      0.96
+    );
+
   color: #dc2626;
+
   text-align: center;
+
+  font-size: 14px;
+
   font-weight: 600;
-  font-size: 15px;
 }
 
-/* ==============================
-   MOBILE PEQUENO
-============================== */
-@media (max-width: 480px) {
-  .buscarCard {
-    padding: 24px 20px;
-    max-width: 360px;
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (
+  max-width: 600px
+) {
+
+  .buscarContainer {
+    min-height:
+      100dvh;
+
+    padding: 16px;
+
+    background-position:
+      center center;
   }
+
+
+  .buscarCard {
+    width:
+      min(
+        360px,
+        92vw
+      );
+
+    padding:
+      28px 22px;
+
+    gap: 18px;
+
+    border-radius: 18px;
+  }
+
 
   .buscarCard h2 {
-    font-size: 20px;
+    font-size: 22px;
   }
 
-  .buscarCard input,
-  .buscarCard button {
+
+  .buscarCard input {
+    height: 52px;
+
     font-size: 15px;
-    padding: 14px;
+  }
+
+
+  .buscarCard button {
+    height: 52px;
+
+    font-size: 15px;
   }
 }
 
-/* ==============================
-   TELAS MÉDIAS (CELULAR GRANDE / TABLET)
-============================== */
-@media (min-width: 600px) and (max-width: 900px) {
+
+/* ==========================================================
+   TELAS BAIXAS
+========================================================== */
+
+@media (
+  max-height: 600px
+)
+and (
+  min-width: 601px
+) {
+
   .buscarCard {
-    max-width: 520px;        /* 🔥 bem mais confortável */
-    padding: 48px 44px;
-    border-radius: 24px;
-    gap: 26px;
+    padding:
+      25px 30px;
+
+    gap: 15px;
   }
 
-  .buscarCard h2 {
-    font-size: 28px;
+
+  .buscarCard input {
+    height: 50px;
   }
 
-  .buscarCard input,
+
   .buscarCard button {
-    font-size: 18px;
-    padding: 18px;
+    height: 50px;
   }
 }

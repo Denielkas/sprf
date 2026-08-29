@@ -1,3 +1,7 @@
+/* =========================================================
+   CONTAINER PRINCIPAL
+========================================================= */
+
 .relatorio-container {
   padding: 25px;
   font-family: "Inter", sans-serif;
@@ -5,11 +9,16 @@
 }
 
 .relatorio-container h2 {
-  color: #0d6efd;
+  color: var(--empresa-cor-primaria, #0d6efd);
   font-size: 28px;
   margin-bottom: 22px;
   font-weight: 700;
 }
+
+
+/* =========================================================
+   FILTROS
+========================================================= */
 
 .relatorio-filtros {
   display: flex;
@@ -19,35 +28,56 @@
   margin-bottom: 25px;
 }
 
-/* Cada filtro fica com altura uniforme e sem ocupar espaço exagerado */
 .relatorio-filtros > * {
   min-height: 56px;
   box-sizing: border-box;
 }
 
+
+/* =========================================================
+   SELECTS NORMAIS
+========================================================= */
+
 .relatorio-select {
   flex: 1 1 150px;
   min-width: 145px;
   height: 56px;
+
   padding: 12px 44px 12px 16px;
+
   border-radius: 10px;
+
   border: 2px solid rgba(255, 255, 255, 0.15);
+
   background-color: rgba(255, 255, 255, 0.08);
+
   color: #fff;
+
   font-size: 16px;
+
   outline: none;
+
   transition: 0.2s ease;
+
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg fill='%230d6efd' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  -webkit-appearance: none;
+  -moz-appearance: none;
+
+  background-image: url("data:image/svg+xml,%3Csvg fill='white' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+
   background-repeat: no-repeat;
+
   background-position: right 14px center;
+
   background-size: 20px;
 }
 
 .relatorio-select:focus {
-  border-color: #0d6efd;
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 0 6px rgba(13, 110, 253, 0.55);
+  border-color: var(--empresa-cor-primaria, #0d6efd);
+
+  background-color: rgba(255, 255, 255, 0.15);
+
+  outline: none;
 }
 
 .relatorio-select option {
@@ -55,49 +85,138 @@
   color: white;
 }
 
+
+/* =========================================================
+   BOTÕES PRINCIPAIS
+========================================================= */
+
 .relatorio-btn {
   min-height: 56px;
+
   padding: 12px 22px;
-  background: #0d6efd;
+
+  background: var(--empresa-cor-primaria, #0d6efd);
+
   color: #fff;
+
   border: none;
+
   border-radius: 10px;
+
   font-weight: 600;
+
   font-size: 16px;
+
   cursor: pointer;
-  transition: 0.2s ease;
+
+  transition:
+    0.2s ease,
+    transform 0.2s ease,
+    filter 0.2s ease;
+
   white-space: nowrap;
+
   flex: 0 1 auto;
 }
 
 .relatorio-btn:hover {
-  background: #0b57d1;
+  background: var(--empresa-cor-secundaria, #084298);
+
+  filter: brightness(1.08);
+
+  transform: translateY(-1px);
 }
 
-.table-responsive {
-  overflow-x: auto;
+
+/* =========================================================
+   BOTÃO BUSCAR
+========================================================= */
+
+.btn-buscar {
+  background: var(--empresa-cor-primaria, #0d6efd);
 }
+
+.btn-buscar:hover {
+  background: var(--empresa-cor-secundaria, #084298);
+}
+
+
+/* =========================================================
+   BOTÃO PDF
+========================================================= */
+
+.btn-pdf {
+  background: var(--empresa-cor-primaria, #0d6efd);
+}
+
+.btn-pdf:hover {
+  background: var(--empresa-cor-secundaria, #084298);
+}
+
+
+/* =========================================================
+   BOTÃO EXCEL
+   Mantido verde para identificar o Excel
+========================================================= */
+
+.btn-excel {
+  background: #1d6f42;
+  color: #fff;
+}
+
+.btn-excel:hover {
+  background: #165c36;
+}
+
+
+/* =========================================================
+   TABELA RESPONSIVA
+========================================================= */
+
+.table-responsive {
+  width: 100%;
+
+  overflow-x: auto;
+
+  border-radius: 10px;
+}
+
+
+/* =========================================================
+   TABELA
+========================================================= */
 
 .relatorio-table {
   width: 100%;
+
   border-collapse: collapse;
+
   background: #0f172a;
+
   border-radius: 10px;
+
   overflow: hidden;
 }
 
 .relatorio-table th {
   background: #1e293b;
+
   padding: 12px;
-  color: #0d6efd;
+
+  color: var(--empresa-cor-primaria, #0d6efd);
+
   font-weight: 600;
+
   white-space: nowrap;
 }
 
 .relatorio-table td {
   padding: 12px;
+
   color: #e2e8f0;
+
   border-top: 1px solid #1e293b;
+
   white-space: nowrap;
 }
 
@@ -105,9 +224,10 @@
   background: #162033;
 }
 
-/* =========================
-   LINHAS DE STATUS
-========================= */
+
+/* =========================================================
+   LINHA ATESTADO
+========================================================= */
 
 .linha-atestado {
   background: rgba(255, 165, 0, 0.1);
@@ -126,6 +246,11 @@
   font-weight: 700;
 }
 
+
+/* =========================================================
+   LINHA FALTA
+========================================================= */
+
 .linha-falta {
   background: rgba(231, 76, 60, 0.08);
 }
@@ -142,6 +267,11 @@
   color: #ff4d4d;
   font-weight: 700;
 }
+
+
+/* =========================================================
+   LINHA FALTA JUSTIFICADA
+========================================================= */
 
 .linha-falta-justificada {
   background: rgba(239, 68, 68, 0.12);
@@ -160,6 +290,11 @@
   font-weight: 700;
 }
 
+
+/* =========================================================
+   LINHA FOLGA
+========================================================= */
+
 .linha-folga {
   background: rgba(59, 130, 246, 0.1);
 }
@@ -176,6 +311,11 @@
   color: #60a5fa;
   font-weight: 700;
 }
+
+
+/* =========================================================
+   LINHA FERIADO
+========================================================= */
 
 .linha-feriado {
   background: rgba(14, 165, 233, 0.1);
@@ -194,6 +334,11 @@
   font-weight: 700;
 }
 
+
+/* =========================================================
+   LINHA FÉRIAS
+========================================================= */
+
 .linha-ferias {
   background: rgba(139, 92, 246, 0.14) !important;
 }
@@ -204,6 +349,7 @@
 
 .linha-ferias td {
   border-top: 1px solid rgba(139, 92, 246, 0.22);
+
   color: #e9d5ff;
 }
 
@@ -212,9 +358,10 @@
   font-weight: 700;
 }
 
-/* =========================
+
+/* =========================================================
    BADGES
-========================= */
+========================================================= */
 
 .badge-falta-sim,
 .badge-falta-nao,
@@ -224,68 +371,131 @@
 .badge-falta-justificada,
 .badge-feriado {
   display: inline-block;
+
   padding: 5px 10px;
+
   border-radius: 999px;
+
   font-size: 13px;
+
   font-weight: 700;
 }
 
+
+/* =========================================================
+   BADGE FALTA
+========================================================= */
+
 .badge-falta-sim {
   background: rgba(231, 76, 60, 0.15);
+
   color: #ff8f8f;
+
   border: 1px solid rgba(231, 76, 60, 0.4);
 }
 
+
+/* =========================================================
+   BADGE NORMAL
+========================================================= */
+
 .badge-falta-nao {
   background: rgba(46, 204, 113, 0.15);
+
   color: #8ff0b0;
+
   border: 1px solid rgba(46, 204, 113, 0.35);
 }
 
+
+/* =========================================================
+   BADGE FALTA JUSTIFICADA
+========================================================= */
+
 .badge-falta-justificada {
   background: rgba(239, 68, 68, 0.18);
+
   color: #fca5a5;
+
   border: 1px solid rgba(239, 68, 68, 0.45);
 }
 
+
+/* =========================================================
+   BADGE FOLGA
+========================================================= */
+
 .badge-folga {
   background: rgba(59, 130, 246, 0.15);
+
   color: #93c5fd;
+
   border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
+
+/* =========================================================
+   BADGE FERIADO
+========================================================= */
+
 .badge-feriado {
   background: rgba(14, 165, 233, 0.18);
+
   color: #7dd3fc;
+
   border: 1px solid rgba(14, 165, 233, 0.45);
 }
 
+
+/* =========================================================
+   BADGE ATESTADO
+========================================================= */
+
 .badge-atestado {
   background: rgba(255, 165, 0, 0.15);
+
   color: #ffb347;
+
   border: 1px solid rgba(255, 165, 0, 0.4);
 }
 
+
+/* =========================================================
+   BADGE FÉRIAS
+========================================================= */
+
 .badge-ferias {
   background: rgba(139, 92, 246, 0.18);
+
   color: #d8b4fe;
+
   border: 1px solid rgba(139, 92, 246, 0.45);
 }
 
-/* =========================
-   BOTÕES
-========================= */
+
+/* =========================================================
+   BOTÃO ATESTADO
+========================================================= */
 
 .btn-atestado {
   margin-left: 8px;
+
   background: orange;
+
   color: white;
+
   border: none;
+
   padding: 6px 10px;
+
   border-radius: 6px;
+
   font-size: 13px;
+
   font-weight: 600;
+
   cursor: pointer;
+
   transition: 0.2s;
 }
 
@@ -293,18 +503,35 @@
   background: #ff8c00;
 }
 
+
+/* =========================================================
+   BOTÃO EDITAR
+========================================================= */
+
 .btn-edit {
   background: #1e293b;
+
   border: none;
+
   padding: 6px 10px;
+
   border-radius: 6px;
+
   color: #fff;
+
   cursor: pointer;
+
+  transition: 0.2s;
 }
 
 .btn-edit:hover {
-  background: #2c3e50;
+  background: var(--empresa-cor-primaria, #0d6efd);
 }
+
+
+/* =========================================================
+   SALDO POSITIVO / NEGATIVO
+========================================================= */
 
 .atraso-positivo {
   color: #22c55e;
@@ -316,330 +543,712 @@
   font-weight: 700;
 }
 
-.modalOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.55);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  z-index: 9999;
-}
 
-.modalCard {
-  width: min(520px, 95vw);
-  background: #1a1a1a;
-  padding: 26px;
-  border-radius: 14px;
-  color: #fff;
-  box-shadow: 0 0 22px rgba(0, 0, 0, 0.55);
-}
+/* =========================================================
+   AJUSTE DEFINITIVO DO MODAL
+========================================================= */
 
 .modalCardRelatorio {
-  width: min(860px, 96vw);
-  max-height: 92vh;
-  overflow-y: auto;
+  width: min(720px, 94vw) !important;
+  max-width: 720px !important;
+  max-height: 90vh !important;
+
+  padding: 22px !important;
+
+  background: #1a1a1a !important;
+  color: #fff !important;
+
+  border-radius: 14px !important;
+
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+
+  box-sizing: border-box !important;
 }
 
-.modalCard h3 {
-  text-align: center;
-  font-size: 22px;
-  margin-bottom: 18px;
-  color: #0d6efd;
-  font-weight: 700;
+
+/* =========================================================
+   TÍTULO
+========================================================= */
+
+.modalCardRelatorio h3 {
+  margin: 0 0 20px !important;
+
+  text-align: center !important;
+
+  font-size: 23px !important;
+  font-weight: 700 !important;
+
+  color:
+    var(
+      --empresa-cor-primaria,
+      #ff8800
+    ) !important;
 }
 
-.secao-acoes-dia,
-.secao-horarios-dia {
-  background: rgba(15, 23, 42, 0.72);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 16px;
-  padding: 18px;
-  margin-bottom: 18px;
+
+/* =========================================================
+   SEÇÕES
+========================================================= */
+
+.modalCardRelatorio .secao-acoes-dia,
+.modalCardRelatorio .secao-horarios-dia {
+  width: 100% !important;
+
+  padding: 16px !important;
+
+  margin-bottom: 16px !important;
+
+  background:
+    rgba(15, 23, 42, 0.72) !important;
+
+  border:
+    1px solid
+    rgba(148, 163, 184, 0.20) !important;
+
+  border-radius: 14px !important;
+
+  box-sizing: border-box !important;
 }
 
-.secao-acoes-header {
-  margin-bottom: 14px;
+
+/* =========================================================
+   CABEÇALHO DAS SEÇÕES
+========================================================= */
+
+.modalCardRelatorio .secao-acoes-header {
+  margin-bottom: 15px !important;
+
+  text-align: center !important;
 }
 
-.secao-acoes-header h4 {
-  margin: 0 0 4px 0;
-  font-size: 18px;
-  color: #fff;
+.modalCardRelatorio .secao-acoes-header h4 {
+  margin: 0 0 5px !important;
+
+  color: #fff !important;
+
+  font-size: 19px !important;
+  font-weight: 700 !important;
 }
 
-.secao-acoes-header p {
-  margin: 0;
-  font-size: 13px;
-  color: #cbd5e1;
-  line-height: 1.4;
+.modalCardRelatorio .secao-acoes-header p {
+  margin: 0 !important;
+
+  color: #cbd5e1 !important;
+
+  font-size: 13px !important;
+
+  line-height: 1.4 !important;
 }
 
-.acoes-dia-grid {
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 12px;
+
+/* =========================================================
+   AÇÕES DO DIA
+   5 CARDS NA MESMA LINHA
+========================================================= */
+
+.modalCardRelatorio .acoes-dia-grid {
+  width: 100% !important;
+
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(5, minmax(0, 1fr)) !important;
+
+  gap: 8px !important;
+
+  box-sizing: border-box !important;
 }
 
-.acao-dia-card {
-  min-height: 112px;
-  padding: 14px 10px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  background: rgba(255, 255, 255, 0.04);
-  color: #e2e8f0;
-  cursor: pointer;
-  text-align: left;
-  transition: 0.2s ease;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
+
+/* =========================================================
+   CARD NORMAL
+========================================================= */
+
+.modalCardRelatorio .acao-dia-card {
+  width: 100% !important;
+
+  min-width: 0 !important;
+  min-height: 125px !important;
+
+  padding: 11px 9px !important;
+
+  background:
+    rgba(255, 255, 255, 0.04) !important;
+
+  border:
+    1px solid
+    rgba(148, 163, 184, 0.28) !important;
+
+  border-radius: 12px !important;
+
+  color: #e2e8f0 !important;
+
+  display: flex !important;
+
+  flex-direction: column !important;
+
+  justify-content:
+    space-between !important;
+
+  text-align: left !important;
+
+  box-sizing: border-box !important;
+
+  cursor: pointer !important;
 }
 
-.acao-dia-card:hover {
-  transform: translateY(-2px);
-  background: rgba(255, 255, 255, 0.08);
-}
 
+/* =========================================================
+   TEXTO DOS CARDS
+========================================================= */
+
+.modalCardRelatorio
 .acao-dia-card strong {
-  font-size: 15px;
-  color: #fff;
-  line-height: 1.2;
+  display: block !important;
+
+  color: #fff !important;
+
+  font-size: 13px !important;
+  font-weight: 700 !important;
+
+  line-height: 1.2 !important;
 }
 
+
+.modalCardRelatorio
 .acao-dia-card small {
-  font-size: 12px;
-  color: #cbd5e1;
-  line-height: 1.3;
+  display: block !important;
+
+  margin-top: 6px !important;
+
+  color: #cbd5e1 !important;
+
+  font-size: 11px !important;
+
+  line-height: 1.25 !important;
 }
 
+
+/* =========================================================
+   BOTÃO MARCAR
+========================================================= */
+
+.modalCardRelatorio
 .acao-dia-card span {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  margin-top: 10px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.15);
-  color: #cbd5e1;
-  font-size: 12px;
-  font-weight: 700;
+  width: fit-content !important;
+
+  display: inline-flex !important;
+
+  align-items: center !important;
+
+  justify-content: center !important;
+
+  margin-top: 8px !important;
+
+  padding: 5px 8px !important;
+
+  background:
+    rgba(148, 163, 184, 0.16) !important;
+
+  color: #cbd5e1 !important;
+
+  border-radius: 999px !important;
+
+  font-size: 11px !important;
+
+  font-weight: 700 !important;
 }
 
+
+/* =========================================================
+   FALTA ATIVA
+========================================================= */
+
+.modalCardRelatorio
 .falta-card.ativo {
-  border-color: rgba(231, 76, 60, 0.65);
-  background: rgba(231, 76, 60, 0.16);
+  background:
+    rgba(231, 76, 60, 0.16) !important;
+
+  border-color:
+    rgba(231, 76, 60, 0.65) !important;
 }
 
-.folga-card.ativo {
-  border-color: rgba(59, 130, 246, 0.65);
-  background: rgba(59, 130, 246, 0.16);
-}
-
-.ferias-card.ativo {
-  border-color: rgba(139, 92, 246, 0.65);
-  background: rgba(139, 92, 246, 0.18);
-}
-
-.falta-justificada-card.ativo {
-  border-color: rgba(239, 68, 68, 0.65);
-  background: rgba(239, 68, 68, 0.16);
-}
-
-.feriado-card.ativo {
-  border-color: rgba(14, 165, 233, 0.65);
-  background: rgba(14, 165, 233, 0.16);
-}
-
+.modalCardRelatorio
 .falta-card.ativo span {
-  background: rgba(231, 76, 60, 0.25);
-  color: #ffb4b4;
+  background:
+    rgba(231, 76, 60, 0.25) !important;
+
+  color: #ffb4b4 !important;
 }
 
+
+/* =========================================================
+   FOLGA ATIVA
+========================================================= */
+
+.modalCardRelatorio
+.folga-card.ativo {
+  background:
+    rgba(59, 130, 246, 0.16) !important;
+
+  border-color:
+    rgba(59, 130, 246, 0.65) !important;
+}
+
+.modalCardRelatorio
 .folga-card.ativo span {
-  background: rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
+  background:
+    rgba(59, 130, 246, 0.25) !important;
+
+  color: #93c5fd !important;
 }
 
+
+/* =========================================================
+   FÉRIAS ATIVA
+========================================================= */
+
+.modalCardRelatorio
+.ferias-card.ativo {
+  background:
+    rgba(139, 92, 246, 0.18) !important;
+
+  border-color:
+    rgba(139, 92, 246, 0.65) !important;
+}
+
+.modalCardRelatorio
 .ferias-card.ativo span {
-  background: rgba(139, 92, 246, 0.28);
-  color: #d8b4fe;
+  background:
+    rgba(139, 92, 246, 0.28) !important;
+
+  color: #d8b4fe !important;
 }
 
+
+/* =========================================================
+   FALTA JUSTIFICADA ATIVA
+========================================================= */
+
+.modalCardRelatorio
+.falta-justificada-card.ativo {
+  background:
+    rgba(239, 68, 68, 0.16) !important;
+
+  border-color:
+    rgba(239, 68, 68, 0.65) !important;
+}
+
+.modalCardRelatorio
 .falta-justificada-card.ativo span {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+  background:
+    rgba(239, 68, 68, 0.25) !important;
+
+  color: #fca5a5 !important;
 }
 
+
+/* =========================================================
+   FERIADO ATIVO
+========================================================= */
+
+.modalCardRelatorio
+.feriado-card.ativo {
+  background:
+    rgba(14, 165, 233, 0.16) !important;
+
+  border-color:
+    rgba(14, 165, 233, 0.65) !important;
+}
+
+.modalCardRelatorio
 .feriado-card.ativo span {
-  background: rgba(14, 165, 233, 0.25);
-  color: #7dd3fc;
+  background:
+    rgba(14, 165, 233, 0.25) !important;
+
+  color: #7dd3fc !important;
 }
 
-.justificativa-label {
-  display: block;
-  margin-top: 16px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #e2e8f0;
+
+/* =========================================================
+   HORÁRIOS
+========================================================= */
+
+.modalCardRelatorio
+.secao-horarios-dia {
+  padding: 16px 20px 18px !important;
 }
 
-.justificativa-textarea {
-  width: 100%;
-  min-height: 86px;
-  resize: vertical;
-  margin-top: 8px;
-  padding: 12px;
-  background: #262626;
-  border: 2px solid #333;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 15px;
-  outline: none;
-  box-sizing: border-box;
+
+/* =========================================================
+   HORÁRIOS - 2 POR LINHA
+========================================================= */
+
+.modalCardRelatorio .modalGrid {
+  width: 100% !important;
+
+  display: grid !important;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    minmax(0, 1fr) !important;
+
+  column-gap: 16px !important;
+
+  row-gap: 14px !important;
+
+  box-sizing: border-box !important;
 }
 
-.justificativa-textarea:focus {
-  border-color: #ef4444;
-  box-shadow: 0 0 6px rgba(239, 68, 68, 0.35);
+
+.modalCardRelatorio
+.modalGrid > div {
+  width: 100% !important;
+
+  min-width: 0 !important;
+
+  box-sizing: border-box !important;
 }
 
-.modalGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px 14px;
+
+/* =========================================================
+   LABEL DOS HORÁRIOS
+========================================================= */
+
+.modalCardRelatorio
+.modalGrid label {
+  display: block !important;
+
+  margin: 0 0 5px !important;
+
+  color: #cbd5e1 !important;
+
+  font-size: 13px !important;
+
+  font-weight: 600 !important;
 }
 
-.modalCard label {
-  display: block;
-  margin-bottom: 4px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #ccc;
+
+/* =========================================================
+   INPUT DOS HORÁRIOS
+========================================================= */
+
+.modalCardRelatorio
+input[type="time"] {
+  display: block !important;
+
+  width: 100% !important;
+
+  min-width: 0 !important;
+
+  height: 42px !important;
+
+  margin: 0 !important;
+
+  padding: 8px 11px !important;
+
+  background: #262626 !important;
+
+  color: #fff !important;
+
+  border:
+    2px solid #333 !important;
+
+  border-radius: 8px !important;
+
+  font-size: 14px !important;
+
+  box-sizing: border-box !important;
 }
 
-.modalCard input[type="time"] {
-  width: 96%;
-  padding: 10px 12px;
-  background: #262626;
-  border: 2px solid #333;
-  border-radius: 8px;
-  color: #fff;
-  font-size: 15px;
-  margin-bottom: 6px;
+
+.modalCardRelatorio
+input[type="time"]:focus {
+  background: #303030 !important;
+
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    ) !important;
+
+  outline: none !important;
 }
 
-.modalCard input[type="time"]:focus {
-  border-color: #0d6efd;
-  background: #303030;
-  box-shadow: 0 0 6px rgba(13, 110, 253, 0.45);
+
+.modalCardRelatorio
+input[type="time"]:disabled {
+  background: #262626 !important;
+
+  color: #cbd5e1 !important;
+
+  opacity: 0.55 !important;
+
+  cursor: not-allowed !important;
 }
 
-.modalCard input[type="time"]:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
 
-.campos-desabilitados {
-  opacity: 0.85;
-}
+/* =========================================================
+   BOTÕES INFERIORES
+========================================================= */
 
+.modalCardRelatorio
 .modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  margin-top: 20px;
-  flex-wrap: wrap;
+  width: 100% !important;
+
+  display: grid !important;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr)) !important;
+
+  gap: 10px !important;
+
+  margin-top: 16px !important;
 }
 
+
+.modalCardRelatorio
 .modalActions button {
-  padding: 9px 16px;
-  font-size: 14px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
+  width: 100% !important;
+
+  min-height: 42px !important;
+
+  padding: 8px 12px !important;
+
+  border: none !important;
+
+  border-radius: 8px !important;
+
+  font-size: 13px !important;
+
+  font-weight: 700 !important;
+
+  cursor: pointer !important;
 }
 
-.modalActions button:first-child {
+
+/* LIMPAR */
+
+.modalCardRelatorio
+.btn-limpar-batidas {
+  background: #dc2626 !important;
+
+  color: #fff !important;
+}
+
+
+/* CANCELAR */
+
+.modalCardRelatorio
+.btn-cancel {
+  background: #3a3a3a !important;
+
+  color: #fff !important;
+}
+
+
+/* SALVAR */
+
+.modalCardRelatorio
+.btn-save {
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    ) !important;
+
+  color: #fff !important;
+}
+
+
+/* =========================================================
+   RESPONSIVO
+========================================================= */
+
+@media (max-width: 760px) {
+  .modalCardRelatorio {
+    width: 95vw !important;
+
+    padding: 16px !important;
+  }
+
+  .modalCardRelatorio
+  .acoes-dia-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+
+@media (max-width: 520px) {
+  .modalCardRelatorio
+  .acoes-dia-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /*
+    SOMENTE NO CELULAR PEQUENO
+    horários ficam 1 por linha.
+  */
+
+  .modalCardRelatorio
+  .modalGrid {
+    grid-template-columns:
+      1fr !important;
+  }
+
+  .modalCardRelatorio
+  .modalActions {
+    grid-template-columns:
+      1fr !important;
+  }
+}
+
+/* =========================================================
+   LIMPAR BATIDAS
+========================================================= */
+
+.modalActions .btn-limpar-batidas {
   background: #dc2626;
+
   color: #fff;
 }
 
-.modalActions button:first-child:hover {
+.modalActions .btn-limpar-batidas:hover {
   background: #b91c1c;
 }
 
-.modalActions button:nth-child(2) {
+
+/* =========================================================
+   CANCELAR
+========================================================= */
+
+.modalActions .btn-cancel {
   background: #3a3a3a;
+
   color: #eee;
 }
 
-.modalActions button:last-child {
-  background: #0d6efd;
+.modalActions .btn-cancel:hover {
+  background: #4b4b4b;
+}
+
+
+/* =========================================================
+   SALVAR
+========================================================= */
+
+.modalActions .btn-save {
+  background: var(--empresa-cor-primaria, #0d6efd);
+
   color: white;
+
   font-weight: 600;
 }
 
-.modalActions button:last-child:hover {
-  background: #0b57d1;
+.modalActions .btn-save:hover {
+  background: var(--empresa-cor-secundaria, #084298);
 }
 
 .modalActions button:disabled {
   opacity: 0.6;
+
   cursor: not-allowed;
 }
 
+
+/* =========================================================
+   MODAL PDF
+========================================================= */
+
 .modalPdf {
   width: 90vw;
+
   height: 90vh;
+
   background: #111;
+
   border-radius: 12px;
+
   position: relative;
+
   overflow: hidden;
 }
 
 .pdfViewer {
   width: 100%;
+
   height: 100%;
+
   border: none;
 }
 
 .btnFecharPdf {
   position: absolute;
+
   top: 12px;
+
   right: 12px;
+
   background: #ef4444;
+
   border: none;
+
   color: white;
+
   width: 36px;
+
   height: 36px;
+
   border-radius: 50%;
+
   font-size: 18px;
+
   cursor: pointer;
+
   z-index: 2;
 }
 
+
+/* =========================================================
+   MODAL SUCESSO / ERRO
+========================================================= */
+
 .modal-ponto {
   position: fixed;
+
   inset: 0;
+
   background: rgba(0, 0, 0, 0.55);
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
   z-index: 99999;
+
   animation: fadeIn 0.3s ease;
 }
 
 .modal-box {
   background: #ffffffdd;
+
   padding: 30px 45px;
+
   border-radius: 18px;
+
   text-align: center;
+
   color: #000;
+
   animation: scaleIn 0.25s ease;
+
   min-width: 320px;
+
   max-width: 90vw;
 }
 
@@ -649,54 +1258,90 @@
 
 .modal-icon {
   font-size: 60px;
+
   color: #2ecc71;
+
   margin-bottom: 10px;
 }
 
 .modal-icon-erro {
   font-size: 60px;
+
   color: #e74c3c;
+
   margin-bottom: 10px;
 }
 
 .modal-box h3 {
   font-size: 28px;
+
   font-weight: bold;
+
   margin-bottom: 8px;
 }
 
 .modal-box p {
   font-size: 18px;
+
   font-weight: 600;
 }
 
+
+/* =========================================================
+   RESUMO TOTAL
+========================================================= */
+
 .resumo-total {
   margin-bottom: 18px;
+
   background: #0f172a;
+
   border-radius: 12px;
+
   padding: 14px 18px;
 }
 
 .resumo-total span {
   margin-right: 10px;
+
   font-weight: 600;
 }
+
+
+/* =========================================================
+   CÉLULA DE AÇÕES
+========================================================= */
 
 .acoes-cell {
   display: flex;
+
   align-items: center;
+
   gap: 8px;
 }
 
+
+/* =========================================================
+   REMOVER ATESTADO
+========================================================= */
+
 .btn-remover-atestado {
   background: #dc2626;
+
   color: white;
+
   border: none;
+
   padding: 6px 10px;
+
   border-radius: 6px;
+
   font-size: 13px;
+
   font-weight: 600;
+
   cursor: pointer;
+
   transition: 0.2s;
 }
 
@@ -704,103 +1349,136 @@
   background: #b91c1c;
 }
 
-.btn-padrao {
-  background: #7c3aed;
-  color: #fff;
-}
 
-.btn-padrao:hover {
-  background: #6d28d9;
-}
+/* =========================================================
+   BOTÃO LIMPAR
+========================================================= */
 
-.btn-excel {
-  background: #1d6f42;
-  color: #fff;
-}
-
-.btn-excel:hover {
-  background: #165c36;
-}
-
-.btn-limpar {
+.btn-limpar,
+.btn-limpar-batidas {
   background: #dc2626;
+
   color: white;
+
   border: none;
+
   padding: 6px 10px;
+
   border-radius: 6px;
+
   font-size: 13px;
+
   font-weight: 600;
+
   cursor: pointer;
+
   transition: 0.2s;
 }
 
-.btn-limpar:hover {
+.btn-limpar:hover,
+.btn-limpar-batidas:hover {
   background: #b91c1c;
 }
 
 
-/* =========================================
+/* =========================================================
    SELECT PESQUISÁVEL DE FUNCIONÁRIOS
-========================================= */
+========================================================= */
 
 .relatorio-select-funcionario {
   flex: 1 1 300px;
+
   min-width: 280px;
+
   max-width: 380px;
+
   height: 56px;
 }
 
-/* Caixa principal do react-select */
+
+/* =========================================================
+   REACT SELECT - CONTROL
+========================================================= */
+
 .funcionario-select__control {
   width: 100% !important;
+
   min-height: 56px !important;
+
   height: 56px !important;
+
   padding: 0 6px !important;
+
   background: rgba(255, 255, 255, 0.08) !important;
+
   border: 2px solid rgba(255, 255, 255, 0.15) !important;
+
   border-radius: 10px !important;
+
   box-shadow: none !important;
+
   cursor: pointer !important;
 }
 
 .funcionario-select__control:hover {
-  border-color: rgba(13, 110, 253, 0.75) !important;
+  border-color: var(--empresa-cor-primaria, #0d6efd) !important;
 }
 
 .funcionario-select__control--is-focused {
-  border-color: #0d6efd !important;
+  border-color: var(--empresa-cor-primaria, #0d6efd) !important;
+
   background: rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 0 6px rgba(13, 110, 253, 0.55) !important;
+
+  box-shadow: none !important;
 }
+
+
+/* =========================================================
+   REACT SELECT - VALORES
+========================================================= */
 
 .funcionario-select__value-container {
   height: 52px !important;
+
   padding: 0 8px !important;
+
   display: flex !important;
+
   align-items: center !important;
 }
 
 .funcionario-select__single-value {
   color: #ffffff !important;
+
   font-size: 16px !important;
+
   font-weight: 600 !important;
+
   max-width: calc(100% - 8px) !important;
 }
 
 .funcionario-select__placeholder {
   color: rgba(255, 255, 255, 0.72) !important;
+
   font-size: 15px !important;
 }
 
 .funcionario-select__input-container {
   color: #ffffff !important;
+
   margin: 0 !important;
+
   padding: 0 !important;
 }
 
 .funcionario-select__input {
   color: #ffffff !important;
 }
+
+
+/* =========================================================
+   REACT SELECT - INDICADORES
+========================================================= */
 
 .funcionario-select__indicators {
   height: 52px !important;
@@ -812,46 +1490,66 @@
 
 .funcionario-select__dropdown-indicator,
 .funcionario-select__clear-indicator {
-  color: #0d6efd !important;
+  color: var(--empresa-cor-primaria, #0d6efd) !important;
+
   padding: 7px !important;
 }
 
 .funcionario-select__dropdown-indicator:hover,
 .funcionario-select__clear-indicator:hover {
-  color: #60a5fa !important;
+  color: var(--empresa-cor-secundaria, #084298) !important;
 }
+
+
+/* =========================================================
+   REACT SELECT - MENU
+========================================================= */
 
 .funcionario-select__menu {
   margin-top: 6px !important;
+
   background: #0f172a !important;
+
   border: 1px solid rgba(255, 255, 255, 0.16) !important;
+
   border-radius: 10px !important;
+
   overflow: hidden !important;
+
   z-index: 99999 !important;
+
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45) !important;
 }
 
 .funcionario-select__menu-list {
   padding: 5px !important;
+
   max-height: 260px !important;
 }
 
 .funcionario-select__option {
   padding: 11px 13px !important;
+
   border-radius: 7px !important;
+
   color: #e2e8f0 !important;
+
   background: transparent !important;
+
   cursor: pointer !important;
+
   font-size: 15px !important;
 }
 
 .funcionario-select__option--is-focused {
-  background: rgba(13, 110, 253, 0.2) !important;
+  background: var(--empresa-cor-secundaria, #084298) !important;
+
   color: #ffffff !important;
 }
 
 .funcionario-select__option--is-selected {
-  background: #0d6efd !important;
+  background: var(--empresa-cor-primaria, #0d6efd) !important;
+
   color: #ffffff !important;
 }
 
@@ -859,6 +1557,10 @@
   color: #cbd5e1 !important;
 }
 
+
+/* =========================================================
+   RESPONSIVO - TABLET
+========================================================= */
 
 @media (max-width: 900px) {
   .acoes-dia-grid {
@@ -870,7 +1572,16 @@
   }
 }
 
+
+/* =========================================================
+   RESPONSIVO - CELULAR
+========================================================= */
+
 @media (max-width: 768px) {
+  .relatorio-container {
+    padding: 15px;
+  }
+
   .relatorio-filtros {
     flex-direction: column;
   }
@@ -879,8 +1590,11 @@
   .relatorio-select,
   .relatorio-btn {
     width: 100%;
+
     min-width: 100%;
+
     max-width: 100%;
+
     flex: none;
   }
 
@@ -900,6 +1614,11 @@
     width: 100%;
   }
 }
+
+
+/* =========================================================
+   ANIMAÇÕES
+========================================================= */
 
 @keyframes fadeIn {
   from {

@@ -1,268 +1,1097 @@
+/* ==========================================================
+   RECONHECIMENTO FACIAL
+   IDENTIDADE VISUAL DINÂMICA POR EMPRESA
+========================================================== */
+
+
+/* ==========================================================
+   TELA INTEIRA
+========================================================== */
+
 .recScreen {
+  width: 100%;
   min-height: 100dvh;
+
+  position: relative;
+
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #0b0f19;
+
   padding: 16px;
+
+  box-sizing: border-box;
+
+  background-color:
+    var(
+      --cor-secundaria,
+      #0b0f19
+    );
+
+  background-position: center center;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+
+  isolation: isolate;
+
+  overflow-x: hidden;
+}
+
+
+/* ==========================================================
+   CAMADA SOBRE O FUNDO
+========================================================== */
+
+.recScreen::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 0;
+
+  background:
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.12) 45%,
+      rgba(0, 0, 0, 0.22) 100%
+    );
+
+  pointer-events: none;
+}
+
+
+/* ==========================================================
+   CARD PRINCIPAL
+========================================================== */
+
+.recCard {
+  position: relative;
+
+  z-index: 2;
+
+  width:
+    min(
+      760px,
+      100%
+    );
+
+  padding: 20px;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.7
+    );
+
+  border-radius: 18px;
+
+  background:
+    rgba(
+      255,
+      255,
+      255,
+      0.94
+    );
+
+  color: #111111;
+
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+
+  box-shadow:
+    0 12px 30px
+    rgba(
+      0,
+      0,
+      0,
+      0.35
+    );
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
   box-sizing: border-box;
 }
 
-.recCard {
-  width: min(760px, 100%);
-  padding: 20px;
-  border-radius: 18px;
-  background: #fff;
-  color: #111;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
+
+/* ==========================================================
+   TÍTULO
+========================================================== */
 
 .recTitle {
   width: 100%;
+
   text-align: center;
+
   margin: 0 0 16px 0;
+
   font-size: 32px;
+
   font-weight: 800;
-  color: #1a1a1a;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 }
+
+
+/* ==========================================================
+   ÁREA DA CÂMERA
+========================================================== */
 
 .videoWrap {
   position: relative !important;
+
   width: 100% !important;
   height: 520px !important;
-  background: #000 !important;
+
+  background: #000000 !important;
+
   border-radius: 16px !important;
+
   overflow: hidden !important;
+
   padding: 0 !important;
   margin: 0 !important;
+
   display: block !important;
+
+  border:
+    3px solid
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 75%,
+      transparent
+    );
+
+  box-sizing: border-box;
+
+  box-shadow:
+    0 8px 24px
+    rgba(
+      0,
+      0,
+      0,
+      0.28
+    );
 }
+
+
+/* ==========================================================
+   VÍDEO
+========================================================== */
 
 .video {
   position: absolute !important;
+
   inset: 0 !important;
+
   top: 0 !important;
   left: 0 !important;
+
   width: 100% !important;
   height: 100% !important;
+
   min-width: 100% !important;
   min-height: 100% !important;
+
   max-width: none !important;
   max-height: none !important;
+
   display: block !important;
+
   object-fit: cover !important;
   object-position: center center !important;
-  background: #000 !important;
+
+  background: #000000 !important;
+
   border: none !important;
+
   margin: 0 !important;
   padding: 0 !important;
 }
 
+
+/* ==========================================================
+   GUIA PARA CENTRALIZAR O ROSTO
+========================================================== */
+
+.faceGuide {
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  display: flex;
+  flex-direction: column;
+
+  align-items: center;
+  justify-content: center;
+
+  pointer-events: none;
+
+  box-sizing: border-box;
+}
+
+
+/* ==========================================================
+   OVAL DO ROSTO
+
+   O CENTRO CONTINUA CLARO.
+
+   O BOX-SHADOW GIGANTE ESCURECE TODA A ÁREA
+   FORA DO OVAL.
+========================================================== */
+
+.faceGuideOval {
+  position: relative;
+
+  width: 245px;
+  height: 330px;
+
+  flex-shrink: 0;
+
+  border-radius:
+    48% 48% 46% 46% /
+    42% 42% 55% 55%;
+
+  border:
+    3px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.95
+    );
+
+  background: transparent;
+
+  box-sizing: border-box;
+
+  /*
+     O PRIMEIRO SHADOW ESCURECE TUDO FORA DO OVAL.
+
+     Quanto maior o último número,
+     mais longe ele cobre.
+  */
+
+  box-shadow:
+    0 0 0 9999px
+    rgba(
+      0,
+      0,
+      0,
+      0.48
+    ),
+    0 0 22px
+    rgba(
+      255,
+      255,
+      255,
+      0.25
+    ),
+    inset 0 0 12px
+    rgba(
+      255,
+      255,
+      255,
+      0.10
+    );
+
+  transition:
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+
+/* ==========================================================
+   IMPORTANTE
+
+   REMOVE AS DUAS BOLINHAS QUE EXISTIAM
+   NO CENTRO DO ROSTO.
+========================================================== */
+
+.faceGuideOval::before,
+.faceGuideOval::after {
+  display: none !important;
+
+  content: none !important;
+}
+
+
+/* ==========================================================
+   MARCA SUPERIOR
+
+   Mantemos apenas uma pequena referência
+   na BORDA do oval.
+========================================================== */
+
+.faceGuideTop {
+  position: absolute;
+
+  top: -4px;
+  left: 50%;
+
+  width: 42px;
+  height: 6px;
+
+  border-radius: 999px;
+
+  background:
+    var(
+      --cor-primaria,
+      #ff8c00
+    );
+
+  transform:
+    translateX(-50%);
+
+  box-shadow:
+    0 0 8px
+    rgba(
+      255,
+      255,
+      255,
+      0.35
+    );
+}
+
+
+/* ==========================================================
+   MARCA INFERIOR
+========================================================== */
+
+.faceGuideBottom {
+  position: absolute;
+
+  bottom: -4px;
+  left: 50%;
+
+  width: 42px;
+  height: 6px;
+
+  border-radius: 999px;
+
+  background:
+    var(
+      --cor-primaria,
+      #ff8c00
+    );
+
+  transform:
+    translateX(-50%);
+
+  box-shadow:
+    0 0 8px
+    rgba(
+      255,
+      255,
+      255,
+      0.35
+    );
+}
+
+
+/* ==========================================================
+   TEXTO DO GUIA
+
+   Fica acima do efeito fosco.
+========================================================== */
+
+.faceGuideText {
+  position: relative;
+
+  z-index: 3;
+
+  margin-top: 17px;
+
+  padding: 8px 16px;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.28
+    );
+
+  border-radius: 999px;
+
+  background:
+    rgba(
+      0,
+      0,
+      0,
+      0.72
+    );
+
+  color: #ffffff;
+
+  font-size: 15px;
+
+  font-weight: 700;
+
+  text-align: center;
+
+  letter-spacing: 0.2px;
+
+  box-shadow:
+    0 4px 12px
+    rgba(
+      0,
+      0,
+      0,
+      0.25
+    );
+
+  -webkit-backdrop-filter:
+    blur(4px);
+
+  backdrop-filter:
+    blur(4px);
+}
+
+
+/* ==========================================================
+   INDICADOR "LENDO..."
+========================================================== */
+
 .count {
   position: absolute;
+
   top: 12px;
   right: 12px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
+
+  z-index: 5;
+
   padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 700;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.25
+    );
+
   border-radius: 999px;
-  z-index: 3;
+
+  background:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  box-shadow:
+    0 4px 12px
+    rgba(
+      0,
+      0,
+      0,
+      0.28
+    );
 }
+
+
+/* ==========================================================
+   MENSAGEM DO RECONHECIMENTO
+========================================================== */
 
 .recMsg {
   width: 100%;
+
   text-align: center;
+
   margin-top: 16px;
+
   font-size: 18px;
+
   font-weight: 600;
+
   color: #4b5563;
+
+  min-height: 25px;
 }
+
+
+/* ==========================================================
+   BOTÃO CANCELAR
+========================================================== */
 
 .recCancel {
   margin-top: 16px;
+
   padding: 12px 22px;
+
   border-radius: 10px;
+
   border: none;
+
   background: #d9534f;
-  color: #fff;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
   font-weight: 700;
+
   font-size: 15px;
+
   cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
 
 .recCancel:hover {
   background: #c9302c;
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 6px 15px
+    rgba(
+      0,
+      0,
+      0,
+      0.22
+    );
 }
+
+
+.recCancel:active {
+  transform:
+    scale(0.98);
+}
+
+
+/* ==========================================================
+   MODAL DE CONFIRMAÇÃO
+========================================================== */
 
 .modalOverlay {
   position: fixed;
+
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
+
+  z-index: 99999;
+
   display: flex;
-  justify-content: center;
+
   align-items: center;
-  z-index: 100;
-  padding: 16px;
+  justify-content: center;
+
+  padding: 20px;
+
+  box-sizing: border-box;
+
+  background:
+    rgba(
+      0,
+      0,
+      0,
+      0.65
+    );
+
+  -webkit-backdrop-filter:
+    blur(5px);
+
+  backdrop-filter:
+    blur(5px);
 }
+
+
+/* ==========================================================
+   CARD DO MODAL
+========================================================== */
 
 .modalCard {
-  width: min(650px, 94vw);
-  background: #111827;
-  padding: 42px 34px;
-  border-radius: 24px;
-  box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
+  width: 100%;
+
+  max-width: 500px;
+
+  padding: 32px;
+
+  box-sizing: border-box;
+
+  background:
+    rgba(
+      20,
+      20,
+      20,
+      0.97
+    );
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #ff8c00
+      ) 55%,
+      transparent
+    );
+
+  border-radius: 18px;
+
   text-align: center;
+
+  box-shadow:
+    0 20px 50px
+    rgba(
+      0,
+      0,
+      0,
+      0.5
+    );
 }
+
+
+/* ==========================================================
+   TÍTULO DO MODAL
+========================================================== */
 
 .modalCard h3 {
-  margin: 0 0 24px 0;
-  font-size: 42px;
+  margin: 0 0 22px;
+
+  color:
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+
+  font-size: 28px;
+
   font-weight: 800;
-  color: #0d6efd;
 }
 
-.confirmNome {
-  margin: 12px 0 0;
-  font-size: 54px;
-  font-weight: 900;
-  color: #ffffff;
-  line-height: 1.2;
-  word-break: break-word;
+
+/* ==========================================================
+   NOME
+========================================================== */
+
+.modalCard .confirmNome {
+  margin: 0;
+
+  padding: 0;
+
+  color: #ffffff !important;
+
+  font-size: 20px;
+
+  font-weight: 700;
+
+  line-height: 1.4;
 }
 
-.modalActions {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 16px;
-  margin-top: 34px;
+
+/* ==========================================================
+   LINHA
+========================================================== */
+
+.modalCard .confirmNome::after {
+  content: "";
+
+  display: block;
+
+  width: 68px;
+  height: 4px;
+
+  margin: 25px auto 28px;
+
+  border-radius: 999px;
+
+  background:
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+}
+
+
+/* ==========================================================
+   BOTÕES DO MODAL
+========================================================== */
+
+.modalCard .modalActions {
   width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      1fr
+    );
+
+  gap: 12px;
+
+  margin: 0;
 }
 
-.modalActions button {
+
+.modalCard .modalActions button {
   width: 100%;
-  padding: 22px 28px;
-  border: none;
-  border-radius: 16px;
+
+  min-height: 50px;
+
+  padding: 12px 16px;
+
+  border-radius: 10px;
+
+  font-family: inherit;
+
+  font-size: 15px;
+
   font-weight: 800;
-  font-size: 30px;
+
   cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.modalActions button:first-child {
-  background: #3f3f46;
-  color: #fff;
+
+/* ==========================================================
+   NÃO SOU EU
+========================================================== */
+
+.modalCard .modalActions .confirmNao {
+  background:
+    transparent !important;
+
+  color:
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+
+  border:
+    2px solid
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+
+  box-shadow:
+    none !important;
 }
 
-.modalActions button:last-child {
-  background: #0d6efd;
-  color: #fff;
+
+.modalCard .modalActions .confirmNao:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #ff8c00
+      ) 12%,
+      transparent
+    ) !important;
+
+  filter:
+    brightness(
+      1.08
+    );
+
+  transform:
+    translateY(-2px);
 }
 
-@media (min-width: 600px) and (max-width: 1024px) {
-  .recCard {
-    width: min(860px, 94vw);
-    padding: 20px;
-  }
+
+/* ==========================================================
+   SOU EU
+========================================================== */
+
+.modalCard .modalActions .confirmSim {
+  background:
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+
+  color: #ffffff !important;
+
+  border:
+    2px solid
+    var(
+      --cor-primaria,
+      #ff8c00
+    ) !important;
+
+  box-shadow:
+    0 6px 16px
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #ff8c00
+      ) 30%,
+      transparent
+    ) !important;
+}
+
+
+.modalCard .modalActions .confirmSim:hover {
+  background:
+    var(
+      --cor-secundaria,
+      #d97706
+    ) !important;
+
+  border-color:
+    var(
+      --cor-secundaria,
+      #d97706
+    ) !important;
+
+  filter:
+    brightness(
+      1.08
+    );
+
+  transform:
+    translateY(-2px);
+}
+
+
+.modalCard .modalActions button:active {
+  transform:
+    scale(0.97);
+}
+
+
+/* ==========================================================
+   TABLET EM PÉ
+========================================================== */
+
+@media (
+  min-width: 600px
+)
+and (
+  max-width: 1024px
+)
+and (
+  orientation: portrait
+) {
 
   .videoWrap {
-    height: 560px !important;
+    height:
+      620px !important;
   }
 
-  .recTitle {
-    font-size: 34px;
-  }
 
-  .recMsg {
-    font-size: 20px;
-  }
+  .faceGuideOval {
+    width: 270px;
 
-  .recCancel {
-    font-size: 17px;
-    padding: 13px 24px;
-  }
-
-  .modalCard {
-    width: min(760px, 94vw);
-    padding: 50px 40px;
-  }
-
-  .modalCard h3 {
-    font-size: 48px;
-  }
-
-  .confirmNome {
-    font-size: 64px;
-  }
-
-  .modalActions {
-    width: 100%;
-    gap: 18px;
-  }
-
-  .modalActions button {
-    width: 100%;
-    padding: 24px 30px;
-    font-size: 34px;
+    height: 365px;
   }
 }
 
-@media (min-width: 600px) and (max-width: 1024px) and (orientation: portrait) {
-  .videoWrap {
-    height: 620px !important;
-  }
-}
 
-@media (max-width: 599px) {
+/* ==========================================================
+   CELULAR
+========================================================== */
+
+@media (
+  max-width: 599px
+) {
+
+  .recScreen {
+    padding: 10px;
+
+    background-position:
+      center center;
+
+    background-attachment:
+      scroll;
+  }
+
+
   .recCard {
     width: 100%;
+
     padding: 14px;
+
+    border-radius: 16px;
   }
 
+
   .videoWrap {
-    height: 340px !important;
+    height:
+      340px !important;
+
+    border-radius:
+      13px !important;
   }
+
 
   .recTitle {
     font-size: 24px;
   }
 
+
+  /* ========================================================
+     GUIA DO ROSTO
+  ======================================================== */
+
+  .faceGuideOval {
+    width: 175px;
+
+    height: 235px;
+
+    border-width: 3px;
+  }
+
+
+  .faceGuideText {
+    margin-top: 12px;
+
+    padding: 7px 13px;
+
+    font-size: 13px;
+  }
+
+
+  .faceGuideTop,
+  .faceGuideBottom {
+    width: 30px;
+  }
+
+
   .recMsg {
     font-size: 15px;
   }
+
 
   .recCancel {
     width: 100%;
   }
 
-  .modalCard {
-    padding: 22px 18px;
-    width: 96%;
+
+  /* ========================================================
+     MODAL
+  ======================================================== */
+
+  .modalOverlay {
+    padding: 14px;
   }
+
+
+  .modalCard {
+    width: 96%;
+
+    max-width: 390px;
+
+    padding: 26px 20px;
+
+    border-radius: 16px;
+  }
+
 
   .modalCard h3 {
-    font-size: 28px;
-    color: #0d6efd;
+    font-size: 24px;
   }
 
-  .confirmNome {
-    font-size: 36px;
-    color: #fff;
+
+  .modalCard .confirmNome {
+    font-size: 18px;
   }
 
-  .modalActions {
-    width: 100%;
-    flex-direction: column;
+
+  .modalCard .modalActions {
+    grid-template-columns:
+      1fr;
+
+    gap: 10px;
   }
 
-  .modalActions button {
-    width: 100%;
+
+  .modalCard .modalActions button {
+    min-height: 48px;
+
+    font-size: 15px;
+  }
+}
+
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (
+  max-width: 380px
+) {
+
+  .videoWrap {
+    height:
+      300px !important;
+  }
+
+
+  .recTitle {
+    font-size: 21px;
+  }
+
+
+  .faceGuideOval {
+    width: 150px;
+
+    height: 200px;
+  }
+
+
+  .faceGuideText {
+    margin-top: 10px;
+
+    padding: 6px 11px;
+
+    font-size: 12px;
+  }
+
+
+  .modalCard h3 {
     font-size: 22px;
-    padding: 18px 16px;
+  }
+
+
+  .modalCard .confirmNome {
+    font-size: 17px;
+  }
+
+
+  .modalCard .modalActions button {
+    font-size: 14px;
+
+    padding: 14px;
   }
 }

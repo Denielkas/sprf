@@ -19,13 +19,11 @@ const ROLES = {
 ========================================================= */
 
 function auth(req, res, next) {
-  const header =
-    req.headers.authorization || "";
+  const header = req.headers.authorization || "";
 
-  const token =
-    header.startsWith("Bearer ")
-      ? header.slice(7)
-      : null;
+  const token = header.startsWith("Bearer ")
+    ? header.slice(7).trim()
+    : null;
 
   /* =======================================================
      TOKEN NÃO INFORMADO
@@ -42,13 +40,10 @@ function auth(req, res, next) {
   ======================================================= */
 
   if (!process.env.JWT_SECRET) {
-    console.error(
-      "JWT_SECRET não configurado."
-    );
+    console.error("JWT_SECRET não configurado.");
 
     return res.status(500).json({
-      error:
-        "Configuração de autenticação inválida.",
+      error: "Configuração de autenticação inválida.",
     });
   }
 
@@ -62,14 +57,16 @@ function auth(req, res, next) {
       process.env.JWT_SECRET
     );
 
+    console.log("========================================");
+    console.log("🔐 JWT DECODIFICADO:");
+    console.log(payload);
+    console.log("========================================");
+
     /* =====================================================
        VALIDAR PAYLOAD
     ===================================================== */
 
-    if (
-      !payload.sub ||
-      !payload.role
-    ) {
+    if (!payload.sub || !payload.role) {
       return res.status(401).json({
         error: "Token inválido.",
       });
@@ -85,26 +82,46 @@ function auth(req, res, next) {
       ROLES.PONTO_EMPRESA,
     ];
 
-    if (
-      !rolesPermitidas.includes(
-        payload.role
-      )
-    ) {
+    if (!rolesPermitidas.includes(payload.role)) {
       return res.status(403).json({
-        error:
-          "Tipo de usuário não autorizado.",
+        error: "Tipo de usuário não autorizado.",
       });
     }
 
     /* =====================================================
-       USUÁRIOS DE EMPRESA PRECISAM TER EMPRESA_ID
+       EMPRESA ID
+    ===================================================== */
+
+    let empresaId = null;
+
+    if (
+      payload.empresa_id !== undefined &&
+      payload.empresa_id !== null &&
+      payload.empresa_id !== ""
+    ) {
+      const convertido = Number(payload.empresa_id);
+
+      if (
+        Number.isInteger(convertido) &&
+        convertido > 0
+      ) {
+        empresaId = convertido;
+      }
+    }
+
+    /* =====================================================
+       RH E PONTO PRECISAM OBRIGATORIAMENTE DE EMPRESA
     ===================================================== */
 
     if (
-      payload.role !==
-        ROLES.SUPER_ADMIN &&
-      !payload.empresa_id
+      payload.role !== ROLES.SUPER_ADMIN &&
+      !empresaId
     ) {
+      console.error(
+        "❌ Usuário sem empresa_id:",
+        payload
+      );
+
       return res.status(403).json({
         error:
           "Usuário não vinculado a uma empresa.",
@@ -116,32 +133,34 @@ function auth(req, res, next) {
     ===================================================== */
 
     req.user = {
-      id:
-        payload.sub,
+      id: Number(payload.sub),
 
       username:
-        payload.username,
+        payload.username || null,
 
       role:
         payload.role,
 
       empresa_id:
-        payload.role ===
-        ROLES.SUPER_ADMIN
-          ? null
-          : payload.empresa_id,
+        empresaId,
     };
 
+    console.log("👤 REQ.USER:");
+    console.log(req.user);
+
     return next();
+
   } catch (err) {
+    console.error(
+      "❌ ERRO AO VALIDAR TOKEN:",
+      err.message
+    );
+
     /* =====================================================
        TOKEN EXPIRADO
     ===================================================== */
 
-    if (
-      err.name ===
-      "TokenExpiredError"
-    ) {
+    if (err.name === "TokenExpiredError") {
       return res.status(401).json({
         error:
           "Sessão expirada. Faça login novamente.",
@@ -161,30 +180,17 @@ function auth(req, res, next) {
 
 /* =========================================================
    SOMENTE SUPER ADMIN
-
-   Exemplo:
-
-   /empresas
-   /criar login RH
-   /criar login ponto
-   /configuração das empresas
 ========================================================= */
 
-function somenteSuperAdmin(
-  req,
-  res,
-  next
-) {
+function somenteSuperAdmin(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   if (
-    req.user.role !==
-    ROLES.SUPER_ADMIN
+    req.user.role !== ROLES.SUPER_ADMIN
   ) {
     return res.status(403).json({
       error:
@@ -197,32 +203,17 @@ function somenteSuperAdmin(
 
 /* =========================================================
    SOMENTE RH
-
-   Utilizar nas rotas administrativas da empresa:
-
-   - funcionários
-   - relatório
-   - atestado
-   - banco de horas
-   - ponto manual
-   - funções
 ========================================================= */
 
-function somenteRH(
-  req,
-  res,
-  next
-) {
+function somenteRH(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   if (
-    req.user.role !==
-    ROLES.RH_EMPRESA
+    req.user.role !== ROLES.RH_EMPRESA
   ) {
     return res.status(403).json({
       error:
@@ -242,25 +233,17 @@ function somenteRH(
 
 /* =========================================================
    SOMENTE PONTO
-
-   Para rotas exclusivas da tela operacional de ponto.
 ========================================================= */
 
-function somentePonto(
-  req,
-  res,
-  next
-) {
+function somentePonto(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   if (
-    req.user.role !==
-    ROLES.PONTO_EMPRESA
+    req.user.role !== ROLES.PONTO_EMPRESA
   ) {
     return res.status(403).json({
       error:
@@ -280,33 +263,18 @@ function somentePonto(
 
 /* =========================================================
    SUPER ADMIN OU RH
-
-   Existem situações em que queremos permitir:
-
-   SUPER ADMIN
-        OU
-   RH DA EMPRESA
-
-   mas nunca o login de ponto.
 ========================================================= */
 
-function superAdminOuRH(
-  req,
-  res,
-  next
-) {
+function superAdminOuRH(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   const permitido =
-    req.user.role ===
-      ROLES.SUPER_ADMIN ||
-    req.user.role ===
-      ROLES.RH_EMPRESA;
+    req.user.role === ROLES.SUPER_ADMIN ||
+    req.user.role === ROLES.RH_EMPRESA;
 
   if (!permitido) {
     return res.status(403).json({
@@ -320,31 +288,18 @@ function superAdminOuRH(
 
 /* =========================================================
    RH OU PONTO
-
-   Útil somente nas rotas que realmente precisam funcionar
-   tanto no painel RH quanto no terminal de ponto.
-
-   IMPORTANTE:
-   isso NÃO libera o Super Admin.
 ========================================================= */
 
-function rhOuPonto(
-  req,
-  res,
-  next
-) {
+function rhOuPonto(req, res, next) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   const permitido =
-    req.user.role ===
-      ROLES.RH_EMPRESA ||
-    req.user.role ===
-      ROLES.PONTO_EMPRESA;
+    req.user.role === ROLES.RH_EMPRESA ||
+    req.user.role === ROLES.PONTO_EMPRESA;
 
   if (!permitido) {
     return res.status(403).json({
@@ -365,11 +320,6 @@ function rhOuPonto(
 
 /* =========================================================
    QUALQUER USUÁRIO DE EMPRESA
-
-   Bloqueia Super Admin e permite:
-
-   RH
-   PONTO
 ========================================================= */
 
 function somenteUsuarioEmpresa(
@@ -379,14 +329,12 @@ function somenteUsuarioEmpresa(
 ) {
   if (!req.user) {
     return res.status(401).json({
-      error:
-        "Usuário não autenticado.",
+      error: "Usuário não autenticado.",
     });
   }
 
   if (
-    req.user.role ===
-    ROLES.SUPER_ADMIN
+    req.user.role === ROLES.SUPER_ADMIN
   ) {
     return res.status(403).json({
       error:
@@ -410,18 +358,11 @@ function somenteUsuarioEmpresa(
 
 module.exports = {
   auth,
-
   somenteSuperAdmin,
-
   somenteRH,
-
   somentePonto,
-
   superAdminOuRH,
-
   rhOuPonto,
-
   somenteUsuarioEmpresa,
-
   ROLES,
 };

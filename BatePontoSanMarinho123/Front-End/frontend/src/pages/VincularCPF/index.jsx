@@ -18,34 +18,32 @@ import "./vincularCPF.css";
    UTILITÁRIOS
 ========================================================= */
 
-const onlyDigits = (v = "") =>
-  String(v).replace(/\D+/g, "");
+const onlyDigits = (value = "") => {
+  return String(value).replace(/\D+/g, "");
+};
 
-const formatCPF = (v = "") => {
-  const s = onlyDigits(v).slice(0, 11);
+const formatCPF = (value = "") => {
+  const cpf = onlyDigits(value).slice(0, 11);
 
-  if (s.length <= 3) {
-    return s;
+  if (cpf.length <= 3) {
+    return cpf;
   }
 
-  if (s.length <= 6) {
-    return `${s.slice(0, 3)}.${s.slice(3, 6)}`;
+  if (cpf.length <= 6) {
+    return `${cpf.slice(0, 3)}.${cpf.slice(3, 6)}`;
   }
 
-  if (s.length <= 9) {
-    return `${s.slice(0, 3)}.${s.slice(
+  if (cpf.length <= 9) {
+    return `${cpf.slice(0, 3)}.${cpf.slice(
       3,
       6
-    )}.${s.slice(6, 9)}`;
+    )}.${cpf.slice(6, 9)}`;
   }
 
-  return `${s.slice(0, 3)}.${s.slice(
+  return `${cpf.slice(0, 3)}.${cpf.slice(
     3,
     6
-  )}.${s.slice(6, 9)}-${s.slice(
-    9,
-    11
-  )}`;
+  )}.${cpf.slice(6, 9)}-${cpf.slice(9, 11)}`;
 };
 
 /* =========================================================
@@ -54,17 +52,15 @@ const formatCPF = (v = "") => {
 
 export default function VincularCPF() {
   const navigate = useNavigate();
-
   const { state } = useLocation();
 
   /* =======================================================
-     USUÁRIO / EMPRESA LOGADA
+     USUÁRIO LOGADO
   ======================================================= */
 
   const usuario = useMemo(() => {
     try {
-      const salvo =
-        localStorage.getItem("usuario");
+      const salvo = localStorage.getItem("usuario");
 
       if (!salvo) {
         return null;
@@ -81,16 +77,20 @@ export default function VincularCPF() {
     }
   }, []);
 
+  /* =======================================================
+     EMPRESA
+  ======================================================= */
+
   const empresaId =
     usuario?.empresa_id || null;
 
   const empresaNome =
     usuario?.empresa_nome ||
+    usuario?.empresa?.nome ||
     "Empresa";
 
   const isPonto =
-    usuario?.role ===
-    "ponto_empresa";
+    usuario?.role === "ponto_empresa";
 
   /* =======================================================
      IMAGEM CAPTURADA
@@ -99,33 +99,26 @@ export default function VincularCPF() {
   const capturedImage =
     state?.image ||
     state?.photo ||
+    state?.image_base64 ||
     "";
 
   /* =======================================================
      CPF
   ======================================================= */
 
-  const [
-    cpfInput,
-    setCpfInput,
-  ] = useState("");
+  const [cpfInput, setCpfInput] =
+    useState("");
 
-  const cpfDigits = useMemo(
-    () =>
-      onlyDigits(
-        cpfInput
-      ).slice(0, 11),
-    [cpfInput]
-  );
+  const cpfDigits = useMemo(() => {
+    return onlyDigits(cpfInput).slice(0, 11);
+  }, [cpfInput]);
 
   /* =======================================================
      FUNCIONÁRIO
   ======================================================= */
 
-  const [
-    nome,
-    setNome,
-  ] = useState("");
+  const [nome, setNome] =
+    useState("");
 
   const [
     funcionarioId,
@@ -156,9 +149,9 @@ export default function VincularCPF() {
   ======================================================= */
 
   useEffect(() => {
-    /*
-      Precisa existir usuário logado.
-    */
+    /* -----------------------------------------------------
+       PRECISA ESTAR LOGADO
+    ----------------------------------------------------- */
 
     if (!usuario) {
       navigate("/", {
@@ -168,16 +161,12 @@ export default function VincularCPF() {
       return;
     }
 
-    /*
-      Esta tela pertence ao terminal
-      de ponto da empresa.
-    */
+    /* -----------------------------------------------------
+       SOMENTE TERMINAL DE PONTO
+    ----------------------------------------------------- */
 
     if (!isPonto) {
-      if (
-        usuario.role ===
-        "rh_empresa"
-      ) {
+      if (usuario.role === "rh_empresa") {
         navigate("/app", {
           replace: true,
         });
@@ -185,16 +174,10 @@ export default function VincularCPF() {
         return;
       }
 
-      if (
-        usuario.role ===
-        "super_admin"
-      ) {
-        navigate(
-          "/app/empresas",
-          {
-            replace: true,
-          }
-        );
+      if (usuario.role === "super_admin") {
+        navigate("/app/empresas", {
+          replace: true,
+        });
 
         return;
       }
@@ -206,23 +189,17 @@ export default function VincularCPF() {
       return;
     }
 
-    /*
-      Usuário de ponto obrigatoriamente
-      precisa estar ligado a uma empresa.
-    */
+    /* -----------------------------------------------------
+       PRECISA POSSUIR EMPRESA
+    ----------------------------------------------------- */
 
     if (!empresaId) {
       console.error(
         "Login de ponto sem empresa_id."
       );
 
-      localStorage.removeItem(
-        "token"
-      );
-
-      localStorage.removeItem(
-        "usuario"
-      );
+      localStorage.removeItem("token");
+      localStorage.removeItem("usuario");
 
       navigate("/", {
         replace: true,
@@ -231,22 +208,18 @@ export default function VincularCPF() {
       return;
     }
 
-    /*
-      Precisa ter vindo uma foto da
-      tela de reconhecimento.
-    */
+    /* -----------------------------------------------------
+       PRECISA POSSUIR FOTO
+    ----------------------------------------------------- */
 
     if (!capturedImage) {
       alert(
-        "Nenhuma imagem capturada. Voltando..."
+        "Nenhuma imagem capturada. Voltando para o reconhecimento."
       );
 
-      navigate(
-        "/reconhecimento",
-        {
-          replace: true,
-        }
-      );
+      navigate("/reconhecimento", {
+        replace: true,
+      });
     }
   }, [
     usuario,
@@ -260,51 +233,42 @@ export default function VincularCPF() {
      ALTERAR CPF
   ======================================================= */
 
-  const onChangeCpf = (
-    e
-  ) => {
-    setCpfInput(
-      e.target.value
-    );
+  const onChangeCpf = (e) => {
+    const valor = e.target.value;
+
+    setCpfInput(valor);
 
     /*
-      Se alterar o CPF depois de
-      pesquisar, limpamos os dados
-      anteriores.
+      Ao alterar o CPF, qualquer funcionário
+      pesquisado anteriormente deixa de valer.
     */
 
     setNome("");
-
-    setFuncionarioId(
-      null
-    );
-
-    setShowConfirm(
-      false
-    );
+    setFuncionarioId(null);
+    setShowConfirm(false);
   };
 
   /* =======================================================
-     BLOQUEAR LETRAS NO CPF
+     BLOQUEAR LETRAS
   ======================================================= */
 
-  const onKeyDownCpf = (
-    e
-  ) => {
-    const allow =
-      [
-        "Backspace",
-        "Delete",
-        "ArrowLeft",
-        "ArrowRight",
-        "Tab",
-        "Home",
-        "End",
-      ].includes(e.key) ||
-      e.ctrlKey ||
-      e.metaKey;
+  const onKeyDownCpf = (e) => {
+    const teclasPermitidas = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+      "Home",
+      "End",
+      "Enter",
+    ];
 
-    if (allow) {
+    if (
+      teclasPermitidas.includes(e.key) ||
+      e.ctrlKey ||
+      e.metaKey
+    ) {
       return;
     }
 
@@ -315,264 +279,285 @@ export default function VincularCPF() {
 
   /* =======================================================
      BUSCAR FUNCIONÁRIO PELO CPF
-
-     MULTIEMPRESA:
-
-     O backend deve descobrir a empresa
-     pelo JWT:
-
-     req.user.empresa_id
-
-     NÃO devemos permitir que o navegador
-     escolha livremente outra empresa.
   ======================================================= */
 
-  const buscarNome =
-    async () => {
-      if (
-        cpfDigits.length !==
-        11
-      ) {
+  const buscarNome = async () => {
+    if (cpfDigits.length !== 11) {
+      alert(
+        "Digite um CPF com 11 dígitos."
+      );
+
+      return;
+    }
+
+    if (!empresaId) {
+      alert(
+        "Empresa não identificada. Faça login novamente."
+      );
+
+      return;
+    }
+
+    try {
+      setLoadingNome(true);
+
+      setNome("");
+      setFuncionarioId(null);
+      setShowConfirm(false);
+
+      /*
+        IMPORTANTE:
+
+        Essa rota deve utilizar o JWT do usuário.
+
+        No backend, o funcionário deve ser procurado
+        utilizando:
+
+        CPF + empresa do usuário logado.
+
+        Portanto, o mesmo CPF pode existir em empresas
+        diferentes.
+      */
+
+      const { data } = await api.get(
+        `/funcionarios/by-cpf/${cpfDigits}`
+      );
+
+      const funcionario =
+        data?.funcionario || data;
+
+      if (!funcionario) {
         alert(
-          "CPF deve ter 11 dígitos."
+          "Funcionário não encontrado nesta empresa."
         );
 
         return;
       }
 
-      if (!empresaId) {
+      if (!funcionario.nome) {
         alert(
-          "Empresa não identificada."
+          "Funcionário encontrado, mas o nome não foi retornado."
         );
 
         return;
       }
 
-      try {
-        setLoadingNome(
-          true
-        );
+      const id =
+        funcionario.id ??
+        funcionario.funcionario_id ??
+        null;
 
-        setNome("");
-
-        setFuncionarioId(
-          null
-        );
-
-        /*
-          IMPORTANTE:
-
-          Como essa tela está autenticada,
-          usamos a rota privada de funcionário.
-
-          O backend deverá filtrar usando:
-          req.user.empresa_id
-        */
-
-        const { data } =
-          await api.get(
-            `/funcionarios/by-cpf/${cpfDigits}`
-          );
-
-        const funcionario =
-          data?.funcionario ||
-          data;
-
-        if (
-          !funcionario ||
-          !funcionario.nome
-        ) {
-          alert(
-            "Funcionário não encontrado nesta empresa."
-          );
-
-          return;
-        }
-
-        setNome(
-          funcionario.nome
-        );
-
-        setFuncionarioId(
-          funcionario.id ||
-            funcionario
-              .funcionario_id ||
-            null
-        );
-
-        setShowConfirm(
-          true
-        );
-      } catch (err) {
+      if (!id) {
         console.error(
-          "Erro ao buscar CPF:",
-          err
+          "Funcionário retornado sem ID:",
+          funcionario
         );
 
         alert(
-          err.response?.data
-            ?.error ||
-            "Funcionário não encontrado nesta empresa."
+          "Funcionário encontrado, mas o ID não foi retornado."
         );
-      } finally {
-        setLoadingNome(
-          false
-        );
+
+        return;
       }
-    };
+
+      setNome(funcionario.nome);
+      setFuncionarioId(Number(id));
+
+      setShowConfirm(true);
+    } catch (err) {
+      console.error(
+        "Erro ao buscar funcionário pelo CPF:",
+        err
+      );
+
+      const mensagem =
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Funcionário não encontrado nesta empresa.";
+
+      alert(mensagem);
+    } finally {
+      setLoadingNome(false);
+    }
+  };
 
   /* =======================================================
      CONFIRMAR VÍNCULO FACIAL
   ======================================================= */
 
-  const confirmar =
-    async () => {
-      if (
-        !capturedImage
-      ) {
-        alert(
-          "Foto inválida."
-        );
+  const confirmar = async () => {
+    if (saving) {
+      return;
+    }
 
-        return;
-      }
+    if (!capturedImage) {
+      alert(
+        "A imagem do rosto não foi encontrada."
+      );
 
-      if (
-        cpfDigits.length !==
-        11
-      ) {
-        alert(
-          "CPF inválido."
-        );
+      return;
+    }
 
-        return;
-      }
+    if (cpfDigits.length !== 11) {
+      alert("CPF inválido.");
 
-      if (!empresaId) {
-        alert(
-          "Empresa não identificada."
-        );
+      return;
+    }
 
-        return;
-      }
+    if (!empresaId) {
+      alert(
+        "Empresa não identificada."
+      );
 
-      if (!nome) {
-        alert(
-          "Funcionário não identificado."
-        );
+      return;
+    }
 
-        return;
-      }
+    if (!funcionarioId) {
+      alert(
+        "Funcionário não identificado."
+      );
 
+      return;
+    }
+
+    if (!nome) {
+      alert(
+        "Nome do funcionário não identificado."
+      );
+
+      return;
+    }
+
+    try {
       setSaving(true);
 
-      try {
-        /* =================================================
-           PAYLOAD MULTIEMPRESA
+      /* ===================================================
+         CADASTRO FACIAL MULTIEMPRESA
 
-           Aqui enviamos empresa_id também para o
-           serviço facial.
+         O serviço facial recebe:
 
-           Isso é necessário para evitar que:
+         - funcionario_id
+         - empresa_id
+         - cpf
+         - imagem
 
-           CPF 123 da empresa A
+         Isso permite separar corretamente os rostos
+         das diferentes empresas.
+      =================================================== */
 
-           seja confundido com:
+      const payload = {
+        funcionario_id:
+          Number(funcionarioId),
 
-           CPF 123 da empresa B.
+        empresa_id:
+          Number(empresaId),
 
-           O backend/Face API ainda deverá validar
-           corretamente essa empresa.
-        ================================================= */
+        cpf:
+          cpfDigits,
 
-        const payload = {
-          cpf:
-            cpfDigits,
+        image_base64:
+          capturedImage,
 
+        save_image:
+          true,
+      };
+
+      console.log(
+        "Enviando cadastro facial:",
+        {
           funcionario_id:
-            funcionarioId,
+            payload.funcionario_id,
 
           empresa_id:
-            empresaId,
+            payload.empresa_id,
 
-          image_base64:
-            capturedImage,
-
-          save_image:
-            true,
-        };
-
-        const { data } =
-          await apiFace.post(
-            "/enroll",
-            payload
-          );
-
-        if (!data?.ok) {
-          throw new Error(
-            data?.error ||
-              "Erro ao vincular rosto."
-          );
+          cpf:
+            payload.cpf,
         }
+      );
 
-        alert(
-          `Rosto vinculado com sucesso!\n\n${nome}\n${formatCPF(
-            cpfDigits
-          )}\n${empresaNome}`
-        );
+      const { data } = await apiFace.post(
+        "/enroll",
+        payload
+      );
 
-        /*
-          IMPORTANTE:
-
-          "/" agora é o acesso inicial.
-
-          O terminal deve voltar para
-          a tela de ponto da empresa.
-        */
-
-        navigate(
-          "/ponto",
-          {
-            replace: true,
-          }
-        );
-      } catch (err) {
-        console.error(
-          "Erro ao vincular rosto:",
-          err
-        );
-
-        alert(
-          err.response?.data
-            ?.error ||
-            err.response?.data
-              ?.detail ||
-            err.message ||
-            "Falha ao vincular rosto."
-        );
-      } finally {
-        setSaving(
-          false
-        );
-
-        setShowConfirm(
-          false
+      if (!data?.ok) {
+        throw new Error(
+          data?.error ||
+            "O serviço facial não conseguiu cadastrar o rosto."
         );
       }
-    };
 
-  /* =======================================================
-     CANCELAR
-  ======================================================= */
+      alert(
+        `Rosto vinculado com sucesso!\n\n` +
+          `Funcionário: ${nome}\n` +
+          `CPF: ${formatCPF(cpfDigits)}\n` +
+          `Empresa: ${empresaNome}`
+      );
 
-  const voltar = () => {
-    navigate(
-      "/reconhecimento"
-    );
+      navigate("/ponto", {
+        replace: true,
+      });
+    } catch (err) {
+      console.error(
+        "Erro ao vincular rosto:",
+        err
+      );
+
+      const mensagem =
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        err.response?.data?.message ||
+        err.message ||
+        "Falha ao vincular rosto.";
+
+      alert(mensagem);
+    } finally {
+      setSaving(false);
+    }
   };
 
   /* =======================================================
-     NÃO RENDERIZAR ENQUANTO REDIRECIONA
+     CANCELAR MODAL
+  ======================================================= */
+
+  const cancelarConfirmacao = () => {
+    if (saving) {
+      return;
+    }
+
+    setShowConfirm(false);
+  };
+
+  /* =======================================================
+     VOLTAR
+  ======================================================= */
+
+  const voltar = () => {
+    if (saving) {
+      return;
+    }
+
+    navigate("/reconhecimento");
+  };
+
+  /* =======================================================
+     ENTER NO CPF
+  ======================================================= */
+
+  const onKeyUpCpf = (e) => {
+    if (
+      e.key === "Enter" &&
+      cpfDigits.length === 11 &&
+      !loadingNome &&
+      !saving
+    ) {
+      buscarNome();
+    }
+  };
+
+  /* =======================================================
+     NÃO RENDERIZAR DURANTE REDIRECIONAMENTO
   ======================================================= */
 
   if (
@@ -589,44 +574,31 @@ export default function VincularCPF() {
 
   return (
     <div className="vincScreen">
-
       <div className="vincCard">
+        {/* =================================================
+            TÍTULO
+        ================================================= */}
 
         <h2>
           Vincular rosto ao CPF
         </h2>
 
-        {/* EMPRESA */}
+        {/* =================================================
+            EMPRESA
+        ================================================= */}
 
-        <div
-          style={{
-            textAlign:
-              "center",
-
-            marginBottom:
-              "12px",
-
-            color:
-              "#666",
-
-            fontSize:
-              "14px",
-
-            fontWeight:
-              "600",
-          }}
-        >
+        <div className="vincEmpresa">
           {empresaNome}
         </div>
 
-        {/* FOTO */}
+        {/* =================================================
+            FOTO
+        ================================================= */}
 
         <div className="preview">
           {capturedImage ? (
             <img
-              src={
-                capturedImage
-              }
+              src={capturedImage}
               alt="Captura do rosto"
             />
           ) : (
@@ -636,24 +608,21 @@ export default function VincularCPF() {
           )}
         </div>
 
-        {/* CPF */}
+        {/* =================================================
+            CPF
+        ================================================= */}
 
         <div className="form">
-
-          <label>
+          <label htmlFor="cpf">
             CPF
           </label>
 
           <input
-            value={formatCPF(
-              cpfInput
-            )}
-            onChange={
-              onChangeCpf
-            }
-            onKeyDown={
-              onKeyDownCpf
-            }
+            id="cpf"
+            value={formatCPF(cpfInput)}
+            onChange={onChangeCpf}
+            onKeyDown={onKeyDownCpf}
+            onKeyUp={onKeyUpCpf}
             maxLength={14}
             inputMode="numeric"
             autoComplete="off"
@@ -666,12 +635,9 @@ export default function VincularCPF() {
 
           <button
             type="button"
-            onClick={
-              buscarNome
-            }
+            onClick={buscarNome}
             disabled={
-              cpfDigits.length !==
-                11 ||
+              cpfDigits.length !== 11 ||
               loadingNome ||
               saving
             }
@@ -682,7 +648,9 @@ export default function VincularCPF() {
           </button>
         </div>
 
-        {/* VOLTAR */}
+        {/* =================================================
+            VOLTAR
+        ================================================= */}
 
         <button
           type="button"
@@ -701,13 +669,9 @@ export default function VincularCPF() {
       {showConfirm && (
         <div
           className="modalOverlay"
-          onClick={() => {
-            if (!saving) {
-              setShowConfirm(
-                false
-              );
-            }
-          }}
+          onClick={
+            cancelarConfirmacao
+          }
         >
           <div
             className="modalCard"
@@ -743,29 +707,20 @@ export default function VincularCPF() {
             </p>
 
             <div className="modalActions">
-
               <button
                 type="button"
-                onClick={() =>
-                  setShowConfirm(
-                    false
-                  )
+                onClick={
+                  cancelarConfirmacao
                 }
-                disabled={
-                  saving
-                }
+                disabled={saving}
               >
                 Cancelar
               </button>
 
               <button
                 type="button"
-                onClick={
-                  confirmar
-                }
-                disabled={
-                  saving
-                }
+                onClick={confirmar}
+                disabled={saving}
               >
                 {saving
                   ? "Salvando..."

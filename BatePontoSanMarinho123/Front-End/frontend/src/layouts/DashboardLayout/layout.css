@@ -1,4 +1,26 @@
 /* ==========================================================
+   VARIÁVEIS GLOBAIS
+
+   IMPORTANTE:
+   Essas cores são apenas FALLBACK.
+
+   O DashboardLayout.jsx substitui automaticamente
+   pelas cores salvas da empresa.
+========================================================== */
+
+:root {
+  --empresa-cor-primaria: #0d6efd;
+  --empresa-cor-secundaria: #084298;
+
+  --cor-primaria:
+    var(--empresa-cor-primaria);
+
+  --cor-secundaria:
+    var(--empresa-cor-secundaria);
+}
+
+
+/* ==========================================================
    CONFIGURAÇÃO GERAL
 ========================================================== */
 
@@ -11,17 +33,17 @@ body,
   width: 100%;
   height: 100%;
 
+  min-height: 100%;
+
   overflow-x: hidden !important;
 }
+
 
 /* ==========================================================
    CONTAINER
 ========================================================== */
 
 .dashContainer {
-  --empresa-cor-primaria: #0d6efd;
-  --empresa-cor-secundaria: #084298;
-
   display: flex;
 
   width: 100vw;
@@ -39,6 +61,7 @@ body,
     Arial,
     sans-serif;
 }
+
 
 /* ==========================================================
    BOTÃO MENU
@@ -65,7 +88,10 @@ body,
   border-radius: 10px;
 
   background:
-    var(--empresa-cor-primaria);
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
 
   color: #ffffff;
 
@@ -79,15 +105,22 @@ body,
 
   transition:
     background 0.2s ease,
+    filter 0.2s ease,
     transform 0.2s ease;
 }
 
+
 .menuToggle:hover {
   background:
-    var(--empresa-cor-secundaria);
+    var(
+      --empresa-cor-secundaria,
+      #084298
+    );
 
-  transform: scale(1.04);
+  transform:
+    scale(1.04);
 }
+
 
 /* ==========================================================
    OVERLAY
@@ -107,6 +140,7 @@ body,
 
   cursor: pointer;
 }
+
 
 /* ==========================================================
    SIDEBAR
@@ -148,6 +182,7 @@ body,
     rgba(0, 0, 0, 0.25);
 }
 
+
 /* ==========================================================
    MENU ABERTO
 ========================================================== */
@@ -155,6 +190,7 @@ body,
 .dashSidebar.show {
   left: 0;
 }
+
 
 /* ==========================================================
    CABEÇALHO SIDEBAR
@@ -179,6 +215,7 @@ body,
   margin-bottom: 4px;
 }
 
+
 /* ==========================================================
    LOGO
 ========================================================== */
@@ -195,6 +232,7 @@ body,
 
   margin-bottom: 12px;
 }
+
 
 /* ==========================================================
    EMPRESA
@@ -216,6 +254,7 @@ body,
   word-break: break-word;
 }
 
+
 /* ==========================================================
    USUÁRIO
 ========================================================== */
@@ -231,6 +270,7 @@ body,
   text-align: center;
 }
 
+
 /* ==========================================================
    MENU
 ========================================================== */
@@ -241,6 +281,7 @@ body,
 
   gap: 8px;
 }
+
 
 /* ==========================================================
    TÍTULO DA SEÇÃO
@@ -262,6 +303,7 @@ body,
   letter-spacing: 1px;
 }
 
+
 /* ==========================================================
    LINKS
 ========================================================== */
@@ -282,6 +324,7 @@ body,
     transform 0.2s ease;
 }
 
+
 .dashLink:hover {
   background:
     rgba(255, 255, 255, 0.1);
@@ -290,18 +333,28 @@ body,
     translateX(3px);
 }
 
+
 /* ==========================================================
    LINK ATIVO
 ========================================================== */
 
 .dashLink.active {
   background:
-    var(--empresa-cor-primaria);
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
 
-  color: #ffffff !important;
+  color:
+    #ffffff !important;
 
   font-weight: 600;
+
+  box-shadow:
+    0 3px 10px
+    rgba(0, 0, 0, 0.2);
 }
+
 
 /* ==========================================================
    BOTÃO SAIR
@@ -312,7 +365,8 @@ body,
 
   margin-bottom: 25px;
 
-  background: #dc3545;
+  background:
+    #dc3545;
 
   border: none;
 
@@ -337,12 +391,15 @@ body,
     transform 0.2s ease;
 }
 
+
 .dashLogout:hover {
-  filter: brightness(1.15);
+  filter:
+    brightness(1.15);
 
   transform:
     translateY(-1px);
 }
+
 
 /* ==========================================================
    CONTEÚDO PRINCIPAL
@@ -370,22 +427,115 @@ body,
       url("../../assets/logo/hotel-fundo.jpg")
     );
 
-  background-size: cover;
+  background-size:
+    cover;
 
-  background-position: center;
+  background-position:
+    center;
 
-  background-repeat: no-repeat;
+  background-repeat:
+    no-repeat;
 
-  background-attachment: fixed;
+  background-attachment:
+    fixed;
 
   z-index: 1;
 }
+
+
+/* ==========================================================
+   IDENTIFICAÇÃO DO TIPO DE USUÁRIO
+========================================================== */
+
+.sidebarTipoUsuario {
+  margin-top: 8px;
+
+  padding:
+    4px 10px;
+
+  border-radius:
+    20px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  color:
+    #ffffff;
+
+  font-size:
+    11px;
+
+  font-weight:
+    800;
+
+  text-transform:
+    uppercase;
+
+  letter-spacing:
+    0.8px;
+}
+
+
+/* ==========================================================
+   CLASSES GLOBAIS AUXILIARES
+
+   Podem ser utilizadas pelas outras páginas.
+========================================================== */
+
+.corPrimaria {
+  color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    ) !important;
+}
+
+
+.corSecundaria {
+  color:
+    var(
+      --empresa-cor-secundaria,
+      #084298
+    ) !important;
+}
+
+
+.bgPrimaria {
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    ) !important;
+}
+
+
+.bgSecundaria {
+  background:
+    var(
+      --empresa-cor-secundaria,
+      #084298
+    ) !important;
+}
+
+
+.bordaPrimaria {
+  border-color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    ) !important;
+}
+
 
 /* ==========================================================
    MOBILE
 ========================================================== */
 
 @media (max-width: 768px) {
+
   .menuToggle {
     top: 14px;
     left: 14px;
@@ -396,18 +546,24 @@ body,
     font-size: 20px;
   }
 
-  .dashSidebar {
-    width: min(
-      280px,
-      85vw
-    );
 
-    left: -100%;
+  .dashSidebar {
+    width:
+      min(
+        280px,
+        85vw
+      );
+
+    left:
+      -100%;
   }
+
 
   .dashSidebar.show {
-    left: 0;
+    left:
+      0;
   }
+
 
   .dashContent {
     padding:
@@ -418,49 +574,33 @@ body,
   }
 }
 
+
 /* ==========================================================
    TELAS MUITO PEQUENAS
 ========================================================== */
 
 @media (max-width: 380px) {
-  .dashSidebar {
-    width: 88vw;
 
-    padding: 18px;
+  .dashSidebar {
+    width:
+      88vw;
+
+    padding:
+      18px;
   }
+
 
   .sidebarLogo {
-    width: 110px;
+    width:
+      110px;
   }
+
 
   .dashLink {
-    font-size: 15px;
+    font-size:
+      15px;
 
-    padding: 11px;
+    padding:
+      11px;
   }
-}
-
-/* ==========================================================
-   IDENTIFICAÇÃO DO TIPO DE USUÁRIO
-========================================================== */
-
-.sidebarTipoUsuario {
-  margin-top: 8px;
-
-  padding: 4px 10px;
-
-  border-radius: 20px;
-
-  background:
-    var(--empresa-cor-primaria);
-
-  color: #ffffff;
-
-  font-size: 11px;
-
-  font-weight: 800;
-
-  text-transform: uppercase;
-
-  letter-spacing: 0.8px;
 }

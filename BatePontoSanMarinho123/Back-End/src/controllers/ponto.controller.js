@@ -1,6 +1,10 @@
 const pool = require("../database/pool");
 const { onlyDigits } = require("../utils/cpf");
 
+const {
+  registrarLog,
+} = require("../services/log.service");
+
 /* =========================================
    VALIDAR EMPRESA DO PONTO
 ========================================= */
@@ -41,14 +45,14 @@ async function buscarFuncionarioDaEmpresa(
     `
     SELECT
       id,
-      empresa_id,
       nome,
       cpf,
+      empresa_id,
       ativo
     FROM funcionarios
     WHERE id = $1
       AND empresa_id = $2
-      AND ativo = true
+      AND ativo = TRUE
     LIMIT 1
     `,
     [
@@ -59,6 +63,7 @@ async function buscarFuncionarioDaEmpresa(
 
   return rows[0] || null;
 }
+
 
 /* =========================================
    GARANTE TABELA FUNCOES
@@ -73,16 +78,18 @@ async function garantirTabelaFuncoes() {
   `);
 }
 
+
 /* =========================================
    GARANTE TABELA FUNCIONARIOS
-   MULTIEMPRESA
 ========================================= */
 async function garantirTabelaFuncionarios() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS funcionarios (
       id BIGSERIAL PRIMARY KEY,
 
-      empresa_id BIGINT REFERENCES empresas(id) ON DELETE RESTRICT,
+      empresa_id BIGINT
+        REFERENCES empresas(id)
+        ON DELETE RESTRICT,
 
       nome VARCHAR(200) NOT NULL,
       cpf VARCHAR(20) NOT NULL,
@@ -92,7 +99,9 @@ async function garantirTabelaFuncionarios() {
       intervalo_fim TIME,
       saida TIME,
 
-      funcao_id BIGINT REFERENCES funcoes(id) ON DELETE SET NULL,
+      funcao_id BIGINT
+        REFERENCES funcoes(id)
+        ON DELETE SET NULL,
 
       cnpj_empresa VARCHAR(20),
 
@@ -103,48 +112,31 @@ async function garantirTabelaFuncionarios() {
     );
   `);
 
-  /* =========================================
-     EMPRESA
-  ========================================= */
-
   await pool.query(`
     ALTER TABLE funcionarios
     ADD COLUMN IF NOT EXISTS empresa_id
-    BIGINT REFERENCES empresas(id) ON DELETE RESTRICT
+    BIGINT REFERENCES empresas(id)
+    ON DELETE RESTRICT
   `);
-
-  /* =========================================
-     FUNÇÃO
-  ========================================= */
 
   await pool.query(`
     ALTER TABLE funcionarios
     ADD COLUMN IF NOT EXISTS funcao_id
-    BIGINT REFERENCES funcoes(id) ON DELETE SET NULL
+    BIGINT REFERENCES funcoes(id)
+    ON DELETE SET NULL
   `);
-
-  /* =========================================
-     CNPJ / UNIDADE
-  ========================================= */
 
   await pool.query(`
     ALTER TABLE funcionarios
-    ADD COLUMN IF NOT EXISTS cnpj_empresa VARCHAR(20)
+    ADD COLUMN IF NOT EXISTS cnpj_empresa
+    VARCHAR(20)
   `);
-
-  /* =========================================
-     ATIVO
-  ========================================= */
 
   await pool.query(`
     ALTER TABLE funcionarios
     ADD COLUMN IF NOT EXISTS ativo
     BOOLEAN NOT NULL DEFAULT true
   `);
-
-  /* =========================================
-     DATAS
-  ========================================= */
 
   await pool.query(`
     ALTER TABLE funcionarios
@@ -158,10 +150,6 @@ async function garantirTabelaFuncionarios() {
     TIMESTAMP DEFAULT NOW()
   `);
 
-  /* =========================================
-     ÍNDICE EMPRESA
-  ========================================= */
-
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_funcionarios_empresa_id
@@ -169,16 +157,18 @@ async function garantirTabelaFuncionarios() {
   `);
 }
 
+
 /* =========================================
    GARANTE TABELA PONTOS
-   MULTIEMPRESA
 ========================================= */
 async function garantirTabelaPontos() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pontos (
       id BIGSERIAL PRIMARY KEY,
 
-      empresa_id BIGINT REFERENCES empresas(id) ON DELETE RESTRICT,
+      empresa_id BIGINT
+        REFERENCES empresas(id)
+        ON DELETE RESTRICT,
 
       funcionario_id BIGINT NOT NULL
         REFERENCES funcionarios(id)
@@ -200,19 +190,12 @@ async function garantirTabelaPontos() {
     );
   `);
 
-  /* =========================================
-     ADICIONAR EMPRESA EM BANCO EXISTENTE
-  ========================================= */
-
   await pool.query(`
     ALTER TABLE pontos
     ADD COLUMN IF NOT EXISTS empresa_id
-    BIGINT REFERENCES empresas(id) ON DELETE RESTRICT
+    BIGINT REFERENCES empresas(id)
+    ON DELETE RESTRICT
   `);
-
-  /* =========================================
-     ÍNDICES
-  ========================================= */
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
@@ -238,42 +221,28 @@ async function garantirTabelaPontos() {
    MIGRAR PONTOS ANTIGOS PARA EMPRESA
 ========================================= */
 async function migrarEmpresaPontosAntigos() {
-  try {
-    /*
-      Pega a empresa do funcionário e coloca
-      nos pontos antigos que ainda estão sem empresa.
-    */
+  const result = await pool.query(`
+    UPDATE pontos p
 
-    const result = await pool.query(`
-      UPDATE pontos p
+    SET empresa_id = f.empresa_id
 
-      SET empresa_id = f.empresa_id
+    FROM funcionarios f
 
-      FROM funcionarios f
+    WHERE p.funcionario_id = f.id
+      AND p.empresa_id IS NULL
+      AND f.empresa_id IS NOT NULL
+  `);
 
-      WHERE p.funcionario_id = f.id
-        AND p.empresa_id IS NULL
-        AND f.empresa_id IS NOT NULL
-    `);
-
-    if (result.rowCount > 0) {
-      console.log(
-        `✅ ${result.rowCount} ponto(s) antigo(s) vinculado(s) às empresas.`
-      );
-    }
-  } catch (err) {
-    console.error(
-      "❌ Erro ao migrar empresa dos pontos antigos:",
-      err
+  if (result.rowCount > 0) {
+    console.log(
+      `✅ ${result.rowCount} ponto(s) antigo(s) vinculado(s) às empresas.`
     );
-
-    throw err;
   }
 }
 
+
 /* =========================================
    GARANTE TABELA FALTAS / AJUSTES
-   MULTIEMPRESA
 ========================================= */
 async function garantirTabelaFaltas() {
   await pool.query(`
@@ -309,20 +278,12 @@ async function garantirTabelaFaltas() {
     );
   `);
 
-  /* =========================================
-     EMPRESA EM BANCO JÁ EXISTENTE
-  ========================================= */
-
   await pool.query(`
     ALTER TABLE faltas_ajustes
     ADD COLUMN IF NOT EXISTS empresa_id
     BIGINT REFERENCES empresas(id)
     ON DELETE RESTRICT
   `);
-
-  /* =========================================
-     COLUNAS ANTIGAS
-  ========================================= */
 
   await pool.query(`
     ALTER TABLE faltas_ajustes
@@ -360,10 +321,6 @@ async function garantirTabelaFaltas() {
     BOOLEAN NOT NULL DEFAULT false
   `);
 
-  /* =========================================
-     MIGRAR REGISTROS ANTIGOS
-  ========================================= */
-
   await pool.query(`
     UPDATE faltas_ajustes fa
 
@@ -376,9 +333,15 @@ async function garantirTabelaFaltas() {
       AND f.empresa_id IS NOT NULL
   `);
 
-  /* =========================================
-     ÍNDICES
-  ========================================= */
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS
+    uq_faltas_ajustes_funcionario_data
+
+    ON faltas_ajustes (
+      funcionario_id,
+      data
+    )
+  `);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
@@ -398,12 +361,11 @@ async function garantirTabelaFaltas() {
   `);
 }
 
+
 /* =========================================
    GARANTE TABELA ATESTADOS
-   MULTIEMPRESA
 ========================================= */
 async function garantirTabelaAtestados() {
-  /* Cria a tabela caso ainda não exista */
   await pool.query(`
     CREATE TABLE IF NOT EXISTS atestados (
       id BIGSERIAL PRIMARY KEY,
@@ -428,7 +390,6 @@ async function garantirTabelaAtestados() {
     );
   `);
 
-  /* Adiciona empresa_id se a tabela já existia */
   await pool.query(`
     ALTER TABLE atestados
     ADD COLUMN IF NOT EXISTS empresa_id
@@ -436,20 +397,13 @@ async function garantirTabelaAtestados() {
     ON DELETE RESTRICT
   `);
 
-  /* Garante a coluna repor_horas */
   await pool.query(`
     ALTER TABLE atestados
     ADD COLUMN IF NOT EXISTS repor_horas
     BOOLEAN NOT NULL DEFAULT false
   `);
 
-  /* =========================================
-     MIGRAR ATESTADOS ANTIGOS
-
-     Os atestados que já existem recebem
-     automaticamente a empresa do funcionário.
-  ========================================= */
-  const resultado = await pool.query(`
+  await pool.query(`
     UPDATE atestados a
 
     SET empresa_id = f.empresa_id
@@ -461,19 +415,9 @@ async function garantirTabelaAtestados() {
       AND f.empresa_id IS NOT NULL
   `);
 
-  if (resultado.rowCount > 0) {
-    console.log(
-      `✅ ${resultado.rowCount} atestado(s) antigo(s) vinculado(s) às empresas.`
-    );
-  }
-
-  /* =========================================
-     ÍNDICES
-  ========================================= */
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_atestados_empresa_id
-
     ON atestados(empresa_id)
   `);
 
@@ -494,89 +438,95 @@ async function garantirTabelaAtestados() {
 ========================================= */
 async function garantirTabelas() {
   await garantirTabelaFuncoes();
-
   await garantirTabelaFuncionarios();
-
   await garantirTabelaPontos();
-
-  /* Preenche empresa_id dos pontos antigos */
   await migrarEmpresaPontosAntigos();
-
   await garantirTabelaFaltas();
-
   await garantirTabelaAtestados();
 }
 
+
 /* =========================================
-   HELPERS TIMEZONE
+   TIMEZONE
 ========================================= */
 function agoraSP() {
   return new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+    new Date().toLocaleString(
+      "en-US",
+      {
+        timeZone: "America/Sao_Paulo",
+      }
+    )
   );
 }
 
 function dataHojeISO() {
   const agora = agoraSP();
+
   const ano = agora.getFullYear();
-  const mes = String(agora.getMonth() + 1).padStart(2, "0");
-  const dia = String(agora.getDate()).padStart(2, "0");
+
+  const mes = String(
+    agora.getMonth() + 1
+  ).padStart(2, "0");
+
+  const dia = String(
+    agora.getDate()
+  ).padStart(2, "0");
+
   return `${ano}-${mes}-${dia}`;
 }
 
 function dataHoraAgoraSQL() {
   const agora = agoraSP();
+
   const data = dataHojeISO();
-  const hora = String(agora.getHours()).padStart(2, "0");
-  const minuto = String(agora.getMinutes()).padStart(2, "0");
-  const segundo = String(agora.getSeconds()).padStart(2, "0");
+
+  const hora = String(
+    agora.getHours()
+  ).padStart(2, "0");
+
+  const minuto = String(
+    agora.getMinutes()
+  ).padStart(2, "0");
+
+  const segundo = String(
+    agora.getSeconds()
+  ).padStart(2, "0");
+
   return `${data} ${hora}:${minuto}:${segundo}`;
 }
 
-function montarDataHora(dataBR, hora) {
-  if (!dataBR || !hora) return null;
 
-  const [d, m, a] = String(dataBR).split("/");
-  if (!d || !m || !a) return null;
-
-  return `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(
-    2,
-    "0"
-  )} ${hora}:00`;
-}
-
-function montarDataHoraComDia(data, hora, adicionarDias = 0) {
-  if (!data || !hora) return null;
+function montarDataHoraComDia(
+  data,
+  hora,
+  adicionarDias = 0
+) {
+  if (!data || !hora) {
+    return null;
+  }
 
   let ano;
   let mes;
   let dia;
 
-  /* =====================================
-     FORMATO BR: DD/MM/YYYY
-  ===================================== */
-
   if (String(data).includes("/")) {
-    const partes = String(data).split("/");
+    const partes =
+      String(data).split("/");
 
     dia = Number(partes[0]);
     mes = Number(partes[1]);
     ano = Number(partes[2]);
-  }
-
-  /* =====================================
-     FORMATO ISO: YYYY-MM-DD
-  ===================================== */
-
-  else if (String(data).includes("-")) {
-    const partes = String(data).split("-");
+  } else if (
+    String(data).includes("-")
+  ) {
+    const partes =
+      String(data).split("-");
 
     ano = Number(partes[0]);
     mes = Number(partes[1]);
     dia = Number(partes[2]);
-  }
-
-  else {
+  } else {
     return null;
   }
 
@@ -598,7 +548,8 @@ function montarDataHoraComDia(data, hora, adicionarDias = 0) {
   );
 
   dataObj.setDate(
-    dataObj.getDate() + adicionarDias
+    dataObj.getDate() +
+    adicionarDias
   );
 
   const anoFinal =
@@ -614,86 +565,161 @@ function montarDataHoraComDia(data, hora, adicionarDias = 0) {
       dataObj.getDate()
     ).padStart(2, "0");
 
-  return `${anoFinal}-${mesFinal}-${diaFinal} ${hora}:00`;
+  return (
+    `${anoFinal}-${mesFinal}-${diaFinal} ` +
+    `${hora}:00`
+  );
 }
+
 
 function dataBRparaISO(dataBR) {
-  if (!dataBR) return null;
+  if (!dataBR) {
+    return null;
+  }
 
-  const [d, m, a] = String(dataBR).split("/");
-  if (!d || !m || !a) return null;
+  const [d, m, a] =
+    String(dataBR).split("/");
 
-  return `${a}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  if (!d || !m || !a) {
+    return null;
+  }
+
+  return (
+    `${a}-` +
+    `${String(m).padStart(2, "0")}-` +
+    `${String(d).padStart(2, "0")}`
+  );
 }
 
+
 function normalizarHora(valor) {
-  if (!valor) return null;
-  const texto = String(valor).trim();
-  if (texto.length >= 5) return texto.slice(0, 5);
+  if (!valor) {
+    return null;
+  }
+
+  const texto =
+    String(valor).trim();
+
+  if (texto.length >= 5) {
+    return texto.slice(0, 5);
+  }
+
   return null;
 }
 
-/* =========================================
-   BUSCAS DE PONTO
-========================================= */
-async function buscarPontosHoje(funcionario_id) {
-  const hoje = dataHojeISO();
 
-  const { rows } = await pool.query(
-    `
-    SELECT id, tipo, marcado_em
-    FROM pontos
-    WHERE funcionario_id = $1
-      AND marcado_em::date = $2::date
-    ORDER BY marcado_em ASC, id ASC
-    `,
-    [funcionario_id, hoje]
-  );
+/* =========================================================
+   BUSCAR TURNO ABERTO
+========================================================= */
+async function buscarTurnoAberto(
+  funcionarioId,
+  empresaId
+) {
+  const { rows } =
+    await pool.query(
+      `
+      SELECT
+        id,
+        empresa_id,
+        funcionario_id,
+        tipo,
+        marcado_em
 
-  return rows;
-}
+      FROM pontos
 
-async function buscarBatidasTurnoAberto(funcionario_id) {
-  const { rows } = await pool.query(
-    `
-    SELECT id, tipo, marcado_em
-    FROM pontos
-    WHERE funcionario_id = $1
-      AND marcado_em >= (NOW() - INTERVAL '36 hours')
-    ORDER BY marcado_em ASC, id ASC
-    `,
-    [funcionario_id]
-  );
+      WHERE funcionario_id = $1
+        AND empresa_id = $2
+        AND marcado_em >=
+            NOW() - INTERVAL '36 hours'
 
-  if (!rows.length) return [];
+      ORDER BY
+        marcado_em ASC,
+        id ASC
+      `,
+      [
+        funcionarioId,
+        empresaId,
+      ]
+    );
+
+  if (!rows.length) {
+    return null;
+  }
 
   let indiceUltimaSaida = -1;
 
-  for (let i = rows.length - 1; i >= 0; i--) {
+  for (
+    let i = rows.length - 1;
+    i >= 0;
+    i--
+  ) {
     if (rows[i].tipo === "saida") {
       indiceUltimaSaida = i;
       break;
     }
   }
 
-  const abertas = rows.slice(indiceUltimaSaida + 1);
-  const temEntradaAberta = abertas.some((p) => p.tipo === "entrada");
+  const depoisDaUltimaSaida =
+    rows.slice(
+      indiceUltimaSaida + 1
+    );
 
-  if (!temEntradaAberta) return [];
+  if (!depoisDaUltimaSaida.length) {
+    return null;
+  }
 
-  return abertas;
+  const indiceEntrada =
+    depoisDaUltimaSaida.findIndex(
+      (ponto) =>
+        ponto.tipo === "entrada"
+    );
+
+  if (indiceEntrada === -1) {
+    return null;
+  }
+
+  const batidas =
+    depoisDaUltimaSaida.slice(
+      indiceEntrada
+    );
+
+  if (!batidas.length) {
+    return null;
+  }
+
+  return {
+    entrada: batidas[0],
+    batidas,
+  };
 }
 
-async function buscarUltimaBatidaAberta(funcionario_id) {
-  const abertas = await buscarBatidasTurnoAberto(funcionario_id);
-  if (!abertas.length) return null;
-  return abertas[abertas.length - 1];
-}
 
 /* =========================================
-   PERMISSÕES DOS BOTÕES
+   PEGAR ÚLTIMA BATIDA
 ========================================= */
-function getPermissoesPorUltimaBatida(ultimaBatida) {
+function obterUltimaBatidaDoTurno(
+  turno
+) {
+  if (
+    !turno ||
+    !Array.isArray(turno.batidas) ||
+    turno.batidas.length === 0
+  ) {
+    return null;
+  }
+
+  return turno.batidas[
+    turno.batidas.length - 1
+  ];
+}
+
+
+/* =========================================================
+   PERMISSÕES
+========================================================= */
+function getPermissoesPorUltimaBatida(
+  ultimaBatida
+) {
   const permissoes = {
     entrada: false,
     intervalo_inicio: false,
@@ -706,1904 +732,1896 @@ function getPermissoesPorUltimaBatida(ultimaBatida) {
     return permissoes;
   }
 
-  if (ultimaBatida === "entrada") {
-    permissoes.intervalo_inicio = true;
-    permissoes.saida = true;
-    return permissoes;
+  switch (ultimaBatida) {
+    case "entrada":
+      permissoes.intervalo_inicio =
+        true;
+
+      permissoes.saida =
+        true;
+      break;
+
+    case "intervalo_inicio":
+      permissoes.intervalo_fim =
+        true;
+      break;
+
+    case "intervalo_fim":
+      permissoes.intervalo_inicio =
+        true;
+
+      permissoes.saida =
+        true;
+      break;
+
+    case "saida":
+      permissoes.entrada =
+        true;
+      break;
+
+    default:
+      permissoes.entrada =
+        true;
   }
 
-  if (ultimaBatida === "intervalo_inicio") {
-    permissoes.intervalo_fim = true;
-    return permissoes;
-  }
-
-  if (ultimaBatida === "intervalo_fim") {
-    permissoes.intervalo_inicio = true;
-    permissoes.saida = true;
-    return permissoes;
-  }
-
-  if (ultimaBatida === "saida") {
-    permissoes.entrada = true;
-    return permissoes;
-  }
-
-  permissoes.entrada = true;
   return permissoes;
 }
 
+
 /* =========================================
-   BUSCAR TURNO ABERTO DO FUNCIONÁRIO
+   RESUMO PARA FRONTEND
 ========================================= */
-async function buscarTurnoAberto(funcionarioId, empresaId) {
-  /*
-    Procura a última entrada das últimas 36 horas
-    que ainda não possui uma saída fechando o turno.
-  */
-
-  const entradaResult = await pool.query(
-    `
-    SELECT
-      id,
-      empresa_id,
-      funcionario_id,
-      tipo,
-      marcado_em
-
-    FROM pontos
-
-    WHERE funcionario_id = $1
-      AND empresa_id = $2
-      AND tipo = 'entrada'
-      AND marcado_em >= NOW() - INTERVAL '36 hours'
-
-    ORDER BY marcado_em DESC
-
-    LIMIT 1
-    `,
-    [
-      funcionarioId,
-      empresaId,
-    ]
-  );
-
-  if (entradaResult.rows.length === 0) {
-    return null;
-  }
-
-  const entrada = entradaResult.rows[0];
-
-  /*
-    Pega todas as batidas a partir dessa entrada.
-  */
-
-  const batidasResult = await pool.query(
-    `
-    SELECT
-      id,
-      empresa_id,
-      funcionario_id,
-      tipo,
-      marcado_em
-
-    FROM pontos
-
-    WHERE funcionario_id = $1
-      AND empresa_id = $2
-      AND marcado_em >= $3
-
-    ORDER BY marcado_em ASC, id ASC
-    `,
-    [
-      funcionarioId,
-      empresaId,
-      entrada.marcado_em,
-    ]
-  );
-
-  const batidas = batidasResult.rows;
-
-  /*
-    Se já existe saída, esse turno está fechado.
-  */
-
-  const possuiSaida = batidas.some(
-    (ponto) => ponto.tipo === "saida"
-  );
-
-  if (possuiSaida) {
-    return null;
-  }
-
-  /*
-    Segurança: um turno normal possui no máximo:
-
-    1 - entrada
-    2 - intervalo_inicio
-    3 - intervalo_fim
-    4 - saida
-  */
-
-  return {
-    entrada,
-    batidas,
+function montarResumoBatidas(turno) {
+  const resumo = {
+    entrada: null,
+    intervalo_inicio: null,
+    intervalo_fim: null,
+    saida: null,
   };
+
+  if (
+    !turno ||
+    !Array.isArray(turno.batidas)
+  ) {
+    return resumo;
+  }
+
+  for (
+    const ponto of turno.batidas
+  ) {
+    switch (ponto.tipo) {
+      case "entrada":
+        resumo.entrada =
+          ponto.marcado_em;
+        break;
+
+      case "intervalo_inicio":
+        resumo.intervalo_inicio =
+          ponto.marcado_em;
+        break;
+
+      case "intervalo_fim":
+        resumo.intervalo_fim =
+          ponto.marcado_em;
+        break;
+
+      case "saida":
+        resumo.saida =
+          ponto.marcado_em;
+        break;
+
+      default:
+        break;
+    }
+  }
+
+  return resumo;
 }
 
-/* =========================================
+/* =========================================================
    STATUS DAS BATIDAS
-   MULTIEMPRESA
-========================================= */
+========================================================= */
+exports.statusBatidas =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
 
-exports.statusBatidas = async (req, res) => {
-  try {
-    await garantirTabelas();
+      const funcionarioId =
+        Number(
+          req.params.funcionario_id
+        );
 
-    const funcionarioId = Number(
-      req.params.funcionario_id
-    );
+      /*
+        IMPORTANTE:
+        empresa vem SEMPRE do JWT.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
 
-    /*
-      Para GET vamos receber empresa_id pela query:
-
-      /status-batidas/5?empresa_id=1
-    */
-    const empresaId = Number(
-      req.query.empresa_id
-    );
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    /* =========================================
-       EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(
-      empresaId
-    );
-
-    if (!empresa) {
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       FUNCIONÁRIO
-    ========================================= */
-
-    const funcionario =
-      await buscarFuncionarioDaEmpresa(
-        funcionarioId,
-        empresaId
+      console.log(
+        "========== STATUS BATIDAS =========="
       );
 
-    if (!funcionario) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
+      console.log({
+        funcionarioId,
+        empresaId,
+        user: req.user,
       });
-    }
 
-    /* =========================================
-       BUSCAR TURNO ABERTO
-    ========================================= */
+      /* =====================================
+         VALIDAÇÕES
+      ===================================== */
 
-    const turno = await buscarTurnoAberto(
-      funcionarioId,
-      empresaId
-    );
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
 
-    /* =========================================
-       SEM TURNO
-    ========================================= */
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
 
-    if (!turno) {
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =====================================
+         FUNCIONÁRIO
+      ===================================== */
+
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
+
+      if (!funcionario) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado.",
+          });
+      }
+
+      /* =====================================
+         TURNO
+      ===================================== */
+
+      const turno =
+        await buscarTurnoAberto(
+          funcionarioId,
+          empresaId
+        );
+
+      const ultimaBatidaRegistro =
+        obterUltimaBatidaDoTurno(
+          turno
+        );
+
+      const ultimaBatida =
+        ultimaBatidaRegistro?.tipo ||
+        null;
+
+      /* =====================================
+         PERMISSÕES
+      ===================================== */
+
+      const permissoes =
+        getPermissoesPorUltimaBatida(
+          ultimaBatida
+        );
+
+      /* =====================================
+         PRÓXIMA BATIDA
+      ===================================== */
+
+      let proximaBatida = null;
+
+      if (permissoes.entrada) {
+        proximaBatida =
+          "entrada";
+      } else if (
+        permissoes.intervalo_fim
+      ) {
+        proximaBatida =
+          "intervalo_fim";
+      } else if (
+        permissoes.intervalo_inicio
+      ) {
+        proximaBatida =
+          "intervalo_inicio";
+      } else if (
+        permissoes.saida
+      ) {
+        proximaBatida =
+          "saida";
+      }
+
+      const resumoBatidas =
+        montarResumoBatidas(
+          turno
+        );
+
+      console.log(
+        "STATUS CALCULADO =>",
+        {
+          funcionario_id:
+            funcionarioId,
+
+          empresa_id:
+            empresaId,
+
+          turno_aberto:
+            Boolean(turno),
+
+          ultima_batida:
+            ultimaBatida,
+
+          permissoes,
+        }
+      );
+
+      console.log(
+        "====================================="
+      );
+
       return res.json({
         ok: true,
 
-        funcionario_id: funcionario.id,
-        funcionario_nome: funcionario.nome,
+        funcionario_id:
+          funcionario.id,
 
-        empresa_id: empresa.id,
+        funcionario_nome:
+          funcionario.nome,
+
+        empresa_id:
+          empresa.id,
 
         empresa_nome:
           empresa.nome_fantasia ||
           empresa.nome,
 
-        turno_aberto: false,
+        turno_aberto:
+          Boolean(turno),
 
-        proxima_batida: "entrada",
+        ultima_batida:
+          ultimaBatida,
 
-        batidas: [],
-      });
-    }
+        proxima_batida:
+          proximaBatida,
 
-    /*
-      Segurança adicional.
-
-      buscarTurnoAberto ainda trabalha pelo
-      funcionário. Conferimos a empresa dos
-      pontos encontrados.
-    */
-    const quantidade =
-      turno.batidas.length;
-
-    let proximaBatida = null;
-
-    if (quantidade === 1) {
-      proximaBatida = "intervalo_inicio";
-    } else if (quantidade === 2) {
-      proximaBatida = "intervalo_fim";
-    } else if (quantidade === 3) {
-      proximaBatida = "saida";
-    }
-
-    return res.json({
-      ok: true,
-
-      funcionario_id: funcionario.id,
-      funcionario_nome: funcionario.nome,
-
-      empresa_id: empresa.id,
-
-      empresa_nome:
-        empresa.nome_fantasia ||
-        empresa.nome,
-
-      turno_aberto: quantidade < 4,
-
-      proxima_batida: proximaBatida,
-
-      batidas: turno.batidas,
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao consultar status das batidas:",
-      err
-    );
-
-    return res.status(500).json({
-      error: "Erro ao consultar status das batidas.",
-    });
-  }
-};
-
-/* =========================================
-   BATER PONTO AUTOMATICAMENTE
-   MULTIEMPRESA
-========================================= */
-exports.auto = async (req, res) => {
-  try {
-    await garantirTabelas();
-
-    const funcionarioId = Number(req.body.funcionario_id);
-    const empresaId = Number(req.body.empresa_id);
-
-    /* =========================================
-       VALIDAÇÕES
-    ========================================= */
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(empresaId);
-
-    if (!empresa) {
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const funcionario =
-      await buscarFuncionarioDaEmpresa(
-        funcionarioId,
-        empresaId
-      );
-
-    if (!funcionario) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
-    }
-
-    /* =========================================
-       BUSCAR TURNO ABERTO
-    ========================================= */
-
-    const turno = await buscarTurnoAberto(
-      funcionarioId,
-      empresaId
-    );
-
-    let tipo;
-
-    /* =========================================
-       DEFINIR PRÓXIMA BATIDA
-    ========================================= */
-
-    if (!turno) {
-      tipo = "entrada";
-    } else {
-      const quantidade = turno.batidas.length;
-
-      if (quantidade === 1) {
-        tipo = "intervalo_inicio";
-      } else if (quantidade === 2) {
-        tipo = "intervalo_fim";
-      } else if (quantidade === 3) {
-        tipo = "saida";
-      } else {
-        return res.status(400).json({
-          error: "Todas as batidas deste turno já foram realizadas.",
-        });
-      }
-    }
-
-    /* =========================================
-       REGISTRAR BATIDA
-
-       Agora empresa_id também é salvo.
-    ========================================= */
-
-    const { rows } = await pool.query(
-      `
-  INSERT INTO pontos (
-    empresa_id,
-    funcionario_id,
-    tipo,
-    marcado_em
-  )
-
-  VALUES (
-    $1,
-    $2,
-    $3,
-    NOW()
-  )
-
-  RETURNING
-    id,
-    empresa_id,
-    funcionario_id,
-    tipo,
-    marcado_em
-  `,
-      [
-        empresaId,
-        funcionarioId,
-        tipo,
-      ]
-    );
-
-    const ponto = rows[0];
-
-    /* =========================================
-       RESPOSTA
-    ========================================= */
-
-    return res.status(201).json({
-      ok: true,
-
-      message: "Ponto registrado com sucesso.",
-
-      empresa: {
-        id: empresa.id,
-        nome:
-          empresa.nome_fantasia ||
-          empresa.nome,
-      },
-
-      funcionario: {
-        id: funcionario.id,
-        nome: funcionario.nome,
-      },
-
-      ponto,
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao registrar ponto automático:",
-      err
-    );
-
-    return res.status(500).json({
-      error: "Erro ao registrar ponto.",
-    });
-  }
-};
-
-/* =========================================
-   BATER PONTO MANUAL PELOS BOTÕES
-   MULTIEMPRESA
-========================================= */
-exports.bater = async (req, res) => {
-  try {
-    await garantirTabelas();
-
-    const funcionarioId = Number(req.body.funcionario_id);
-    const empresaId = Number(req.body.empresa_id);
-    const tipo = String(req.body.tipo || "").trim().toLowerCase();
-
-    /* =========================================
-       VALIDAÇÕES
-    ========================================= */
-
-    if (!Number.isInteger(funcionarioId) || funcionarioId <= 0) {
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    if (!Number.isInteger(empresaId) || empresaId <= 0) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    const tiposPermitidos = [
-      "entrada",
-      "intervalo_inicio",
-      "intervalo_fim",
-      "saida",
-    ];
-
-    if (!tiposPermitidos.includes(tipo)) {
-      return res.status(400).json({
-        error: "Tipo de ponto inválido.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(empresaId);
-
-    if (!empresa) {
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const funcionario = await buscarFuncionarioDaEmpresa(
-      funcionarioId,
-      empresaId
-    );
-
-    if (!funcionario) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
-    }
-
-    /* =========================================
-       BUSCAR TURNO ABERTO DA EMPRESA
-    ========================================= */
-
-    const turno = await buscarTurnoAberto(
-      funcionarioId,
-      empresaId
-    );
-
-    let ultimaBatida = null;
-
-    if (turno && turno.batidas.length > 0) {
-      ultimaBatida =
-        turno.batidas[turno.batidas.length - 1].tipo;
-    }
-
-    /* =========================================
-       PERMISSÕES DA SEQUÊNCIA
-
-       Mantemos a regra que seu sistema já usa.
-    ========================================= */
-
-    const permissoes =
-      getPermissoesPorUltimaBatida(ultimaBatida);
-
-    if (!permissoes[tipo]) {
-      return res.status(403).json({
-        error: "Esta batida não está liberada agora.",
-        ultima_batida: ultimaBatida,
         permissoes,
+
+        batidas:
+          resumoBatidas,
+
+        historico_turno:
+          turno?.batidas || [],
       });
-    }
 
-    /* =========================================
-       DATA/HORA
-    ========================================= */
-
-    const marcado_em = dataHoraAgoraSQL();
-
-    /* =========================================
-       REGISTRAR PONTO COM EMPRESA
-    ========================================= */
-
-    const { rows } = await pool.query(
-      `
-      INSERT INTO pontos (
-        empresa_id,
-        funcionario_id,
-        tipo,
-        marcado_em
-      )
-
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4
-      )
-
-      RETURNING
-        id,
-        empresa_id,
-        funcionario_id,
-        tipo,
-        marcado_em
-      `,
-      [
-        empresaId,
-        funcionarioId,
-        tipo,
-        marcado_em,
-      ]
-    );
-
-    return res.json({
-      ok: true,
-
-      message: "Ponto registrado com sucesso.",
-
-      empresa: {
-        id: empresa.id,
-        nome: empresa.nome_fantasia || empresa.nome,
-      },
-
-      funcionario: {
-        id: funcionario.id,
-        nome: funcionario.nome,
-      },
-
-      ponto: rows[0],
-    });
-
-  } catch (err) {
-    console.error("Erro ao lançar ponto:", err);
-
-    return res.status(500).json({
-      error: "Erro ao lançar ponto.",
-    });
-  }
-};
-
-/* =========================================
-   INSERIR PONTO MANUAL
-   MULTIEMPRESA
-========================================= */
-exports.inserirManual = async (req, res) => {
-  try {
-    await garantirTabelas();
-
-    const funcionarioId = Number(req.body.funcionario_id);
-    const empresaId = Number(req.body.empresa_id);
-
-    const tipo = String(req.body.tipo || "")
-      .trim()
-      .toLowerCase();
-
-    const data = String(req.body.data || "").trim();
-    const hora = String(req.body.hora || "").trim();
-
-    /* =========================================
-       VALIDAR FUNCIONÁRIO
-    ========================================= */
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR EMPRESA
-    ========================================= */
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR TIPO
-    ========================================= */
-
-    const tiposPermitidos = [
-      "entrada",
-      "intervalo_inicio",
-      "intervalo_fim",
-      "saida",
-    ];
-
-    if (!tiposPermitidos.includes(tipo)) {
-      return res.status(400).json({
-        error: "Tipo de ponto inválido.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR DATA
-       formato: YYYY-MM-DD
-    ========================================= */
-
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) {
-      return res.status(400).json({
-        error: "Data inválida. Use YYYY-MM-DD.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR HORA
-       formato: HH:MM
-    ========================================= */
-
-    if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(hora)) {
-      return res.status(400).json({
-        error: "Hora inválida. Use HH:MM.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(
-      empresaId
-    );
-
-    if (!empresa) {
-      return res.status(404).json({
-        error:
-          "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const funcionario =
-      await buscarFuncionarioDaEmpresa(
-        funcionarioId,
-        empresaId
+    } catch (err) {
+      console.error(
+        "Erro ao consultar status das batidas:",
+        err
       );
 
-    if (!funcionario) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao consultar status das batidas.",
+        });
     }
+  };
 
-    /* =========================================
-       DATA/HORA DA BATIDA
 
-       IMPORTANTE:
-       Aqui a data enviada é a data real que será
-       gravada na batida.
-    ========================================= */
+/* =========================================================
+   BATER PONTO PELOS BOTÕES
+========================================================= */
+exports.bater =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
 
-    const marcadoEm = `${data} ${hora}:00`;
+      const funcionarioId =
+        Number(
+          req.body.funcionario_id
+        );
 
-    /* =========================================
-       REGISTRAR PONTO
-    ========================================= */
+      /*
+        SEGURANÇA:
 
-    const { rows } = await pool.query(
-      `
-      INSERT INTO pontos (
-        empresa_id,
-        funcionario_id,
-        tipo,
-        marcado_em
-      )
+        empresa NÃO vem do body.
+        Vem exclusivamente do JWT.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
 
-      VALUES (
-        $1,
-        $2,
-        $3,
-        $4::timestamp
-      )
+      const tipo =
+        String(
+          req.body.tipo || ""
+        )
+          .trim()
+          .toLowerCase();
 
-      RETURNING
-        id,
-        empresa_id,
-        funcionario_id,
-        tipo,
-        marcado_em
-      `,
-      [
-        empresaId,
-        funcionarioId,
-        tipo,
-        marcadoEm,
-      ]
-    );
+      console.log(
+        "========== BATER PONTO =========="
+      );
 
-    return res.status(201).json({
-      ok: true,
-
-      message:
-        "Ponto manual registrado com sucesso.",
-
-      empresa: {
-        id: empresa.id,
-        nome:
-          empresa.nome_fantasia ||
-          empresa.nome,
-      },
-
-      funcionario: {
-        id: funcionario.id,
-        nome: funcionario.nome,
-      },
-
-      ponto: rows[0],
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao inserir ponto manual:",
-      err
-    );
-
-    return res.status(500).json({
-      error: "Erro ao inserir ponto manual.",
-    });
-  }
-};
-
-/* =========================================
-   AJUSTAR
-   MULTIEMPRESA
-========================================= */
-exports.ajustar = async (req, res) => {
-  const client = await pool.connect();
-
-  try {
-    await garantirTabelas();
-    await client.query("BEGIN");
-
-    const {
-      funcionario_id,
-      empresa_id,
-      data,
-
-      ids_originais = {},
-
-      entrada,
-      intervalo,
-      retorno,
-      saida,
-
-      falta = false,
-      folga = false,
-      ferias = false,
-
-      falta_justificada = false,
-      justificativa_falta = "",
-
-      feriado = false,
-    } = req.body;
-
-    const funcionarioId = Number(funcionario_id);
-    const empresaId = Number(empresa_id);
-
-    /* =========================================
-       VALIDAÇÕES
-    ========================================= */
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    if (!data) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Data é obrigatória.",
-      });
-    }
-
-    const dataISO = dataBRparaISO(data);
-
-    if (!dataISO) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Data inválida.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const { rows: empresas } = await client.query(
-      `
-      SELECT
-        id,
-        nome,
-        nome_fantasia,
-        ativo
-
-      FROM empresas
-
-      WHERE id = $1
-        AND ativo = true
-
-      LIMIT 1
-      `,
-      [empresaId]
-    );
-
-    if (empresas.length === 0) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    const empresa = empresas[0];
-
-    /* =========================================
-       VERIFICAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const { rows: funcionarios } = await client.query(
-      `
-      SELECT
-        id,
-        empresa_id,
-        nome,
-        cpf,
-        ativo
-
-      FROM funcionarios
-
-      WHERE id = $1
-        AND empresa_id = $2
-
-      LIMIT 1
-      `,
-      [
+      console.log({
         funcionarioId,
         empresaId,
-      ]
-    );
-
-    if (funcionarios.length === 0) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
+        tipo,
+        body: req.body,
+        user: req.user,
       });
-    }
 
-    const funcionario = funcionarios[0];
+      /* =====================================
+         VALIDAÇÕES
+      ===================================== */
 
-    /* =========================================
-       FLAGS
-    ========================================= */
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
 
-    const faltaBool = !!falta;
-    const folgaBool = !!folga;
-    const feriasBool = !!ferias;
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
 
-    const faltaJustificadaBool =
-      !!falta_justificada;
+      const tiposPermitidos = [
+        "entrada",
+        "intervalo_inicio",
+        "intervalo_fim",
+        "saida",
+      ];
 
-    const feriadoBool = !!feriado;
+      if (
+        !tiposPermitidos.includes(
+          tipo
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Tipo de ponto inválido.",
+          });
+      }
 
-    const {
-      entrada_id,
-      intervalo_inicio_id,
-      intervalo_fim_id,
-      saida_id,
-    } = ids_originais;
+      /* =====================================
+         EMPRESA
+      ===================================== */
 
-    /* =========================================
-       SALVAR AJUSTES DO DIA
-    ========================================= */
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
 
-    await client.query(
-      `
-      INSERT INTO faltas_ajustes (
-  empresa_id,
-  funcionario_id,
-  data,
-  falta,
-  folga,
-  ferias,
-  falta_justificada,
-  justificativa_falta,
-  feriado,
-  updated_at
-)
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
 
-VALUES (
-  $1,
-  $2,
-  $3,
-  $4,
-  $5,
-  $6,
-  $7,
-  $8,
-  $9,
-  NOW()
-)
+      /* =====================================
+         FUNCIONÁRIO
 
-ON CONFLICT (funcionario_id, data)
+         Aqui garantimos também que o
+         funcionário pertence à empresa
+         do terminal autenticado.
+      ===================================== */
 
-DO UPDATE SET
-  empresa_id = EXCLUDED.empresa_id,
-  falta = EXCLUDED.falta,
-  folga = EXCLUDED.folga,
-  ferias = EXCLUDED.ferias,
-  falta_justificada =
-    EXCLUDED.falta_justificada,
-  justificativa_falta =
-    EXCLUDED.justificativa_falta,
-  feriado = EXCLUDED.feriado,
-  updated_at = NOW()
-      `,
-      [
-        empresaId,
-        funcionarioId,
-        dataISO,
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
 
-        faltaBool,
-        folgaBool,
-        feriasBool,
+      if (!funcionario) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+      }
 
-        faltaJustificadaBool,
+      /* =====================================
+         ESTADO ANTES DA BATIDA
+      ===================================== */
 
-        faltaJustificadaBool
-          ? String(
-            justificativa_falta || ""
-          ).trim()
-          : null,
+      const turno =
+        await buscarTurnoAberto(
+          funcionarioId,
+          empresaId
+        );
 
-        feriadoBool,
-      ]
-    );
+      const ultimaBatidaRegistro =
+        obterUltimaBatidaDoTurno(
+          turno
+        );
 
-    /* =========================================
-       FALTA / FOLGA / FÉRIAS /
-       FALTA JUSTIFICADA
-    ========================================= */
+      const ultimaBatida =
+        ultimaBatidaRegistro?.tipo ||
+        null;
 
-    if (
-      faltaBool ||
-      folgaBool ||
-      feriasBool ||
-      faltaJustificadaBool
-    ) {
+      const permissoes =
+        getPermissoesPorUltimaBatida(
+          ultimaBatida
+        );
+
+      console.log(
+        "ESTADO ANTES DA BATIDA =>",
+        {
+          ultima_batida:
+            ultimaBatida,
+
+          tipo_solicitado:
+            tipo,
+
+          permissoes,
+        }
+      );
+
+      /* =====================================
+         BLOQUEAR BATIDA INVÁLIDA
+      ===================================== */
+
+      if (!permissoes[tipo]) {
+        console.log(
+          "❌ BATIDA BLOQUEADA"
+        );
+
+        console.log(
+          "================================="
+        );
+
+        return res
+          .status(403)
+          .json({
+            ok: false,
+
+            error:
+              "Esta batida não está liberada agora.",
+
+            tipo_solicitado:
+              tipo,
+
+            ultima_batida:
+              ultimaBatida,
+
+            permissoes,
+          });
+      }
+
+      /* =====================================
+         REGISTRAR PONTO
+      ===================================== */
+
+      const marcadoEm =
+        dataHoraAgoraSQL();
+
+      const { rows } =
+        await pool.query(
+          `
+          INSERT INTO pontos (
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4::timestamp
+          )
+
+          RETURNING
+            id,
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          `,
+          [
+            empresaId,
+            funcionarioId,
+            tipo,
+            marcadoEm,
+          ]
+        );
+
       /*
         IMPORTANTE:
 
-        Agora só remove pontos que pertencem
-        à empresa correta.
+        Só agora "ponto" existe.
+
+        No código anterior o registrarLog()
+        estava antes deste INSERT e tentava
+        acessar ponto.id e funcionario.nome
+        antes deles existirem.
       */
+      const ponto =
+        rows[0];
 
-      await client.query(
-        `
-  DELETE FROM pontos
-
-  WHERE funcionario_id = $1
-    AND empresa_id = $2
-    AND marcado_em::date = $3::date
-  `,
-        [
-          funcionarioId,
-          empresaId,
-          dataISO,
-        ]
-      );
-
-      await client.query("COMMIT");
-
-      return res.json({
-        ok: true,
-
-        empresa_id: empresaId,
-        funcionario_id: funcionarioId,
-
-        falta: faltaBool,
-        folga: folgaBool,
-        ferias: feriasBool,
-
-        falta_justificada:
-          faltaJustificadaBool,
-
-        justificativa_falta:
-          faltaJustificadaBool
-            ? String(
-              justificativa_falta || ""
-            ).trim()
-            : "",
-
-        feriado: feriadoBool,
-
-        ids_originais: {},
-
-        message: faltaBool
-          ? "Falta registrada com sucesso."
-          : folgaBool
-            ? "Folga registrada com sucesso."
-            : feriasBool
-              ? "Férias registrada com sucesso."
-              : "Falta justificada registrada com sucesso.",
-      });
-    }
-
-    /* =========================================
-       ATUALIZAR OU CRIAR PONTO
-    ========================================= */
-
-    async function atualizarOuCriar(
-      idExistente,
-      tipoPonto,
-      horaPonto,
-      adicionarDias = 0
-    ) {
       /* =====================================
-         HORÁRIO FOI REMOVIDO
+         REGISTRAR LOG DA BATIDA
       ===================================== */
 
-      if (!horaPonto) {
-        if (idExistente) {
-          await client.query(
-            `
-            DELETE FROM pontos
+      const nomesBatidas = {
+        entrada:
+          "Entrada",
 
-            WHERE id = $1
-              AND funcionario_id = $2
-              AND empresa_id = $3
-            `,
-            [
-              idExistente,
-              funcionarioId,
-              empresaId,
-            ]
-          );
+        intervalo_inicio:
+          "Início do intervalo",
+
+        intervalo_fim:
+          "Retorno do intervalo",
+
+        saida:
+          "Saída",
+      };
+
+      await registrarLog({
+        req,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "PONTO",
+
+        acao:
+          `PONTO_${tipo.toUpperCase()}`,
+
+        descricao:
+          `${funcionario.nome} registrou ${nomesBatidas[tipo]}.`,
+
+        dados: {
+          ponto_id:
+            ponto.id,
+
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          tipo:
+            ponto.tipo,
+
+          marcado_em:
+            ponto.marcado_em,
+
+          origem:
+            "terminal_botoes",
+        },
+      });
+
+      /* =====================================
+         RECALCULAR PELO BANCO
+
+         Não presumimos o estado.
+         Consultamos novamente o banco depois
+         da inserção.
+      ===================================== */
+
+      const turnoAtualizado =
+        await buscarTurnoAberto(
+          funcionarioId,
+          empresaId
+        );
+
+      const ultimaAtualizadaRegistro =
+        obterUltimaBatidaDoTurno(
+          turnoAtualizado
+        );
+
+      const ultimaAtualizada =
+        ultimaAtualizadaRegistro?.tipo ||
+        null;
+
+      const novasPermissoes =
+        getPermissoesPorUltimaBatida(
+          ultimaAtualizada
+        );
+
+      const novasBatidas =
+        montarResumoBatidas(
+          turnoAtualizado
+        );
+
+      console.log(
+        "✅ PONTO REGISTRADO =>",
+        {
+          ponto,
+
+          ultima_batida:
+            ultimaAtualizada,
+
+          permissoes:
+            novasPermissoes,
         }
+      );
 
-        return null;
+      console.log(
+        "================================="
+      );
+
+      return res
+        .status(201)
+        .json({
+          ok: true,
+
+          message:
+            "Ponto registrado com sucesso.",
+
+          empresa: {
+            id:
+              empresa.id,
+
+            nome:
+              empresa.nome_fantasia ||
+              empresa.nome,
+          },
+
+          funcionario: {
+            id:
+              funcionario.id,
+
+            nome:
+              funcionario.nome,
+          },
+
+          ponto,
+
+          ultima_batida:
+            ultimaAtualizada,
+
+          permissoes:
+            novasPermissoes,
+
+          batidas:
+            novasBatidas,
+
+          turno_aberto:
+            Boolean(
+              turnoAtualizado
+            ),
+        });
+
+    } catch (err) {
+      console.error(
+        "Erro ao lançar ponto:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao lançar ponto.",
+        });
+    }
+  };
+
+
+/* =========================================================
+   BATER AUTOMATICAMENTE
+========================================================= */
+exports.auto =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
+
+      const funcionarioId =
+        Number(
+          req.body.funcionario_id
+        );
+
+      /*
+        SEGURANÇA:
+
+        empresa vem exclusivamente do JWT.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      /* =====================================
+         VALIDAÇÕES
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =====================================
+         FUNCIONÁRIO
+      ===================================== */
+
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
+
+      if (!funcionario) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+      }
+
+      /* =====================================
+         DESCOBRIR ESTADO ATUAL
+      ===================================== */
+
+      const turno =
+        await buscarTurnoAberto(
+          funcionarioId,
+          empresaId
+        );
+
+      const ultimaRegistro =
+        obterUltimaBatidaDoTurno(
+          turno
+        );
+
+      const ultimaBatida =
+        ultimaRegistro?.tipo ||
+        null;
+
+      let tipo;
+
+      if (!ultimaBatida) {
+        tipo =
+          "entrada";
+
+      } else if (
+        ultimaBatida === "entrada"
+      ) {
+        tipo =
+          "intervalo_inicio";
+
+      } else if (
+        ultimaBatida ===
+        "intervalo_inicio"
+      ) {
+        tipo =
+          "intervalo_fim";
+
+      } else if (
+        ultimaBatida ===
+        "intervalo_fim"
+      ) {
+        tipo =
+          "saida";
+
+      } else {
+        tipo =
+          "entrada";
+      }
+
+      /* =====================================
+         REGISTRAR
+      ===================================== */
+
+      const marcadoEm =
+        dataHoraAgoraSQL();
+
+      const { rows } =
+        await pool.query(
+          `
+          INSERT INTO pontos (
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4::timestamp
+          )
+
+          RETURNING
+            id,
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          `,
+          [
+            empresaId,
+            funcionarioId,
+            tipo,
+            marcadoEm,
+          ]
+        );
+
+      const ponto =
+        rows[0];
+
+      /* =====================================
+         LOG DO PONTO AUTOMÁTICO
+      ===================================== */
+
+      const nomesBatidas = {
+        entrada:
+          "Entrada",
+
+        intervalo_inicio:
+          "Início do intervalo",
+
+        intervalo_fim:
+          "Retorno do intervalo",
+
+        saida:
+          "Saída",
+      };
+
+      await registrarLog({
+        req,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "PONTO",
+
+        acao:
+          `PONTO_${tipo.toUpperCase()}`,
+
+        descricao:
+          `${funcionario.nome} registrou ${nomesBatidas[tipo]} automaticamente.`,
+
+        dados: {
+          ponto_id:
+            ponto.id,
+
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          tipo:
+            ponto.tipo,
+
+          marcado_em:
+            ponto.marcado_em,
+
+          origem:
+            "automatico",
+        },
+      });
+
+      /* =====================================
+         RESPOSTA
+      ===================================== */
+
+      return res
+        .status(201)
+        .json({
+          ok: true,
+
+          message:
+            "Ponto registrado com sucesso.",
+
+          empresa: {
+            id:
+              empresa.id,
+
+            nome:
+              empresa.nome_fantasia ||
+              empresa.nome,
+          },
+
+          funcionario: {
+            id:
+              funcionario.id,
+
+            nome:
+              funcionario.nome,
+          },
+
+          ponto,
+        });
+
+    } catch (err) {
+      console.error(
+        "Erro ao registrar ponto automático:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao registrar ponto.",
+        });
+    }
+  };
+
+  /* =========================================================
+   INSERIR PONTO MANUAL
+========================================================= */
+exports.inserirManual =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
+
+      const funcionarioId =
+        Number(
+          req.body.funcionario_id
+        );
+
+      /*
+        SEGURANÇA:
+
+        Como esta rota é do RH da empresa,
+        NÃO usamos empresa_id enviado pelo frontend.
+
+        A empresa vem exclusivamente do JWT.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      const tipo =
+        String(
+          req.body.tipo || ""
+        )
+          .trim()
+          .toLowerCase();
+
+      let data =
+        String(
+          req.body.data || ""
+        ).trim();
+
+      const hora =
+        String(
+          req.body.hora || ""
+        ).trim();
+
+      /* =====================================
+         ACEITAR DATA YYYY-MM-DD OU DD/MM/YYYY
+      ===================================== */
+
+      if (
+        /^\d{2}\/\d{2}\/\d{4}$/.test(
+          data
+        )
+      ) {
+        data =
+          dataBRparaISO(data);
+      }
+
+      /* =====================================
+         VALIDAR FUNCIONÁRIO
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR EMPRESA
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR TIPO
+      ===================================== */
+
+      const tiposPermitidos = [
+        "entrada",
+        "intervalo_inicio",
+        "intervalo_fim",
+        "saida",
+      ];
+
+      if (
+        !tiposPermitidos.includes(
+          tipo
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Tipo de ponto inválido.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR DATA
+      ===================================== */
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+          data
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Data inválida. Use YYYY-MM-DD.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR HORA
+      ===================================== */
+
+      if (
+        !/^([01]\d|2[0-3]):[0-5]\d$/.test(
+          hora
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Hora inválida. Use HH:MM.",
+          });
+      }
+
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =====================================
+         FUNCIONÁRIO DA EMPRESA
+      ===================================== */
+
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
+
+      if (!funcionario) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
       }
 
       /* =====================================
          MONTAR DATA/HORA
-
-         Preserva sua regra da madrugada.
       ===================================== */
 
-      const dataHora =
-        montarDataHoraComDia(
-          data,
-          horaPonto,
-          adicionarDias
-        );
+      const marcadoEm =
+        `${data} ${hora}:00`;
 
       /* =====================================
-         ATUALIZAR PONTO EXISTENTE
+         INSERIR PONTO
       ===================================== */
 
-      if (idExistente) {
-        const result = await client.query(
+      const { rows } =
+        await pool.query(
           `
-          UPDATE pontos
+          INSERT INTO pontos (
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          )
 
-          SET
-            marcado_em = $1,
-            tipo = $2,
-            empresa_id = $3
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4::timestamp
+          )
 
-          WHERE id = $4
-            AND funcionario_id = $5
-            AND empresa_id = $3
-
-          RETURNING id
+          RETURNING
+            id,
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
           `,
           [
-            dataHora,
-            tipoPonto,
             empresaId,
-            idExistente,
             funcionarioId,
+            tipo,
+            marcadoEm,
           ]
         );
 
-        /*
-          Segurança:
-
-          Se alguém mandar ID de um ponto
-          pertencente a outra empresa,
-          não alteramos.
-        */
-
-        if (result.rowCount === 0) {
-          throw new Error(
-            "Ponto não encontrado para este funcionário e empresa."
-          );
-        }
-
-        return idExistente;
-      }
+      const ponto =
+        rows[0];
 
       /* =====================================
-         CRIAR NOVO PONTO
+         REGISTRAR LOG
       ===================================== */
 
-      const { rows } = await client.query(
-        `
-        INSERT INTO pontos (
-          empresa_id,
-          funcionario_id,
-          tipo,
-          marcado_em
-        )
+      const nomesBatidas = {
+        entrada:
+          "Entrada",
 
-        VALUES (
-          $1,
-          $2,
-          $3,
-          $4
-        )
+        intervalo_inicio:
+          "Início do intervalo",
 
-        RETURNING id
-        `,
-        [
+        intervalo_fim:
+          "Retorno do intervalo",
+
+        saida:
+          "Saída",
+      };
+
+      await registrarLog({
+        req,
+
+        empresa_id:
           empresaId,
-          funcionarioId,
-          tipoPonto,
-          dataHora,
-        ]
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "PONTO",
+
+        acao:
+          "PONTO_MANUAL",
+
+        descricao:
+          `Ponto manual de ${funcionario.nome}: ${nomesBatidas[tipo]}.`,
+
+        dados: {
+          ponto_id:
+            ponto.id,
+
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          tipo:
+            ponto.tipo,
+
+          tipo_descricao:
+            nomesBatidas[tipo],
+
+          data,
+
+          hora,
+
+          marcado_em:
+            ponto.marcado_em,
+
+          origem:
+            "manual_rh",
+        },
+      });
+
+      /* =====================================
+         RESPOSTA
+      ===================================== */
+
+      return res
+        .status(201)
+        .json({
+          ok: true,
+
+          message:
+            "Ponto manual registrado com sucesso.",
+
+          empresa: {
+            id:
+              empresa.id,
+
+            nome:
+              empresa.nome_fantasia ||
+              empresa.nome,
+          },
+
+          funcionario: {
+            id:
+              funcionario.id,
+
+            nome:
+              funcionario.nome,
+          },
+
+          ponto,
+        });
+
+    } catch (err) {
+      console.error(
+        "Erro ao inserir ponto manual:",
+        err
       );
 
-      return rows[0].id;
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao inserir ponto manual.",
+        });
     }
+  };
 
-    /* =========================================
-       NORMALIZAR HORÁRIOS
-    ========================================= */
 
-    const horas = {
-      entrada: normalizarHora(entrada),
+/* =========================================================
+   AJUSTAR PONTO
+========================================================= */
+exports.ajustar =
+  async (req, res) => {
+    const client =
+      await pool.connect();
 
-      intervalo:
-        normalizarHora(intervalo),
+    try {
+      await garantirTabelas();
 
-      retorno:
-        normalizarHora(retorno),
+      await client.query(
+        "BEGIN"
+      );
 
-      saida:
-        normalizarHora(saida),
-    };
+      const {
+        funcionario_id,
 
-    /* =========================================
-       IDENTIFICAR VIRADA DA MEIA-NOITE
+        /*
+          empresa_id não é mais utilizado
+          como fonte de segurança.
 
-       MANTIVEMOS SUA REGRA.
-    ========================================= */
+          Mesmo que venha no body,
+          a empresa verdadeira será a do JWT.
+        */
+        data,
 
-    function passouMeiaNoite(
-      horaAnterior,
-      horaAtual
-    ) {
-      if (!horaAnterior || !horaAtual) {
-        return false;
-      }
+        ids_originais = {},
 
-      return horaAtual < horaAnterior;
-    }
+        entrada,
+        intervalo,
+        retorno,
+        saida,
 
-    const dias = {
-      entrada: 0,
-      intervalo: 0,
-      retorno: 0,
-      saida: 0,
-    };
-
-    /* =========================================
-       INTERVALO
-    ========================================= */
-
-    if (
-      passouMeiaNoite(
-        horas.entrada,
-        horas.intervalo
-      )
-    ) {
-      dias.intervalo = 1;
-    }
-
-    /* =========================================
-       RETORNO
-    ========================================= */
-
-    if (
-      passouMeiaNoite(
-        horas.intervalo ||
-        horas.entrada,
-
-        horas.retorno
-      )
-    ) {
-      dias.retorno = 1;
-    }
-
-    /* =========================================
-       SAÍDA
-    ========================================= */
-
-    const ultimaHora =
-      horas.retorno ||
-      horas.intervalo ||
-      horas.entrada;
-
-    if (
-      passouMeiaNoite(
-        ultimaHora,
-        horas.saida
-      )
-    ) {
-      dias.saida = 1;
-    }
-
-    /*
-      Exemplo:
-
-      data = 26/08/2026
-
-      entrada = 17:30
-      saída   = 05:30
-
-      resultado:
-
-      entrada:
-      26/08/2026 17:30
-
-      saída:
-      27/08/2026 05:30
-
-      Mas continua pertencendo à jornada
-      iniciada no dia 26.
-    */
-
-    /* =========================================
-       SALVAR HORÁRIOS
-    ========================================= */
-
-    const novosIds = {
-      entrada_id:
-        await atualizarOuCriar(
-          entrada_id,
-          "entrada",
-          entrada,
-          dias.entrada
-        ),
-
-      intervalo_inicio_id:
-        await atualizarOuCriar(
-          intervalo_inicio_id,
-          "intervalo_inicio",
-          intervalo,
-          dias.intervalo
-        ),
-
-      intervalo_fim_id:
-        await atualizarOuCriar(
-          intervalo_fim_id,
-          "intervalo_fim",
-          retorno,
-          dias.retorno
-        ),
-
-      saida_id:
-        await atualizarOuCriar(
-          saida_id,
-          "saida",
-          saida,
-          dias.saida
-        ),
-    };
-
-    /* =========================================
-       LIMPAR FLAGS
-    ========================================= */
-
-    await client.query(
-      `
-      UPDATE faltas_ajustes
-
-      SET
         falta = false,
         folga = false,
         ferias = false,
 
-        falta_justificada = false,
+        falta_justificada =
+          false,
 
-        justificativa_falta = null,
+        justificativa_falta =
+          "",
 
-        feriado = $4,
-
-        updated_at = NOW()
-
-      WHERE funcionario_id = $1
-    AND empresa_id = $2
-    AND data = $3
-      `,
-      [
-        funcionarioId,
-        empresaId,
-        dataISO,
-        feriadoBool,
-      ]
-    );
-
-    /* =========================================
-       COMMIT
-    ========================================= */
-
-    await client.query("COMMIT");
-
-    return res.json({
-      ok: true,
-
-      empresa: {
-        id: empresa.id,
-
-        nome:
-          empresa.nome_fantasia ||
-          empresa.nome,
-      },
-
-      funcionario: {
-        id: funcionario.id,
-        nome: funcionario.nome,
-      },
-
-      falta: false,
-      folga: false,
-      ferias: false,
-
-      falta_justificada: false,
-
-      justificativa_falta: "",
-
-      feriado: feriadoBool,
-
-      ids_originais: novosIds,
-
-      message:
-        "Horários ajustados com sucesso.",
-    });
-
-  } catch (err) {
-    try {
-      await client.query("ROLLBACK");
-    } catch (_) { }
-
-    console.error(
-      "Erro ao ajustar horários:",
-      err
-    );
-
-    return res.status(500).json({
-      error:
-        err.message ||
-        "Erro ao ajustar horários.",
-    });
-
-  } finally {
-    client.release();
-  }
-};
-
-/* =========================================
-   LIMPAR BATIDAS DO DIA
-   MULTIEMPRESA
-========================================= */
-exports.limparBatidasDoDia = async (req, res) => {
-  try {
-    await garantirTabelas();
-
-    const funcionarioId = Number(
-      req.body.funcionario_id
-    );
-
-    const empresaId = Number(
-      req.body.empresa_id
-    );
-
-    const { data } = req.body;
-
-    /* =========================================
-       VALIDAR FUNCIONÁRIO
-    ========================================= */
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR EMPRESA
-    ========================================= */
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    if (!data) {
-      return res.status(400).json({
-        error: "Data é obrigatória.",
-      });
-    }
-
-    /* =========================================
-       CONVERTER DATA
-    ========================================= */
-
-    const dataISO = dataBRparaISO(data);
-
-    if (!dataISO) {
-      return res.status(400).json({
-        error: "Data inválida.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(
-      empresaId
-    );
-
-    if (!empresa) {
-      return res.status(404).json({
-        error:
-          "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const funcionario =
-      await buscarFuncionarioDaEmpresa(
-        funcionarioId,
-        empresaId
-      );
-
-    if (!funcionario) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
-    }
-
-    /* =========================================
-       EXCLUIR SOMENTE DA EMPRESA CORRETA
-    ========================================= */
-
-    const result = await pool.query(
-      `
-      DELETE FROM pontos
-
-      WHERE funcionario_id = $1
-        AND empresa_id = $2
-        AND marcado_em::date = $3::date
-      `,
-      [
-        funcionarioId,
-        empresaId,
-        dataISO,
-      ]
-    );
-
-    return res.json({
-      ok: true,
-
-      empresa_id: empresaId,
-      funcionario_id: funcionarioId,
-
-      removidas: result.rowCount || 0,
-
-      message:
-        "Batidas do dia removidas com sucesso.",
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao limpar batidas do dia:",
-      err
-    );
-
-    return res.status(500).json({
-      error:
-        "Erro ao limpar batidas do dia.",
-    });
-  }
-};
-
-/* =========================================
-   LANÇAR HORÁRIO PADRÃO NO MÊS
-   MULTIEMPRESA + TURNO NOTURNO
-========================================= */
-exports.lancarHorarioPadraoMes = async (req, res) => {
-  const client = await pool.connect();
-
-  try {
-    await garantirTabelas();
-    await client.query("BEGIN");
-
-    const {
-      funcionario_id,
-      empresa_id,
-      mes,
-      ano,
-    } = req.body;
-
-    const funcionarioId = Number(funcionario_id);
-    const empresaId = Number(empresa_id);
-    const mesNum = Number(mes);
-    const anoNum = Number(ano);
-
-    /* =========================================
-       VALIDAÇÕES
-    ========================================= */
-
-    if (
-      !Number.isInteger(funcionarioId) ||
-      funcionarioId <= 0
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Funcionário inválido.",
-      });
-    }
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    if (
-      !Number.isInteger(mesNum) ||
-      !Number.isInteger(anoNum)
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Mês e ano são obrigatórios.",
-      });
-    }
-
-    if (mesNum < 1 || mesNum > 12) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error: "Mês inválido.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const { rows: empresas } = await client.query(
-      `
-      SELECT
-        id,
-        nome,
-        nome_fantasia,
-        ativo
-
-      FROM empresas
-
-      WHERE id = $1
-        AND ativo = true
-
-      LIMIT 1
-      `,
-      [empresaId]
-    );
-
-    if (empresas.length === 0) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    const empresa = empresas[0];
-
-    /* =========================================
-       BUSCAR FUNCIONÁRIO DA EMPRESA
-    ========================================= */
-
-    const { rows: funcionarios } =
-      await client.query(
-        `
-        SELECT
-          id,
-          empresa_id,
-          nome,
-          chegada,
-          intervalo_inicio,
-          intervalo_fim,
-          saida
-
-        FROM funcionarios
-
-        WHERE id = $1
-          AND empresa_id = $2
-          AND ativo = true
-
-        LIMIT 1
-        `,
-        [
-          funcionarioId,
-          empresaId,
-        ]
-      );
-
-    if (funcionarios.length === 0) {
-      await client.query("ROLLBACK");
-
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
-    }
-
-    const funcionario = funcionarios[0];
-
-    /* =========================================
-       HORÁRIO PADRÃO
-    ========================================= */
-
-    const horaEntrada =
-      normalizarHora(funcionario.chegada);
-
-    const horaIntervaloInicio =
-      normalizarHora(
-        funcionario.intervalo_inicio
-      );
-
-    const horaIntervaloFim =
-      normalizarHora(
-        funcionario.intervalo_fim
-      );
-
-    const horaSaida =
-      normalizarHora(funcionario.saida);
-
-    if (
-      !horaEntrada ||
-      !horaIntervaloInicio ||
-      !horaIntervaloFim ||
-      !horaSaida
-    ) {
-      await client.query("ROLLBACK");
-
-      return res.status(400).json({
-        error:
-          "O funcionário não possui horário padrão completo cadastrado.",
-      });
-    }
-
-    /* =========================================
-       CALCULAR VIRADA DA MEIA-NOITE
-    ========================================= */
-
-    function passouMeiaNoite(
-      horaAnterior,
-      horaAtual
-    ) {
-      if (!horaAnterior || !horaAtual) {
-        return false;
-      }
-
-      return horaAtual < horaAnterior;
-    }
-
-    let diaEntrada = 0;
-    let diaIntervaloInicio = 0;
-    let diaIntervaloFim = 0;
-    let diaSaida = 0;
-
-    if (
-      passouMeiaNoite(
-        horaEntrada,
-        horaIntervaloInicio
-      )
-    ) {
-      diaIntervaloInicio = 1;
-    }
-
-    /*
-      Se o intervalo já ocorreu no dia seguinte,
-      o retorno também precisa permanecer nele,
-      mesmo que numericamente a hora do retorno
-      seja maior que a hora do intervalo.
-    */
-
-    diaIntervaloFim = diaIntervaloInicio;
-
-    if (
-      passouMeiaNoite(
-        horaIntervaloInicio,
-        horaIntervaloFim
-      )
-    ) {
-      diaIntervaloFim =
-        diaIntervaloInicio + 1;
-    }
-
-    /*
-      A saída começa no mesmo "dia lógico"
-      do retorno.
-    */
-
-    diaSaida = diaIntervaloFim;
-
-    if (
-      passouMeiaNoite(
-        horaIntervaloFim,
-        horaSaida
-      )
-    ) {
-      diaSaida =
-        diaIntervaloFim + 1;
-    }
-
-    /* =========================================
-       QUANTIDADE DE DIAS DO MÊS
-    ========================================= */
-
-    const diasNoMes = new Date(
-      anoNum,
-      mesNum,
-      0
-    ).getDate();
-
-    let diasInseridos = 0;
-    let diasIgnorados = 0;
-
-    const detalhes = [];
-
-    /* =========================================
-       PERCORRER MÊS
-    ========================================= */
-
-    for (
-      let dia = 1;
-      dia <= diasNoMes;
-      dia++
-    ) {
-      const dataISO =
-        `${anoNum}-${String(mesNum).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+        feriado = false,
+      } = req.body;
 
       /* =====================================
-         VERIFICAR PONTOS EXISTENTES
-
-         Consideramos a DATA DA JORNADA.
+         IDs
       ===================================== */
 
-      const { rows: pontosExistentes } =
+      const funcionarioId =
+        Number(
+          funcionario_id
+        );
+
+      /*
+        SEGURANÇA MULTIEMPRESA:
+
+        RH só pode ajustar funcionário
+        pertencente à própria empresa.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      /* =====================================
+         VALIDAR FUNCIONÁRIO
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR EMPRESA
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR DATA
+      ===================================== */
+
+      if (!data) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Data é obrigatória.",
+          });
+      }
+
+      let dataISO;
+
+      if (
+        /^\d{4}-\d{2}-\d{2}$/.test(
+          String(data)
+        )
+      ) {
+        dataISO =
+          String(data);
+      } else {
+        dataISO =
+          dataBRparaISO(data);
+      }
+
+      if (!dataISO) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Data inválida.",
+          });
+      }
+
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =====================================
+         FUNCIONÁRIO DA EMPRESA
+      ===================================== */
+
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
+
+      if (!funcionario) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+      }
+
+      /* =====================================
+         NORMALIZAR BOOLEANOS
+      ===================================== */
+
+      const faltaBool =
+        falta === true ||
+        falta === "true" ||
+        falta === 1 ||
+        falta === "1";
+
+      const folgaBool =
+        folga === true ||
+        folga === "true" ||
+        folga === 1 ||
+        folga === "1";
+
+      const feriasBool =
+        ferias === true ||
+        ferias === "true" ||
+        ferias === 1 ||
+        ferias === "1";
+
+      const faltaJustificadaBool =
+        falta_justificada === true ||
+        falta_justificada === "true" ||
+        falta_justificada === 1 ||
+        falta_justificada === "1";
+
+      const feriadoBool =
+        feriado === true ||
+        feriado === "true" ||
+        feriado === 1 ||
+        feriado === "1";
+
+      /* =====================================
+         NÃO PERMITIR VÁRIAS SITUAÇÕES
+         AO MESMO TEMPO
+      ===================================== */
+
+      const totalSituacoes =
+        [
+          faltaBool,
+          folgaBool,
+          feriasBool,
+          faltaJustificadaBool,
+        ].filter(Boolean).length;
+
+      if (totalSituacoes > 1) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Marque apenas uma opção entre falta, folga, férias e falta justificada.",
+          });
+      }
+
+      /* =====================================
+         FALTA JUSTIFICADA PRECISA
+         DE JUSTIFICATIVA
+      ===================================== */
+
+      if (
+        faltaJustificadaBool &&
+        !String(
+          justificativa_falta || ""
+        ).trim()
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Informe a justificativa da falta.",
+          });
+      }
+
+      /* =====================================
+         HORÁRIOS
+      ===================================== */
+
+      const horas = {
+        entrada:
+          normalizarHora(
+            entrada
+          ),
+
+        intervalo:
+          normalizarHora(
+            intervalo
+          ),
+
+        retorno:
+          normalizarHora(
+            retorno
+          ),
+
+        saida:
+          normalizarHora(
+            saida
+          ),
+      };
+
+      /* =====================================
+         IDS ORIGINAIS
+      ===================================== */
+
+      const entrada_id =
+        Number(
+          ids_originais?.entrada_id ||
+          ids_originais?.entrada ||
+          0
+        ) || null;
+
+      const intervalo_inicio_id =
+        Number(
+          ids_originais
+            ?.intervalo_inicio_id ||
+          ids_originais
+            ?.intervalo_inicio ||
+          0
+        ) || null;
+
+      const intervalo_fim_id =
+        Number(
+          ids_originais
+            ?.intervalo_fim_id ||
+          ids_originais
+            ?.intervalo_fim ||
+          0
+        ) || null;
+
+      const saida_id =
+        Number(
+          ids_originais?.saida_id ||
+          ids_originais?.saida ||
+          0
+        ) || null;
+
+      /* =====================================
+         FUNÇÃO PARA VALIDAR SE O ID
+         REALMENTE PERTENCE AO FUNCIONÁRIO
+         E À EMPRESA
+      ===================================== */
+
+      async function validarPontoOriginal(
+        pontoId
+      ) {
+        if (!pontoId) {
+          return null;
+        }
+
+        const { rows } =
+          await client.query(
+            `
+            SELECT
+              id,
+              empresa_id,
+              funcionario_id,
+              tipo,
+              marcado_em
+
+            FROM pontos
+
+            WHERE id = $1
+              AND funcionario_id = $2
+              AND empresa_id = $3
+
+            LIMIT 1
+            `,
+            [
+              pontoId,
+              funcionarioId,
+              empresaId,
+            ]
+          );
+
+        return rows[0] || null;
+      }
+
+      /* =====================================
+         VALIDAR IDS RECEBIDOS
+
+         Isso impede alterar um ponto de outro
+         funcionário/empresa passando outro ID.
+      ===================================== */
+
+      const pontosOriginais = {
+        entrada:
+          await validarPontoOriginal(
+            entrada_id
+          ),
+
+        intervalo_inicio:
+          await validarPontoOriginal(
+            intervalo_inicio_id
+          ),
+
+        intervalo_fim:
+          await validarPontoOriginal(
+            intervalo_fim_id
+          ),
+
+        saida:
+          await validarPontoOriginal(
+            saida_id
+          ),
+      };
+
+      if (
+        entrada_id &&
+        !pontosOriginais.entrada
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(403)
+          .json({
+            error:
+              "A entrada informada não pertence a este funcionário/empresa.",
+          });
+      }
+
+      if (
+        intervalo_inicio_id &&
+        !pontosOriginais.intervalo_inicio
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(403)
+          .json({
+            error:
+              "O intervalo informado não pertence a este funcionário/empresa.",
+          });
+      }
+
+      if (
+        intervalo_fim_id &&
+        !pontosOriginais.intervalo_fim
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(403)
+          .json({
+            error:
+              "O retorno informado não pertence a este funcionário/empresa.",
+          });
+      }
+
+      if (
+        saida_id &&
+        !pontosOriginais.saida
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(403)
+          .json({
+            error:
+              "A saída informada não pertence a este funcionário/empresa.",
+          });
+      }
+
+      /* =====================================
+         CASO SEJA:
+         FALTA
+         FOLGA
+         FÉRIAS
+         FALTA JUSTIFICADA
+      ===================================== */
+
+      if (
+        faltaBool ||
+        folgaBool ||
+        feriasBool ||
+        faltaJustificadaBool
+      ) {
+        /*
+          Removemos somente as batidas que
+          pertencem à jornada/data que está
+          sendo ajustada.
+
+          Janela de 36 horas mantém suporte
+          aos funcionários da madrugada.
+        */
+
         await client.query(
           `
-          SELECT id
-
-          FROM pontos
+          DELETE FROM pontos
 
           WHERE funcionario_id = $1
             AND empresa_id = $2
-            AND tipo = 'entrada'
-            AND marcado_em::date = $3::date
 
-          LIMIT 1
+            AND marcado_em >=
+                $3::date
+
+            AND marcado_em <
+                (
+                  $3::date +
+                  INTERVAL '36 hours'
+                )
           `,
           [
             funcionarioId,
@@ -2612,440 +2630,2761 @@ exports.lancarHorarioPadraoMes = async (req, res) => {
           ]
         );
 
-      if (pontosExistentes.length > 0) {
-        diasIgnorados++;
+        /* ===================================
+           SALVAR SITUAÇÃO DO DIA
+        =================================== */
 
-        detalhes.push({
-          data: dataISO,
-          status: "ignorado",
-          motivo: "Já possui ponto lançado",
+        await client.query(
+          `
+          INSERT INTO faltas_ajustes (
+            empresa_id,
+            funcionario_id,
+            data,
+
+            falta,
+            folga,
+            ferias,
+
+            falta_justificada,
+            justificativa_falta,
+
+            feriado,
+
+            created_at,
+            updated_at
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3,
+
+            $4,
+            $5,
+            $6,
+
+            $7,
+            $8,
+
+            $9,
+
+            NOW(),
+            NOW()
+          )
+
+          ON CONFLICT (
+            funcionario_id,
+            data
+          )
+
+          DO UPDATE SET
+
+            empresa_id =
+              EXCLUDED.empresa_id,
+
+            falta =
+              EXCLUDED.falta,
+
+            folga =
+              EXCLUDED.folga,
+
+            ferias =
+              EXCLUDED.ferias,
+
+            falta_justificada =
+              EXCLUDED.falta_justificada,
+
+            justificativa_falta =
+              EXCLUDED.justificativa_falta,
+
+            feriado =
+              EXCLUDED.feriado,
+
+            updated_at =
+              NOW()
+          `,
+          [
+            empresaId,
+            funcionarioId,
+            dataISO,
+
+            faltaBool,
+            folgaBool,
+            feriasBool,
+
+            faltaJustificadaBool,
+
+            faltaJustificadaBool
+              ? String(
+                  justificativa_falta
+                ).trim()
+              : null,
+
+            feriadoBool,
+          ]
+        );
+
+        /* ===================================
+           COMMIT
+        =================================== */
+
+        await client.query(
+          "COMMIT"
+        );
+
+        /* ===================================
+           REGISTRAR LOG
+        =================================== */
+
+        const acaoAjuste =
+          faltaBool
+            ? "FALTA_REGISTRADA"
+            : folgaBool
+              ? "FOLGA_REGISTRADA"
+              : feriasBool
+                ? "FERIAS_REGISTRADA"
+                : "FALTA_JUSTIFICADA_REGISTRADA";
+
+        const descricaoAjuste =
+          faltaBool
+            ? `Falta registrada para ${funcionario.nome}.`
+            : folgaBool
+              ? `Folga registrada para ${funcionario.nome}.`
+              : feriasBool
+                ? `Férias registradas para ${funcionario.nome}.`
+                : `Falta justificada registrada para ${funcionario.nome}.`;
+
+        await registrarLog({
+          req,
+
+          empresa_id:
+            empresaId,
+
+          funcionario_id:
+            funcionario.id,
+
+          tipo:
+            "AJUSTE",
+
+          acao:
+            acaoAjuste,
+
+          descricao:
+            descricaoAjuste,
+
+          dados: {
+            funcionario_id:
+              funcionario.id,
+
+            funcionario_nome:
+              funcionario.nome,
+
+            data:
+              dataISO,
+
+            falta:
+              faltaBool,
+
+            folga:
+              folgaBool,
+
+            ferias:
+              feriasBool,
+
+            falta_justificada:
+              faltaJustificadaBool,
+
+            justificativa:
+              faltaJustificadaBool
+                ? String(
+                    justificativa_falta ||
+                    ""
+                  ).trim()
+                : null,
+
+            feriado:
+              feriadoBool,
+          },
         });
 
-        continue;
+        /* ===================================
+           RESPOSTA
+        =================================== */
+
+        return res.json({
+          ok: true,
+
+          empresa_id:
+            empresaId,
+
+          funcionario_id:
+            funcionarioId,
+
+          falta:
+            faltaBool,
+
+          folga:
+            folgaBool,
+
+          ferias:
+            feriasBool,
+
+          falta_justificada:
+            faltaJustificadaBool,
+
+          justificativa_falta:
+            faltaJustificadaBool
+              ? String(
+                  justificativa_falta
+                ).trim()
+              : "",
+
+          feriado:
+            feriadoBool,
+
+          message:
+            faltaBool
+              ? "Falta registrada com sucesso."
+              : folgaBool
+                ? "Folga registrada com sucesso."
+                : feriasBool
+                  ? "Férias registradas com sucesso."
+                  : "Falta justificada registrada com sucesso.",
+        });
+      }
+
+            /* =========================================
+         AJUSTAR HORÁRIOS NORMAIS
+      ========================================= */
+
+      /*
+        Se chegou aqui, o dia não está sendo
+        marcado como falta, folga, férias
+        ou falta justificada.
+
+        Portanto removemos qualquer situação
+        anterior salva para esta data.
+      */
+
+      await client.query(
+        `
+        DELETE FROM faltas_ajustes
+
+        WHERE funcionario_id = $1
+          AND empresa_id = $2
+          AND data = $3::date
+        `,
+        [
+          funcionarioId,
+          empresaId,
+          dataISO,
+        ]
+      );
+
+      /* =========================================
+         FUNÇÃO PARA CONVERTER HORA EM MINUTOS
+      ========================================= */
+
+      function horaParaMinutos(hora) {
+        if (!hora) {
+          return null;
+        }
+
+        const [
+          horas,
+          minutos,
+        ] = hora
+          .split(":")
+          .map(Number);
+
+        if (
+          !Number.isInteger(horas) ||
+          !Number.isInteger(minutos)
+        ) {
+          return null;
+        }
+
+        return (
+          horas * 60 +
+          minutos
+        );
+      }
+
+      /* =========================================
+         DESCOBRIR O DIA DE CADA BATIDA
+
+         IMPORTANTE PARA JORNADA NOTURNA:
+
+         Exemplo:
+
+         Jornada referente ao dia 26:
+
+         Entrada:   17:30 -> dia 26
+         Intervalo: 23:30 -> dia 26
+         Retorno:   00:30 -> dia 27
+         Saída:     05:30 -> dia 27
+
+         Mesmo retorno/saída acontecendo
+         fisicamente no dia 27, continuam
+         pertencendo à jornada iniciada no dia 26.
+      ========================================= */
+
+      const entradaMinutos =
+        horaParaMinutos(
+          horas.entrada
+        );
+
+      const intervaloMinutos =
+        horaParaMinutos(
+          horas.intervalo
+        );
+
+      const retornoMinutos =
+        horaParaMinutos(
+          horas.retorno
+        );
+
+      const saidaMinutos =
+        horaParaMinutos(
+          horas.saida
+        );
+
+      let diaEntrada = 0;
+      let diaIntervalo = 0;
+      let diaRetorno = 0;
+      let diaSaida = 0;
+
+      /*
+        "ultimoMinutoAbsoluto" permite
+        acompanhar quando houve virada
+        de meia-noite.
+      */
+      let ultimoMinutoAbsoluto =
+        null;
+
+      function calcularDiaBatida(
+        minutos
+      ) {
+        if (minutos === null) {
+          return 0;
+        }
+
+        /*
+          Primeira batida sempre começa
+          no dia de referência.
+        */
+        if (
+          ultimoMinutoAbsoluto ===
+          null
+        ) {
+          ultimoMinutoAbsoluto =
+            minutos;
+
+          return 0;
+        }
+
+        let candidato =
+          minutos;
+
+        /*
+          Se o horário ficou menor que
+          o anterior, significa que
+          provavelmente passou da
+          meia-noite.
+
+          Somamos 24 horas até ficar
+          cronologicamente depois da
+          batida anterior.
+        */
+        while (
+          candidato <
+          ultimoMinutoAbsoluto
+        ) {
+          candidato +=
+            24 * 60;
+        }
+
+        ultimoMinutoAbsoluto =
+          candidato;
+
+        return Math.floor(
+          candidato /
+          (24 * 60)
+        );
+      }
+
+      /*
+        Calculamos seguindo a ordem
+        real da jornada.
+      */
+
+      if (
+        entradaMinutos !== null
+      ) {
+        diaEntrada =
+          calcularDiaBatida(
+            entradaMinutos
+          );
+      }
+
+      if (
+        intervaloMinutos !== null
+      ) {
+        diaIntervalo =
+          calcularDiaBatida(
+            intervaloMinutos
+          );
+      }
+
+      if (
+        retornoMinutos !== null
+      ) {
+        diaRetorno =
+          calcularDiaBatida(
+            retornoMinutos
+          );
+      }
+
+      if (
+        saidaMinutos !== null
+      ) {
+        diaSaida =
+          calcularDiaBatida(
+            saidaMinutos
+          );
+      }
+
+      /* =========================================
+         MONTAR DATAS/HORAS COMPLETAS
+      ========================================= */
+
+      const marcadoEntrada =
+        horas.entrada
+          ? montarDataHoraComDia(
+              dataISO,
+              horas.entrada,
+              diaEntrada
+            )
+          : null;
+
+      const marcadoIntervalo =
+        horas.intervalo
+          ? montarDataHoraComDia(
+              dataISO,
+              horas.intervalo,
+              diaIntervalo
+            )
+          : null;
+
+      const marcadoRetorno =
+        horas.retorno
+          ? montarDataHoraComDia(
+              dataISO,
+              horas.retorno,
+              diaRetorno
+            )
+          : null;
+
+      const marcadoSaida =
+        horas.saida
+          ? montarDataHoraComDia(
+              dataISO,
+              horas.saida,
+              diaSaida
+            )
+          : null;
+
+      console.log(
+        "========== AJUSTE DE HORÁRIOS =========="
+      );
+
+      console.log({
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionarioId,
+
+        funcionario:
+          funcionario.nome,
+
+        data_referencia:
+          dataISO,
+
+        entrada: {
+          hora:
+            horas.entrada,
+
+          dia_adicional:
+            diaEntrada,
+
+          marcado_em:
+            marcadoEntrada,
+        },
+
+        intervalo: {
+          hora:
+            horas.intervalo,
+
+          dia_adicional:
+            diaIntervalo,
+
+          marcado_em:
+            marcadoIntervalo,
+        },
+
+        retorno: {
+          hora:
+            horas.retorno,
+
+          dia_adicional:
+            diaRetorno,
+
+          marcado_em:
+            marcadoRetorno,
+        },
+
+        saida: {
+          hora:
+            horas.saida,
+
+          dia_adicional:
+            diaSaida,
+
+          marcado_em:
+            marcadoSaida,
+        },
+      });
+
+      console.log(
+        "========================================="
+      );
+
+      /* =========================================
+         NOVOS IDS
+      ========================================= */
+
+      const novosIds = {
+        entrada_id:
+          null,
+
+        intervalo_inicio_id:
+          null,
+
+        intervalo_fim_id:
+          null,
+
+        saida_id:
+          null,
+      };
+
+      /* =========================================
+         FUNÇÃO AUXILIAR PARA ATUALIZAR
+         OU INSERIR UMA BATIDA
+      ========================================= */
+
+      async function salvarBatida({
+        pontoOriginal,
+        tipo,
+        marcadoEm,
+      }) {
+        /*
+          Se não existe horário novo,
+          removemos a batida antiga,
+          caso ela exista.
+        */
+        if (!marcadoEm) {
+          if (pontoOriginal?.id) {
+            await client.query(
+              `
+              DELETE FROM pontos
+
+              WHERE id = $1
+                AND funcionario_id = $2
+                AND empresa_id = $3
+              `,
+              [
+                pontoOriginal.id,
+                funcionarioId,
+                empresaId,
+              ]
+            );
+          }
+
+          return null;
+        }
+
+        /*
+          Se já existe um ponto original,
+          atualizamos exatamente aquele ID.
+        */
+        if (pontoOriginal?.id) {
+          const { rows } =
+            await client.query(
+              `
+              UPDATE pontos
+
+              SET
+                tipo = $1,
+                marcado_em =
+                  $2::timestamp,
+                empresa_id = $3
+
+              WHERE id = $4
+                AND funcionario_id = $5
+                AND empresa_id = $3
+
+              RETURNING
+                id,
+                empresa_id,
+                funcionario_id,
+                tipo,
+                marcado_em
+              `,
+              [
+                tipo,
+                marcadoEm,
+                empresaId,
+                pontoOriginal.id,
+                funcionarioId,
+              ]
+            );
+
+          return (
+            rows[0] ||
+            null
+          );
+        }
+
+        /*
+          Caso não exista ID original,
+          criamos uma nova batida.
+        */
+        const { rows } =
+          await client.query(
+            `
+            INSERT INTO pontos (
+              empresa_id,
+              funcionario_id,
+              tipo,
+              marcado_em
+            )
+
+            VALUES (
+              $1,
+              $2,
+              $3,
+              $4::timestamp
+            )
+
+            RETURNING
+              id,
+              empresa_id,
+              funcionario_id,
+              tipo,
+              marcado_em
+            `,
+            [
+              empresaId,
+              funcionarioId,
+              tipo,
+              marcadoEm,
+            ]
+          );
+
+        return (
+          rows[0] ||
+          null
+        );
+      }
+
+      /* =========================================
+         SALVAR ENTRADA
+      ========================================= */
+
+      const pontoEntrada =
+        await salvarBatida({
+          pontoOriginal:
+            pontosOriginais.entrada,
+
+          tipo:
+            "entrada",
+
+          marcadoEm:
+            marcadoEntrada,
+        });
+
+      novosIds.entrada_id =
+        pontoEntrada?.id ||
+        null;
+
+      /* =========================================
+         SALVAR INÍCIO DO INTERVALO
+      ========================================= */
+
+      const pontoIntervalo =
+        await salvarBatida({
+          pontoOriginal:
+            pontosOriginais
+              .intervalo_inicio,
+
+          tipo:
+            "intervalo_inicio",
+
+          marcadoEm:
+            marcadoIntervalo,
+        });
+
+      novosIds.intervalo_inicio_id =
+        pontoIntervalo?.id ||
+        null;
+
+      /* =========================================
+         SALVAR RETORNO DO INTERVALO
+      ========================================= */
+
+      const pontoRetorno =
+        await salvarBatida({
+          pontoOriginal:
+            pontosOriginais
+              .intervalo_fim,
+
+          tipo:
+            "intervalo_fim",
+
+          marcadoEm:
+            marcadoRetorno,
+        });
+
+      novosIds.intervalo_fim_id =
+        pontoRetorno?.id ||
+        null;
+
+      /* =========================================
+         SALVAR SAÍDA
+      ========================================= */
+
+      const pontoSaida =
+        await salvarBatida({
+          pontoOriginal:
+            pontosOriginais.saida,
+
+          tipo:
+            "saida",
+
+          marcadoEm:
+            marcadoSaida,
+        });
+
+      novosIds.saida_id =
+        pontoSaida?.id ||
+        null;
+
+      /* =========================================
+         SALVAR FERIADO, CASO NECESSÁRIO
+      ========================================= */
+
+      if (feriadoBool) {
+        await client.query(
+          `
+          INSERT INTO faltas_ajustes (
+            empresa_id,
+            funcionario_id,
+            data,
+
+            falta,
+            folga,
+            ferias,
+
+            falta_justificada,
+            justificativa_falta,
+
+            feriado,
+
+            created_at,
+            updated_at
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3,
+
+            false,
+            false,
+            false,
+
+            false,
+            NULL,
+
+            true,
+
+            NOW(),
+            NOW()
+          )
+
+          ON CONFLICT (
+            funcionario_id,
+            data
+          )
+
+          DO UPDATE SET
+
+            empresa_id =
+              EXCLUDED.empresa_id,
+
+            falta =
+              false,
+
+            folga =
+              false,
+
+            ferias =
+              false,
+
+            falta_justificada =
+              false,
+
+            justificativa_falta =
+              NULL,
+
+            feriado =
+              true,
+
+            updated_at =
+              NOW()
+          `,
+          [
+            empresaId,
+            funcionarioId,
+            dataISO,
+          ]
+        );
+      }
+
+      /* =========================================
+         COMMIT
+      ========================================= */
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /* =========================================
+         LOG DO AJUSTE
+
+         O log é feito DEPOIS do COMMIT.
+         Assim não registramos como concluída
+         uma alteração que sofreu rollback.
+      ========================================= */
+
+      await registrarLog({
+        req,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "AJUSTE",
+
+        acao:
+          "HORARIOS_AJUSTADOS",
+
+        descricao:
+          `Horários de ${funcionario.nome} foram ajustados pelo RH.`,
+
+        dados: {
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          data_referencia:
+            dataISO,
+
+          horarios: {
+            entrada:
+              horas.entrada,
+
+            intervalo:
+              horas.intervalo,
+
+            retorno:
+              horas.retorno,
+
+            saida:
+              horas.saida,
+          },
+
+          datas_reais: {
+            entrada:
+              marcadoEntrada,
+
+            intervalo:
+              marcadoIntervalo,
+
+            retorno:
+              marcadoRetorno,
+
+            saida:
+              marcadoSaida,
+          },
+
+          virada_dia: {
+            entrada:
+              diaEntrada,
+
+            intervalo:
+              diaIntervalo,
+
+            retorno:
+              diaRetorno,
+
+            saida:
+              diaSaida,
+          },
+
+          ids:
+            novosIds,
+
+          feriado:
+            feriadoBool,
+
+          origem:
+            "ajuste_relatorio",
+        },
+      });
+
+      /* =========================================
+         RESPOSTA
+      ========================================= */
+
+      return res.json({
+        ok: true,
+
+        message:
+          "Horários ajustados com sucesso.",
+
+        empresa: {
+          id:
+            empresa.id,
+
+          nome:
+            empresa.nome_fantasia ||
+            empresa.nome,
+        },
+
+        funcionario: {
+          id:
+            funcionario.id,
+
+          nome:
+            funcionario.nome,
+        },
+
+        data_referencia:
+          dataISO,
+
+        horarios: {
+          entrada:
+            horas.entrada,
+
+          intervalo:
+            horas.intervalo,
+
+          retorno:
+            horas.retorno,
+
+          saida:
+            horas.saida,
+        },
+
+        datas_reais: {
+          entrada:
+            marcadoEntrada,
+
+          intervalo:
+            marcadoIntervalo,
+
+          retorno:
+            marcadoRetorno,
+
+          saida:
+            marcadoSaida,
+        },
+
+        ids:
+          novosIds,
+
+        feriado:
+          feriadoBool,
+      });
+
+    } catch (err) {
+      /* =========================================
+         ROLLBACK
+      ========================================= */
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback do ajuste:",
+          rollbackError
+        );
+      }
+
+      console.error(
+        "Erro ao ajustar ponto:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao ajustar ponto.",
+        });
+
+    } finally {
+      client.release();
+    }
+  };
+
+
+/* =========================================================
+   LIMPAR BATIDAS DO DIA
+========================================================= */
+exports.limparBatidasDoDia =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
+
+      const funcionarioId =
+        Number(
+          req.body.funcionario_id
+        );
+
+      /*
+        SEGURANÇA:
+        empresa exclusivamente do JWT.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      let data =
+        String(
+          req.body.data || ""
+        ).trim();
+
+      /* =====================================
+         ACEITAR DD/MM/YYYY
+      ===================================== */
+
+      if (
+        /^\d{2}\/\d{2}\/\d{4}$/.test(
+          data
+        )
+      ) {
+        data =
+          dataBRparaISO(
+            data
+          );
       }
 
       /* =====================================
-         FALTA / FOLGA / FÉRIAS
+         VALIDAR FUNCIONÁRIO
       ===================================== */
 
-      const { rows: ajusteExistente } =
-        await client.query(
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR EMPRESA
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR DATA
+      ===================================== */
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(
+          data
+        )
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Data inválida.",
+          });
+      }
+
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =====================================
+         FUNCIONÁRIO
+      ===================================== */
+
+      const funcionario =
+        await buscarFuncionarioDaEmpresa(
+          funcionarioId,
+          empresaId
+        );
+
+      if (!funcionario) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+      }
+
+      const dataISO =
+        data;
+
+      /* =====================================
+         EXCLUIR BATIDAS
+
+         Mantemos janela de 36 horas para
+         jornada noturna.
+      ===================================== */
+
+      const result =
+        await pool.query(
           `
-    SELECT
-      id,
-      falta,
-      folga,
-      ferias,
-      falta_justificada
+          DELETE FROM pontos
 
-    FROM faltas_ajustes
+          WHERE funcionario_id = $1
+            AND empresa_id = $2
 
-    WHERE funcionario_id = $1
-      AND empresa_id = $2
-      AND data = $3::date
+            AND marcado_em >=
+                $3::date
 
-    LIMIT 1
-    `,
+            AND marcado_em <
+                (
+                  $3::date +
+                  INTERVAL '36 hours'
+                )
+          `,
           [
             funcionarioId,
             empresaId,
             dataISO,
+          ]
+        );
+
+      /* =====================================
+         LOG DA EXCLUSÃO
+      ===================================== */
+
+      await registrarLog({
+        req,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "PONTO",
+
+        acao:
+          "BATIDAS_REMOVIDAS",
+
+        descricao:
+          `${result.rowCount || 0} batida(s) de ${funcionario.nome} foram removidas.`,
+
+        dados: {
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          data_referencia:
+            dataISO,
+
+          quantidade:
+            result.rowCount ||
+            0,
+
+          origem:
+            "limpar_dia_rh",
+        },
+      });
+
+      return res.json({
+        ok: true,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionarioId,
+
+        data:
+          dataISO,
+
+        removidas:
+          result.rowCount ||
+          0,
+
+        message:
+          "Batidas do dia removidas com sucesso.",
+      });
+
+    } catch (err) {
+      console.error(
+        "Erro ao limpar batidas do dia:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao limpar batidas do dia.",
+        });
+    }
+  };
+
+  /* =========================================================
+   LANÇAR HORÁRIO PADRÃO NO MÊS
+========================================================= */
+exports.lancarHorarioPadraoMes =
+  async (req, res) => {
+    const client =
+      await pool.connect();
+
+    try {
+      await garantirTabelas();
+
+      await client.query(
+        "BEGIN"
+      );
+
+      const {
+        funcionario_id,
+        mes,
+        ano,
+      } = req.body;
+
+      const funcionarioId =
+        Number(
+          funcionario_id
+        );
+
+      /*
+        SEGURANÇA:
+
+        empresa NÃO vem do body.
+        Vem exclusivamente do JWT do RH.
+      */
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      const mesNum =
+        Number(mes);
+
+      const anoNum =
+        Number(ano);
+
+      /* =====================================
+         VALIDAR FUNCIONÁRIO
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          funcionarioId
+        ) ||
+        funcionarioId <= 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Funcionário inválido.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR EMPRESA
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =====================================
+         VALIDAR MÊS / ANO
+      ===================================== */
+
+      if (
+        !Number.isInteger(
+          mesNum
+        ) ||
+        !Number.isInteger(
+          anoNum
+        )
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Mês e ano são obrigatórios.",
+          });
+      }
+
+      if (
+        mesNum < 1 ||
+        mesNum > 12
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "Mês inválido.",
+          });
+      }
+
+      /* =====================================
+         EMPRESA
+      ===================================== */
+
+      const {
+        rows: empresas,
+      } =
+        await client.query(
+          `
+          SELECT
+            id,
+            nome,
+            nome_fantasia,
+            ativo
+
+          FROM empresas
+
+          WHERE id = $1
+            AND ativo = TRUE
+
+          LIMIT 1
+          `,
+          [
+            empresaId,
+          ]
+        );
+
+      if (!empresas.length) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      const empresa =
+        empresas[0];
+
+      /* =====================================
+         FUNCIONÁRIO
+
+         Precisa obrigatoriamente pertencer
+         à empresa do usuário autenticado.
+      ===================================== */
+
+      const {
+        rows: funcionarios,
+      } =
+        await client.query(
+          `
+          SELECT
+            id,
+            empresa_id,
+            nome,
+
+            chegada,
+            intervalo_inicio,
+            intervalo_fim,
+            saida
+
+          FROM funcionarios
+
+          WHERE id = $1
+            AND empresa_id = $2
+            AND ativo = TRUE
+
+          LIMIT 1
+          `,
+          [
+            funcionarioId,
+            empresaId,
+          ]
+        );
+
+      if (!funcionarios.length) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+      }
+
+      const funcionario =
+        funcionarios[0];
+
+      /* =====================================
+         HORÁRIO PADRÃO
+      ===================================== */
+
+      const horaEntrada =
+        normalizarHora(
+          funcionario.chegada
+        );
+
+      const horaIntervaloInicio =
+        normalizarHora(
+          funcionario.intervalo_inicio
+        );
+
+      const horaIntervaloFim =
+        normalizarHora(
+          funcionario.intervalo_fim
+        );
+
+      const horaSaida =
+        normalizarHora(
+          funcionario.saida
+        );
+
+      if (
+        !horaEntrada ||
+        !horaIntervaloInicio ||
+        !horaIntervaloFim ||
+        !horaSaida
+      ) {
+        await client.query(
+          "ROLLBACK"
+        );
+
+        return res
+          .status(400)
+          .json({
+            error:
+              "O funcionário não possui horário padrão completo cadastrado.",
+          });
+      }
+
+      /* =====================================
+         CONVERTER HORA PARA MINUTOS
+      ===================================== */
+
+      function horaParaMinutos(
+        hora
+      ) {
+        if (!hora) {
+          return null;
+        }
+
+        const [
+          h,
+          m,
+        ] =
+          hora
+            .split(":")
+            .map(Number);
+
+        if (
+          !Number.isInteger(h) ||
+          !Number.isInteger(m)
+        ) {
+          return null;
+        }
+
+        return (
+          h * 60 +
+          m
+        );
+      }
+
+      /* =====================================
+         CALCULAR VIRADA DE DIA
+
+         Exemplo:
+
+         Entrada   17:30 -> dia 0
+         Intervalo 23:30 -> dia 0
+         Retorno   00:30 -> dia 1
+         Saída     05:30 -> dia 1
+
+         Dessa forma a jornada continua
+         pertencendo ao dia da entrada.
+      ===================================== */
+
+      const horariosMinutos = [
+        horaParaMinutos(
+          horaEntrada
+        ),
+
+        horaParaMinutos(
+          horaIntervaloInicio
+        ),
+
+        horaParaMinutos(
+          horaIntervaloFim
+        ),
+
+        horaParaMinutos(
+          horaSaida
+        ),
+      ];
+
+      const diasAdicionais = [
+        0,
+        0,
+        0,
+        0,
+      ];
+
+      let ultimoAbsoluto =
+        horariosMinutos[0];
+
+      for (
+        let i = 1;
+        i <
+        horariosMinutos.length;
+        i++
+      ) {
+        let atual =
+          horariosMinutos[i];
+
+        /*
+          Enquanto o horário atual estiver
+          cronologicamente antes do anterior,
+          avançamos um dia.
+        */
+        while (
+          atual <
+          ultimoAbsoluto
+        ) {
+          atual +=
+            24 * 60;
+        }
+
+        diasAdicionais[i] =
+          Math.floor(
+            atual /
+            (24 * 60)
+          );
+
+        ultimoAbsoluto =
+          atual;
+      }
+
+      const [
+        diaEntrada,
+        diaIntervaloInicio,
+        diaIntervaloFim,
+        diaSaida,
+      ] =
+        diasAdicionais;
+
+      console.log(
+        "========== HORÁRIO PADRÃO =========="
+      );
+
+      console.log({
+        funcionario_id:
+          funcionarioId,
+
+        funcionario:
+          funcionario.nome,
+
+        empresa_id:
+          empresaId,
+
+        horario: {
+          entrada:
+            horaEntrada,
+
+          intervalo_inicio:
+            horaIntervaloInicio,
+
+          intervalo_fim:
+            horaIntervaloFim,
+
+          saida:
+            horaSaida,
+        },
+
+        dias_adicionais: {
+          entrada:
+            diaEntrada,
+
+          intervalo_inicio:
+            diaIntervaloInicio,
+
+          intervalo_fim:
+            diaIntervaloFim,
+
+          saida:
+            diaSaida,
+        },
+      });
+
+      console.log(
+        "====================================="
+      );
+
+      /* =====================================
+         QUANTIDADE DE DIAS DO MÊS
+      ===================================== */
+
+      const diasNoMes =
+        new Date(
+          anoNum,
+          mesNum,
+          0
+        ).getDate();
+
+      let diasInseridos = 0;
+      let diasIgnorados = 0;
+
+      const detalhes = [];
+
+      /* =====================================
+         PERCORRER TODOS OS DIAS
+      ===================================== */
+
+      for (
+        let dia = 1;
+        dia <= diasNoMes;
+        dia++
+      ) {
+        const dataISO =
+          `${anoNum}-` +
+          `${String(
+            mesNum
+          ).padStart(2, "0")}-` +
+          `${String(
+            dia
+          ).padStart(2, "0")}`;
+
+        /* ===================================
+           VERIFICAR SE JÁ EXISTE ENTRADA
+           PARA ESTA JORNADA
+        =================================== */
+
+        const {
+          rows: pontosExistentes,
+        } =
+          await client.query(
+            `
+            SELECT
+              id
+
+            FROM pontos
+
+            WHERE funcionario_id = $1
+              AND empresa_id = $2
+              AND tipo = 'entrada'
+              AND marcado_em::date =
+                  $3::date
+
+            LIMIT 1
+            `,
+            [
+              funcionarioId,
+              empresaId,
+              dataISO,
+            ]
+          );
+
+        if (
+          pontosExistentes.length >
+          0
+        ) {
+          diasIgnorados++;
+
+          detalhes.push({
+            data:
+              dataISO,
+
+            status:
+              "ignorado",
+
+            motivo:
+              "Já possui ponto lançado",
+          });
+
+          continue;
+        }
+
+        /* ===================================
+           VERIFICAR FALTA / FOLGA /
+           FÉRIAS / FALTA JUSTIFICADA
+        =================================== */
+
+        const {
+          rows: ajusteExistente,
+        } =
+          await client.query(
+            `
+            SELECT
+              id,
+              falta,
+              folga,
+              ferias,
+              falta_justificada
+
+            FROM faltas_ajustes
+
+            WHERE funcionario_id = $1
+              AND empresa_id = $2
+              AND data = $3::date
+
+            LIMIT 1
+            `,
+            [
+              funcionarioId,
+              empresaId,
+              dataISO,
+            ]
+          );
+
+        if (
+          ajusteExistente.length >
+          0 &&
+          (
+            ajusteExistente[0]
+              .falta ||
+
+            ajusteExistente[0]
+              .folga ||
+
+            ajusteExistente[0]
+              .ferias ||
+
+            ajusteExistente[0]
+              .falta_justificada
+          )
+        ) {
+          diasIgnorados++;
+
+          const ajuste =
+            ajusteExistente[0];
+
+          detalhes.push({
+            data:
+              dataISO,
+
+            status:
+              "ignorado",
+
+            motivo:
+              ajuste.falta
+                ? "Dia marcado como falta"
+                : ajuste.folga
+                  ? "Dia marcado como folga"
+                  : ajuste.ferias
+                    ? "Dia marcado como férias"
+                    : "Dia marcado como falta justificada",
+          });
+
+          continue;
+        }
+
+        /* ===================================
+           VERIFICAR ATESTADO
+        =================================== */
+
+        const {
+          rows: atestadoExistente,
+        } =
+          await client.query(
+            `
+            SELECT
+              id
+
+            FROM atestados
+
+            WHERE funcionario_id = $1
+              AND empresa_id = $2
+
+              AND $3::date
+                  BETWEEN
+                    data_inicio::date
+                  AND
+                    data_fim::date
+
+            LIMIT 1
+            `,
+            [
+              funcionarioId,
+              empresaId,
+              dataISO,
+            ]
+          );
+
+        if (
+          atestadoExistente.length >
+          0
+        ) {
+          diasIgnorados++;
+
+          detalhes.push({
+            data:
+              dataISO,
+
+            status:
+              "ignorado",
+
+            motivo:
+              "Dia com atestado",
+          });
+
+          continue;
+        }
+
+        /* ===================================
+           MONTAR DATAS REAIS DAS BATIDAS
+        =================================== */
+
+        const entradaDataHora =
+          montarDataHoraComDia(
+            dataISO,
+            horaEntrada,
+            diaEntrada
+          );
+
+        const intervaloInicioDataHora =
+          montarDataHoraComDia(
+            dataISO,
+            horaIntervaloInicio,
+            diaIntervaloInicio
+          );
+
+        const intervaloFimDataHora =
+          montarDataHoraComDia(
+            dataISO,
+            horaIntervaloFim,
+            diaIntervaloFim
+          );
+
+        const saidaDataHora =
+          montarDataHoraComDia(
+            dataISO,
+            horaSaida,
+            diaSaida
+          );
+
+        /* ===================================
+           INSERIR AS QUATRO BATIDAS
+        =================================== */
+
+        await client.query(
+          `
+          INSERT INTO pontos (
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          )
+
+          VALUES
+            (
+              $1,
+              $2,
+              'entrada',
+              $3::timestamp
+            ),
+
+            (
+              $1,
+              $2,
+              'intervalo_inicio',
+              $4::timestamp
+            ),
+
+            (
+              $1,
+              $2,
+              'intervalo_fim',
+              $5::timestamp
+            ),
+
+            (
+              $1,
+              $2,
+              'saida',
+              $6::timestamp
+            )
+          `,
+          [
+            empresaId,
+            funcionarioId,
+
+            entradaDataHora,
+            intervaloInicioDataHora,
+            intervaloFimDataHora,
+            saidaDataHora,
+          ]
+        );
+
+        /* ===================================
+           LIMPAR SITUAÇÕES DO DIA
+
+           Como acabamos de lançar horário
+           normal, não pode continuar marcado
+           como falta/folga/férias etc.
+        =================================== */
+
+        await client.query(
+          `
+          INSERT INTO faltas_ajustes (
+            empresa_id,
+            funcionario_id,
+            data,
+
+            falta,
+            folga,
+            ferias,
+
+            falta_justificada,
+            justificativa_falta,
+
+            feriado,
+
+            updated_at
+          )
+
+          VALUES (
+            $1,
+            $2,
+            $3::date,
+
+            false,
+            false,
+            false,
+
+            false,
+            NULL,
+
+            false,
+
+            NOW()
+          )
+
+          ON CONFLICT (
+            funcionario_id,
+            data
+          )
+
+          DO UPDATE SET
+
+            empresa_id =
+              EXCLUDED.empresa_id,
+
+            falta =
+              false,
+
+            folga =
+              false,
+
+            ferias =
+              false,
+
+            falta_justificada =
+              false,
+
+            justificativa_falta =
+              NULL,
+
+            updated_at =
+              NOW()
+          `,
+          [
+            empresaId,
+            funcionarioId,
+            dataISO,
+          ]
+        );
+
+        diasInseridos++;
+
+        detalhes.push({
+          data:
+            dataISO,
+
+          status:
+            "inserido",
+
+          horarios: {
+            entrada:
+              entradaDataHora,
+
+            intervalo_inicio:
+              intervaloInicioDataHora,
+
+            intervalo_fim:
+              intervaloFimDataHora,
+
+            saida:
+              saidaDataHora,
+          },
+        });
+      }
+
+      /* =====================================
+         COMMIT
+      ===================================== */
+
+      await client.query(
+        "COMMIT"
+      );
+
+      /* =====================================
+         REGISTRAR LOG
+
+         Somente depois do COMMIT.
+      ===================================== */
+
+      await registrarLog({
+        req,
+
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          funcionario.id,
+
+        tipo:
+          "AJUSTE",
+
+        acao:
+          "HORARIO_PADRAO_MES",
+
+        descricao:
+          `Horário padrão mensal lançado para ${funcionario.nome}.`,
+
+        dados: {
+          funcionario_id:
+            funcionario.id,
+
+          funcionario_nome:
+            funcionario.nome,
+
+          mes:
+            mesNum,
+
+          ano:
+            anoNum,
+
+          horario_padrao: {
+            entrada:
+              horaEntrada,
+
+            intervalo_inicio:
+              horaIntervaloInicio,
+
+            intervalo_fim:
+              horaIntervaloFim,
+
+            saida:
+              horaSaida,
+          },
+
+          jornada_noturna: {
+            entrada_dia:
+              diaEntrada,
+
+            intervalo_inicio_dia:
+              diaIntervaloInicio,
+
+            intervalo_fim_dia:
+              diaIntervaloFim,
+
+            saida_dia:
+              diaSaida,
+          },
+
+          dias_inseridos:
+            diasInseridos,
+
+          dias_ignorados:
+            diasIgnorados,
+
+          origem:
+            "horario_padrao_mes",
+        },
+      });
+
+      /* =====================================
+         RESPOSTA
+      ===================================== */
+
+      return res.json({
+        ok: true,
+
+        message:
+          "Horário padrão lançado com sucesso.",
+
+        empresa: {
+          id:
+            empresa.id,
+
+          nome:
+            empresa.nome_fantasia ||
+            empresa.nome,
+        },
+
+        funcionario:
+          funcionario.nome,
+
+        mes:
+          mesNum,
+
+        ano:
+          anoNum,
+
+        dias_inseridos:
+          diasInseridos,
+
+        dias_ignorados:
+          diasIgnorados,
+
+        detalhes,
+      });
+
+    } catch (err) {
+      /* =====================================
+         ROLLBACK
+      ===================================== */
+
+      try {
+        await client.query(
+          "ROLLBACK"
+        );
+      } catch (
+        rollbackError
+      ) {
+        console.error(
+          "Erro no rollback do horário padrão:",
+          rollbackError
+        );
+      }
+
+      console.error(
+        "Erro ao lançar horário padrão do mês:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao lançar horário padrão do mês.",
+        });
+
+    } finally {
+      client.release();
+    }
+  };
+
+  /* =========================================================
+   BUSCAR FUNCIONÁRIO POR CPF
+   + PONTOS DA JORNADA DE HOJE
+========================================================= */
+exports.buscarPorCPF =
+  async (req, res) => {
+    try {
+      await garantirTabelas();
+
+      /* =========================================
+         CPF
+      ========================================= */
+
+      const cpf =
+        onlyDigits(
+          req.params.cpf
+        );
+
+      /* =========================================
+         EMPRESA
+
+         A empresa vem exclusivamente do JWT.
+         Não confiamos em empresa_id enviado
+         pelo frontend.
+      ========================================= */
+
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      console.log(
+        "========== CONSULTA CPF =========="
+      );
+
+      console.log({
+        cpf,
+        empresaId,
+        user: req.user,
+      });
+
+      /* =========================================
+         VALIDAR CPF
+      ========================================= */
+
+      if (!cpf) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "CPF inválido.",
+          });
+      }
+
+      /* =========================================
+         VALIDAR EMPRESA
+      ========================================= */
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Empresa não informada.",
+          });
+      }
+
+      /* =========================================
+         EMPRESA
+      ========================================= */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+      /* =========================================
+         FUNCIONÁRIO
+
+         CPF + empresa são obrigatórios.
+
+         Isso impede que um terminal de uma
+         empresa encontre funcionário cadastrado
+         em outra empresa.
+      ========================================= */
+
+      const {
+        rows: funcionarios,
+      } =
+        await pool.query(
+          `
+          SELECT
+            f.id,
+            f.empresa_id,
+            f.nome,
+            f.cpf,
+            f.cnpj_empresa,
+
+            f.chegada,
+            f.intervalo_inicio,
+            f.intervalo_fim,
+            f.saida,
+
+            f.ativo,
+
+            fc.nome AS funcao_nome
+
+          FROM funcionarios f
+
+          LEFT JOIN funcoes fc
+            ON fc.id =
+               f.funcao_id
+
+          WHERE
+            f.cpf = $1
+
+            AND f.empresa_id = $2
+
+            AND f.ativo = TRUE
+
+          LIMIT 1
+          `,
+          [
+            cpf,
+            empresaId,
           ]
         );
 
       if (
-        ajusteExistente.length > 0 &&
-        (
-          ajusteExistente[0].falta ||
-          ajusteExistente[0].folga ||
-          ajusteExistente[0].ferias ||
-          ajusteExistente[0].falta_justificada
-        )
+        !funcionarios.length
       ) {
-        diasIgnorados++;
-
-        const ajuste = ajusteExistente[0];
-
-        detalhes.push({
-          data: dataISO,
-          status: "ignorado",
-
-          motivo: ajuste.falta
-            ? "Dia marcado como falta"
-            : ajuste.folga
-              ? "Dia marcado como folga"
-              : ajuste.ferias
-                ? "Dia marcado como férias"
-                : "Dia marcado como falta justificada",
-        });
-
-        continue;
+        return res
+          .status(404)
+          .json({
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
       }
 
-      /* =====================================
-         ATESTADO
-      ===================================== */
+      const funcionario =
+        funcionarios[0];
 
-      const { rows: atestadoExistente } =
-        await client.query(
+      console.log(
+        "👤 FUNCIONÁRIO ENCONTRADO:",
+        {
+          id:
+            funcionario.id,
+
+          nome:
+            funcionario.nome,
+
+          empresa_id:
+            funcionario.empresa_id,
+        }
+      );
+
+      /* =========================================
+         DEFESA EXTRA DE EMPRESA
+      ========================================= */
+
+      if (
+        Number(
+          funcionario.empresa_id
+        ) !== empresaId
+      ) {
+        console.error(
+          "❌ BLOQUEIO MULTIEMPRESA:",
+          {
+            empresa_token:
+              empresaId,
+
+            empresa_funcionario:
+              funcionario.empresa_id,
+
+            funcionario_id:
+              funcionario.id,
+          }
+        );
+
+        return res
+          .status(403)
+          .json({
+            error:
+              "Funcionário não pertence a esta empresa.",
+          });
+      }
+
+      /* =====================================================
+         DATA DE HOJE
+
+         Utilizamos o horário de São Paulo,
+         igual ao restante do sistema.
+      ===================================================== */
+
+      const hoje =
+        dataHojeISO();
+
+      /* =====================================================
+         BUSCAR PONTOS
+
+         Buscamos a partir do início do dia atual
+         até 36 horas depois.
+
+         Isso permite encontrar jornadas como:
+
+         dia 26:
+         Entrada -> 17:30
+
+         dia 27:
+         Saída -> 05:30
+
+         A saída continua fazendo parte da
+         jornada iniciada no dia 26.
+      ===================================================== */
+
+      const {
+        rows: pontosBanco,
+      } =
+        await pool.query(
           `
-          SELECT id
+          SELECT
+            p.id,
+            p.empresa_id,
+            p.funcionario_id,
+            p.tipo,
+            p.marcado_em,
 
-          FROM atestados
+            TO_CHAR(
+              p.marcado_em,
+              'YYYY-MM-DD'
+            ) AS data,
 
-          WHERE funcionario_id = $1
-            AND $2::date
-                BETWEEN data_inicio::date
-                AND data_fim::date
+            TO_CHAR(
+              p.marcado_em,
+              'HH24:MI'
+            ) AS hora
 
-          LIMIT 1
+          FROM pontos p
+
+          WHERE
+            p.funcionario_id = $1
+
+            AND p.empresa_id = $2
+
+            AND p.marcado_em >=
+                $3::date
+
+            AND p.marcado_em <
+                (
+                  $3::date
+                  +
+                  INTERVAL '36 hours'
+                )
+
+          ORDER BY
+            p.marcado_em ASC,
+            p.id ASC
           `,
           [
-            funcionarioId,
-            dataISO,
+            funcionario.id,
+            empresaId,
+            hoje,
           ]
         );
 
-      if (atestadoExistente.length > 0) {
-        diasIgnorados++;
+      /* =====================================================
+         SEPARAR SOMENTE JORNADAS QUE COMEÇARAM HOJE
 
-        detalhes.push({
-          data: dataISO,
-          status: "ignorado",
-          motivo: "Dia com atestado",
-        });
+         O período de 36 horas pode encontrar:
 
-        continue;
+         - jornada iniciada hoje;
+         - saída amanhã;
+         - uma nova entrada amanhã.
+
+         A nova entrada de amanhã NÃO pode
+         aparecer no resumo de hoje.
+      ===================================================== */
+
+      const pontos = [];
+
+      let jornadaIniciada =
+        false;
+
+      for (
+        const ponto
+        of pontosBanco
+      ) {
+        /* =====================================
+           ENTRADA
+        ===================================== */
+
+        if (
+          ponto.tipo ===
+          "entrada"
+        ) {
+          /*
+            A entrada só inicia uma jornada
+            deste resumo quando ocorreu
+            exatamente na data de hoje.
+          */
+
+          if (
+            String(
+              ponto.data
+            ) === hoje
+          ) {
+            jornadaIniciada =
+              true;
+
+            pontos.push(
+              ponto
+            );
+          } else {
+            /*
+              Encontramos uma entrada do
+              dia seguinte.
+
+              Portanto ela não pertence
+              ao resumo do dia atual.
+            */
+            jornadaIniciada =
+              false;
+          }
+
+          continue;
+        }
+
+        /* =====================================
+           DEMAIS BATIDAS
+        ===================================== */
+
+        if (
+          jornadaIniciada
+        ) {
+          pontos.push(
+            ponto
+          );
+
+          /* ===================================
+             SAÍDA FECHA A JORNADA
+          =================================== */
+
+          if (
+            ponto.tipo ===
+            "saida"
+          ) {
+            jornadaIniciada =
+              false;
+          }
+        }
       }
 
-      /* =====================================
-         MONTAR DATAS/HORAS
+      /* =====================================================
+         LOGS DE DEBUG
+      ===================================================== */
 
-         Usa a mesma lógica que já existe
-         no ajuste manual.
-      ===================================== */
-
-      const entradaDataHora =
-        montarDataHoraComDia(
-          dataISO,
-          horaEntrada,
-          diaEntrada
-        );
-
-      const intervaloInicioDataHora =
-        montarDataHoraComDia(
-          dataISO,
-          horaIntervaloInicio,
-          diaIntervaloInicio
-        );
-
-      const intervaloFimDataHora =
-        montarDataHoraComDia(
-          dataISO,
-          horaIntervaloFim,
-          diaIntervaloFim
-        );
-
-      const saidaDataHora =
-        montarDataHoraComDia(
-          dataISO,
-          horaSaida,
-          diaSaida
-        );
-
-      /* =====================================
-         INSERIR AS 4 BATIDAS
-      ===================================== */
-
-      await client.query(
-        `
-        INSERT INTO pontos (
-          empresa_id,
-          funcionario_id,
-          tipo,
-          marcado_em
-        )
-
-        VALUES
-          ($1, $2, 'entrada', $3),
-          ($1, $2, 'intervalo_inicio', $4),
-          ($1, $2, 'intervalo_fim', $5),
-          ($1, $2, 'saida', $6)
-        `,
-        [
-          empresaId,
-          funcionarioId,
-
-          entradaDataHora,
-          intervaloInicioDataHora,
-          intervaloFimDataHora,
-          saidaDataHora,
-        ]
+      console.log(
+        "📅 DATA CONSULTADA:",
+        hoje
       );
 
-      /* =====================================
-         LIMPAR AJUSTES
-      ===================================== */
-
-      await client.query(
-        `
-  INSERT INTO faltas_ajustes (
-    empresa_id,
-    funcionario_id,
-    data,
-    falta,
-    folga,
-    ferias,
-    falta_justificada,
-    justificativa_falta,
-    feriado,
-    updated_at
-  )
-
-  VALUES (
-    $1,
-    $2,
-    $3::date,
-    false,
-    false,
-    false,
-    false,
-    null,
-    false,
-    NOW()
-  )
-
-  ON CONFLICT (
-    funcionario_id,
-    data
-  )
-
-  DO UPDATE SET
-    empresa_id = EXCLUDED.empresa_id,
-    falta = false,
-    folga = false,
-    ferias = false,
-    falta_justificada = false,
-    justificativa_falta = null,
-    updated_at = NOW()
-  `,
-        [
-          empresaId,
-          funcionarioId,
-          dataISO,
-        ]
+      console.log(
+        "🕒 PONTOS ENCONTRADOS NO BANCO:",
+        pontosBanco
       );
 
-      diasInseridos++;
+      console.log(
+        "✅ PONTOS DO RESUMO:",
+        pontos
+      );
 
-      detalhes.push({
-        data: dataISO,
-        status: "inserido",
+      console.log(
+        "=========================================="
+      );
+
+      /* =====================================================
+         NÃO REGISTRAMOS LOG DE CONSULTA CPF
+
+         Motivo:
+
+         Essa rota é utilizada frequentemente
+         pelo terminal.
+
+         Registrar cada consulta criaria milhares
+         de logs desnecessários.
+
+         Os eventos importantes ficam registrados:
+
+         - Entrada
+         - Intervalo
+         - Retorno
+         - Saída
+         - Ponto manual
+         - Ajustes
+         - Falta
+         - Folga
+         - Férias
+         - Falta justificada
+         - Exclusão de batidas
+         - Horário padrão mensal
+      ===================================================== */
+
+      /* =====================================================
+         RESPOSTA
+      ===================================================== */
+
+      return res.json({
+        ok: true,
+
+        /* =====================================
+           EMPRESA
+        ===================================== */
+
+        empresa: {
+          id:
+            empresa.id,
+
+          nome:
+            empresa.nome_fantasia ||
+            empresa.nome,
+        },
+
+        /* =====================================
+           FUNCIONÁRIO
+        ===================================== */
+
+        funcionario: {
+          id:
+            funcionario.id,
+
+          empresa_id:
+            funcionario.empresa_id,
+
+          nome:
+            funcionario.nome,
+
+          cpf:
+            funcionario.cpf,
+
+          cnpj_empresa:
+            funcionario.cnpj_empresa,
+
+          funcao_nome:
+            funcionario.funcao_nome,
+
+          chegada:
+            funcionario.chegada,
+
+          intervalo_inicio:
+            funcionario.intervalo_inicio,
+
+          intervalo_fim:
+            funcionario.intervalo_fim,
+
+          saida:
+            funcionario.saida,
+
+          ativo:
+            funcionario.ativo,
+        },
+
+        /* =====================================
+           PONTOS
+        ===================================== */
+
+        pontos,
+
+        /* =====================================
+           INFORMAÇÕES AUXILIARES
+        ===================================== */
+
+        data:
+          hoje,
+
+        total_pontos:
+          pontos.length,
       });
+
+    } catch (err) {
+      console.error(
+        "❌ Erro ao buscar funcionário por CPF:",
+        err
+      );
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao buscar funcionário por CPF.",
+        });
     }
-
-    /* =========================================
-       FINALIZAR
-    ========================================= */
-
-    await client.query("COMMIT");
-
-    return res.json({
-      ok: true,
-
-      message:
-        "Horário padrão lançado com sucesso.",
-
-      empresa: {
-        id: empresa.id,
-
-        nome:
-          empresa.nome_fantasia ||
-          empresa.nome,
-      },
-
-      funcionario: funcionario.nome,
-
-      dias_inseridos: diasInseridos,
-      dias_ignorados: diasIgnorados,
-
-      detalhes,
-    });
-
-  } catch (err) {
-    try {
-      await client.query("ROLLBACK");
-    } catch (_) { }
-
-    console.error(
-      "Erro ao lançar horário padrão do mês:",
-      err
-    );
-
-    return res.status(500).json({
-      error:
-        "Erro ao lançar horário padrão do mês.",
-    });
-
-  } finally {
-    client.release();
-  }
-};
-
-/* =========================================
-   BUSCAR FUNCIONÁRIO POR CPF
-   MULTIEMPRESA
-========================================= */
-exports.buscarPorCPF = async (req, res) => {
-  try {
-    await garantirTabelas();
-
-    /* =========================================
-       CPF
-    ========================================= */
-
-    const cpf = onlyDigits(req.params.cpf);
-
-    /*
-      Como esta é uma rota GET pública,
-      receberemos a empresa pela query:
-
-      /api/ponto/cpf/12345678901?empresa_id=1
-    */
-
-    const empresaId = Number(req.query.empresa_id);
-
-    /* =========================================
-       VALIDAR CPF
-    ========================================= */
-
-    if (!cpf) {
-      return res.status(400).json({
-        error: "CPF inválido.",
-      });
-    }
-
-    /* =========================================
-       VALIDAR EMPRESA
-    ========================================= */
-
-    if (
-      !Number.isInteger(empresaId) ||
-      empresaId <= 0
-    ) {
-      return res.status(400).json({
-        error: "Empresa não informada.",
-      });
-    }
-
-    /* =========================================
-       VERIFICAR EMPRESA
-    ========================================= */
-
-    const empresa = await buscarEmpresaAtiva(
-      empresaId
-    );
-
-    if (!empresa) {
-      return res.status(404).json({
-        error: "Empresa não encontrada ou desativada.",
-      });
-    }
-
-    /* =========================================
-       BUSCAR FUNCIONÁRIO
-
-       IMPORTANTE:
-       CPF + empresa_id
-    ========================================= */
-
-    const { rows } = await pool.query(
-      `
-      SELECT
-        f.id,
-        f.empresa_id,
-        f.nome,
-        f.cpf,
-        f.cnpj_empresa,
-        f.chegada,
-        f.intervalo_inicio,
-        f.intervalo_fim,
-        f.saida,
-        f.ativo,
-
-        fc.nome AS funcao_nome
-
-      FROM funcionarios f
-
-      LEFT JOIN funcoes fc
-        ON fc.id = f.funcao_id
-
-      WHERE f.cpf = $1
-        AND f.empresa_id = $2
-        AND f.ativo = true
-
-      LIMIT 1
-      `,
-      [
-        cpf,
-        empresaId,
-      ]
-    );
-
-    /* =========================================
-       NÃO ENCONTROU
-    ========================================= */
-
-    if (rows.length === 0) {
-      return res.status(404).json({
-        error: "Funcionário não encontrado.",
-      });
-    }
-
-    const funcionario = rows[0];
-
-    /* =========================================
-       RESPOSTA
-    ========================================= */
-
-    return res.json({
-      ok: true,
-
-      empresa: {
-        id: empresa.id,
-
-        nome:
-          empresa.nome_fantasia ||
-          empresa.nome,
-      },
-
-      funcionario: {
-        id: funcionario.id,
-        empresa_id: funcionario.empresa_id,
-        nome: funcionario.nome,
-        cpf: funcionario.cpf,
-        cnpj_empresa: funcionario.cnpj_empresa,
-        funcao_nome: funcionario.funcao_nome,
-
-        chegada: funcionario.chegada,
-        intervalo_inicio:
-          funcionario.intervalo_inicio,
-        intervalo_fim:
-          funcionario.intervalo_fim,
-        saida: funcionario.saida,
-
-        ativo: funcionario.ativo,
-      },
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao buscar funcionário por CPF:",
-      err
-    );
-
-    return res.status(500).json({
-      error: "Erro ao buscar funcionário por CPF.",
-    });
-  }
-};
+  };

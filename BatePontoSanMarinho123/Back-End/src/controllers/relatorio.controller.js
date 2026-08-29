@@ -30,11 +30,6 @@ async function garantirTabelaFuncoes() {
     );
   `);
 
-
-  /* =========================================
-     GARANTIR empresa_id
-  ========================================= */
-
   await pool.query(`
     ALTER TABLE funcoes
     ADD COLUMN IF NOT EXISTS empresa_id
@@ -42,21 +37,11 @@ async function garantirTabelaFuncoes() {
     ON DELETE RESTRICT
   `);
 
-
-  /* =========================================
-     GARANTIR updated_at
-  ========================================= */
-
   await pool.query(`
     ALTER TABLE funcoes
     ADD COLUMN IF NOT EXISTS updated_at
     TIMESTAMP DEFAULT NOW()
   `);
-
-
-  /* =========================================
-     REMOVER UNIQUE ANTIGO DE nome
-  ========================================= */
 
   await pool.query(`
     DO $$
@@ -65,19 +50,14 @@ async function garantirTabelaFuncoes() {
     BEGIN
 
       FOR constraint_record IN
-        SELECT
-          tc.constraint_name
-
+        SELECT tc.constraint_name
         FROM information_schema.table_constraints tc
-
         INNER JOIN information_schema.constraint_column_usage ccu
           ON tc.constraint_name = ccu.constraint_name
          AND tc.constraint_schema = ccu.constraint_schema
-
         WHERE tc.table_name = 'funcoes'
           AND tc.constraint_type = 'UNIQUE'
           AND ccu.column_name = 'nome'
-
       LOOP
 
         EXECUTE format(
@@ -90,33 +70,21 @@ async function garantirTabelaFuncoes() {
     END $$;
   `);
 
-
-  /* =========================================
-     MIGRAR FUNÇÕES ANTIGAS
-  ========================================= */
-
   const migracao = await pool.query(`
     UPDATE funcoes fn
-
     SET empresa_id = origem.empresa_id
-
     FROM (
       SELECT
         funcao_id,
         MIN(empresa_id) AS empresa_id
-
       FROM funcionarios
-
       WHERE funcao_id IS NOT NULL
         AND empresa_id IS NOT NULL
-
       GROUP BY funcao_id
     ) origem
-
     WHERE fn.id = origem.funcao_id
       AND fn.empresa_id IS NULL
   `);
-
 
   if (migracao.rowCount > 0) {
     console.log(
@@ -124,32 +92,19 @@ async function garantirTabelaFuncoes() {
     );
   }
 
-
-  /* =========================================
-     ÍNDICE empresa_id
-  ========================================= */
-
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_funcoes_empresa_id
-
     ON funcoes(empresa_id)
   `);
-
-
-  /* =========================================
-     UNIQUE POR EMPRESA + NOME
-  ========================================= */
 
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS
     idx_funcoes_empresa_nome_unique
-
     ON funcoes(
       empresa_id,
       LOWER(nome)
     )
-
     WHERE empresa_id IS NOT NULL
   `);
 }
@@ -236,7 +191,6 @@ async function garantirTabelaFuncionarios() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_funcionarios_empresa_id
-
     ON funcionarios(empresa_id)
   `);
 }
@@ -292,25 +246,14 @@ async function garantirTabelaPontos() {
     DATE
   `);
 
-  /*
-    PONTOS ANTIGOS:
-
-    recebe automaticamente a empresa
-    do funcionário.
-  */
-
-  const migracao =
-    await pool.query(`
-      UPDATE pontos p
-
-      SET empresa_id = f.empresa_id
-
-      FROM funcionarios f
-
-      WHERE p.funcionario_id = f.id
-        AND p.empresa_id IS NULL
-        AND f.empresa_id IS NOT NULL
-    `);
+  const migracao = await pool.query(`
+    UPDATE pontos p
+    SET empresa_id = f.empresa_id
+    FROM funcionarios f
+    WHERE p.funcionario_id = f.id
+      AND p.empresa_id IS NULL
+      AND f.empresa_id IS NOT NULL
+  `);
 
   if (migracao.rowCount > 0) {
     console.log(
@@ -321,14 +264,12 @@ async function garantirTabelaPontos() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_pontos_empresa_id
-
     ON pontos(empresa_id)
   `);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_pontos_empresa_funcionario
-
     ON pontos(
       empresa_id,
       funcionario_id
@@ -338,7 +279,6 @@ async function garantirTabelaPontos() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_pontos_empresa_data
-
     ON pontos(
       empresa_id,
       marcado_em
@@ -441,22 +381,14 @@ async function garantirTabelaFaltas() {
     TIMESTAMP DEFAULT NOW()
   `);
 
-  /*
-    MIGRAR REGISTROS ANTIGOS
-  */
-
-  const migracao =
-    await pool.query(`
-      UPDATE faltas_ajustes fa
-
-      SET empresa_id = f.empresa_id
-
-      FROM funcionarios f
-
-      WHERE fa.funcionario_id = f.id
-        AND fa.empresa_id IS NULL
-        AND f.empresa_id IS NOT NULL
-    `);
+  const migracao = await pool.query(`
+    UPDATE faltas_ajustes fa
+    SET empresa_id = f.empresa_id
+    FROM funcionarios f
+    WHERE fa.funcionario_id = f.id
+      AND fa.empresa_id IS NULL
+      AND f.empresa_id IS NOT NULL
+  `);
 
   if (migracao.rowCount > 0) {
     console.log(
@@ -467,14 +399,12 @@ async function garantirTabelaFaltas() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_faltas_empresa_id
-
     ON faltas_ajustes(empresa_id)
   `);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_faltas_empresa_funcionario
-
     ON faltas_ajustes(
       empresa_id,
       funcionario_id
@@ -484,7 +414,6 @@ async function garantirTabelaFaltas() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_faltas_empresa_data
-
     ON faltas_ajustes(
       empresa_id,
       data
@@ -537,22 +466,14 @@ async function garantirTabelaAtestados() {
     BOOLEAN NOT NULL DEFAULT false
   `);
 
-  /*
-    MIGRAR ATESTADOS ANTIGOS
-  */
-
-  const migracao =
-    await pool.query(`
-      UPDATE atestados a
-
-      SET empresa_id = f.empresa_id
-
-      FROM funcionarios f
-
-      WHERE a.funcionario_id = f.id
-        AND a.empresa_id IS NULL
-        AND f.empresa_id IS NOT NULL
-    `);
+  const migracao = await pool.query(`
+    UPDATE atestados a
+    SET empresa_id = f.empresa_id
+    FROM funcionarios f
+    WHERE a.funcionario_id = f.id
+      AND a.empresa_id IS NULL
+      AND f.empresa_id IS NOT NULL
+  `);
 
   if (migracao.rowCount > 0) {
     console.log(
@@ -563,14 +484,12 @@ async function garantirTabelaAtestados() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_atestados_empresa_id
-
     ON atestados(empresa_id)
   `);
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_atestados_empresa_funcionario
-
     ON atestados(
       empresa_id,
       funcionario_id
@@ -585,20 +504,111 @@ async function garantirTabelaAtestados() {
 
 async function garantirTabelas() {
   await garantirTabelaFuncoes();
-
   await garantirTabelaFuncionarios();
-
   await garantirTabelaPontos();
-
   await garantirTabelaFaltas();
-
   await garantirTabelaAtestados();
 }
 
 
 /* =========================================================
+   DESCOBRIR EMPRESA DA REQUISIÇÃO
+   CORRIGIDO
+========================================================= */
+
+function obterEmpresaIdDaRequisicao(req) {
+  const role = String(
+    req.user?.role || ""
+  )
+    .trim()
+    .toLowerCase();
+
+  /*
+    ADMIN / RH / PONTO
+
+    Todos estes usuários pertencem a uma empresa.
+    Portanto a empresa vem obrigatoriamente do JWT.
+  */
+
+  if (
+    role === "admin_empresa" ||
+    role === "rh_empresa" ||
+    role === "ponto_empresa"
+  ) {
+    const empresaId = Number(
+      req.user?.empresa_id
+    );
+
+    if (
+      Number.isInteger(empresaId) &&
+      empresaId > 0
+    ) {
+      return empresaId;
+    }
+
+    console.error(
+      "Usuário autenticado sem empresa_id:",
+      {
+        id: req.user?.id,
+        username: req.user?.username,
+        role: req.user?.role,
+        empresa_id: req.user?.empresa_id,
+      }
+    );
+
+    return null;
+  }
+
+  /*
+    SUPER ADMIN
+
+    Pode selecionar uma empresa.
+  */
+
+  if (role === "super_admin") {
+    const empresaId = Number(
+      req.query?.empresa_id
+    );
+
+    if (
+      Number.isInteger(empresaId) &&
+      empresaId > 0
+    ) {
+      return empresaId;
+    }
+
+    /*
+      Se futuramente o super admin tiver
+      empresa_id no JWT também aceitamos.
+    */
+
+    const empresaJwt = Number(
+      req.user?.empresa_id
+    );
+
+    if (
+      Number.isInteger(empresaJwt) &&
+      empresaJwt > 0
+    ) {
+      return empresaJwt;
+    }
+
+    return null;
+  }
+
+  console.error(
+    "Não foi possível descobrir a empresa:",
+    {
+      user: req.user,
+    }
+  );
+
+  return null;
+}
+
+
+/* =========================================================
    GERAR RELATÓRIO DE UM FUNCIONÁRIO
-   MULTIEMPRESA
 ========================================================= */
 
 async function gerarRelatorioFuncionario(
@@ -609,22 +619,10 @@ async function gerarRelatorioFuncionario(
 ) {
   await garantirTabelas();
 
-  const funcionarioId =
-    Number(id);
-
-  const mesNum =
-    Number(mes);
-
-  const anoNum =
-    Number(ano);
-
-  const empresaId =
-    Number(empresa_id);
-
-
-  /* =====================================================
-     VALIDAR
-  ===================================================== */
+  const funcionarioId = Number(id);
+  const mesNum = Number(mes);
+  const anoNum = Number(ano);
+  const empresaId = Number(empresa_id);
 
   if (
     !Number.isInteger(funcionarioId) ||
@@ -637,111 +635,60 @@ async function gerarRelatorioFuncionario(
     !Number.isInteger(anoNum) ||
     anoNum < 2000
   ) {
-    throw new Error(
-      "Parâmetros inválidos."
-    );
+    throw new Error("Parâmetros inválidos.");
   }
 
+  const empresaQuery = await pool.query(
+    `
+    SELECT
+      id,
+      ativo
+    FROM empresas
+    WHERE id = $1
+    LIMIT 1
+    `,
+    [empresaId]
+  );
 
-  /* =====================================================
-     VERIFICAR EMPRESA
-  ===================================================== */
-
-  const empresaQuery =
-    await pool.query(
-      `
-      SELECT
-        id,
-        ativo
-
-      FROM empresas
-
-      WHERE id = $1
-
-      LIMIT 1
-      `,
-      [empresaId]
-    );
-
-  if (
-    empresaQuery.rows.length === 0
-  ) {
-    throw new Error(
-      "Empresa não encontrada."
-    );
+  if (empresaQuery.rows.length === 0) {
+    throw new Error("Empresa não encontrada.");
   }
 
-  if (
-    !empresaQuery.rows[0].ativo
-  ) {
-    throw new Error(
-      "Empresa desativada."
-    );
+  if (!empresaQuery.rows[0].ativo) {
+    throw new Error("Empresa desativada.");
   }
 
+  const funcionarioQuery = await pool.query(
+    `
+    SELECT
+      id,
+      empresa_id,
+      nome,
+      cpf,
+      cnpj_empresa,
+      chegada,
+      intervalo_inicio,
+      intervalo_fim,
+      saida,
+      ativo
+    FROM funcionarios
+    WHERE id = $1
+      AND empresa_id = $2
+      AND ativo = true
+    LIMIT 1
+    `,
+    [funcionarioId, empresaId]
+  );
 
-  /* =====================================================
-     FUNCIONÁRIO
-
-     Segurança importante:
-     ID + EMPRESA precisam coincidir.
-  ===================================================== */
-
-  const funcionarioQuery =
-    await pool.query(
-      `
-      SELECT
-        id,
-        empresa_id,
-        nome,
-        cpf,
-        cnpj_empresa,
-
-        chegada,
-        intervalo_inicio,
-        intervalo_fim,
-        saida,
-
-        ativo
-
-      FROM funcionarios
-
-      WHERE id = $1
-        AND empresa_id = $2
-        AND ativo = true
-
-      LIMIT 1
-      `,
-      [
-        funcionarioId,
-        empresaId,
-      ]
-    );
-
-  if (
-    funcionarioQuery.rows.length === 0
-  ) {
-    throw new Error(
-      "Funcionário não encontrado."
-    );
+  if (funcionarioQuery.rows.length === 0) {
+    throw new Error("Funcionário não encontrado.");
   }
 
   const funcionario =
     funcionarioQuery.rows[0];
 
-
-  /* =====================================================
-     PERÍODO DE BUSCA
-
-     Mantemos margem até o dia 2 do próximo
-     mês por causa dos funcionários da madrugada.
-  ===================================================== */
-
   const mesStr =
-    String(mesNum).padStart(
-      2,
-      "0"
-    );
+    String(mesNum).padStart(2, "0");
 
   const inicioBusca =
     `${anoNum}-${mesStr}-01 00:00:00`;
@@ -759,11 +706,6 @@ async function gerarRelatorioFuncionario(
     ).padStart(2, "0")}-${String(
       fimBuscaDate.getDate()
     ).padStart(2, "0")} 00:00:00`;
-
-
-  /* =====================================================
-     PONTOS DA EMPRESA
-  ===================================================== */
 
   const pontosQuery = `
     SELECT
@@ -807,13 +749,8 @@ async function gerarRelatorioFuncionario(
 
         (
           p.data_referencia IS NOT NULL
-          AND EXTRACT(
-            MONTH FROM p.data_referencia
-          ) = $5
-
-          AND EXTRACT(
-            YEAR FROM p.data_referencia
-          ) = $6
+          AND EXTRACT(MONTH FROM p.data_referencia) = $5
+          AND EXTRACT(YEAR FROM p.data_referencia) = $6
         )
       )
 
@@ -822,9 +759,7 @@ async function gerarRelatorioFuncionario(
         p.data_referencia,
         p.marcado_em::date
       ) ASC,
-
       p.marcado_em ASC,
-
       p.id ASC
   `;
 
@@ -841,14 +776,6 @@ async function gerarRelatorioFuncionario(
       ]
     );
 
-
-  /* =====================================================
-     ATESTADOS DA EMPRESA
-
-     Só buscamos atestados que encostam
-     no mês solicitado.
-  ===================================================== */
-
   const primeiroDiaMes =
     `${anoNum}-${mesStr}-01`;
 
@@ -864,22 +791,21 @@ async function gerarRelatorioFuncionario(
   const atestadosQuery =
     await pool.query(
       `
-      SELECT
-        data_inicio,
-        data_fim,
-        arquivo,
-        repor_horas
-
-      FROM atestados
-
-      WHERE funcionario_id = $1
-        AND empresa_id = $2
-
-        AND data_inicio <= $4::date
-        AND data_fim >= $3::date
-
-      ORDER BY data_inicio ASC
-      `,
+    SELECT
+      id,
+      empresa_id,
+      funcionario_id,
+      data_inicio,
+      data_fim,
+      arquivo,
+      repor_horas
+    FROM atestados
+    WHERE funcionario_id = $1
+      AND empresa_id = $2
+      AND data_inicio <= $4::date
+      AND data_fim >= $3::date
+    ORDER BY data_inicio ASC, id ASC
+    `,
       [
         funcionarioId,
         empresaId,
@@ -887,11 +813,6 @@ async function gerarRelatorioFuncionario(
         ultimoDiaMes,
       ]
     );
-
-
-  /* =====================================================
-     FALTAS / FOLGAS / FÉRIAS / FERIADOS
-  ===================================================== */
 
   const faltasQuery =
     await pool.query(
@@ -904,15 +825,11 @@ async function gerarRelatorioFuncionario(
         falta_justificada,
         justificativa_falta,
         feriado
-
       FROM faltas_ajustes
-
       WHERE funcionario_id = $1
         AND empresa_id = $2
-
         AND data >= $3::date
         AND data <= $4::date
-
       ORDER BY data ASC
       `,
       [
@@ -923,32 +840,12 @@ async function gerarRelatorioFuncionario(
       ]
     );
 
-
-  /* =====================================================
-     MAPA DOS AJUSTES
-  ===================================================== */
-
   const mapaAjustes = {};
 
-  for (
-    const item
-    of faltasQuery.rows
-  ) {
-    /*
-      Usamos a própria data do PostgreSQL
-      sem depender desnecessariamente de
-      conversões de timezone.
-    */
+  for (const item of faltasQuery.rows) {
+    const d = new Date(item.data);
 
-    const d =
-      new Date(item.data);
-
-    d.setHours(
-      0,
-      0,
-      0,
-      0
-    );
+    d.setHours(0, 0, 0, 0);
 
     const chave =
       `${d.getFullYear()}-${String(
@@ -958,34 +855,20 @@ async function gerarRelatorioFuncionario(
       ).padStart(2, "0")}`;
 
     mapaAjustes[chave] = {
-      falta:
-        !!item.falta,
-
-      folga:
-        !!item.folga,
-
-      ferias:
-        !!item.ferias,
-
+      falta: !!item.falta,
+      folga: !!item.folga,
+      ferias: !!item.ferias,
       falta_justificada:
         !!item.falta_justificada,
-
       justificativa_falta:
         item.justificativa_falta || "",
-
       feriado:
         !!item.feriado,
     };
   }
 
-
   const listaAtestados =
     atestadosQuery.rows;
-
-
-  /* =====================================================
-     ATESTADO DO DIA
-  ===================================================== */
 
   function diaTemAtestado(data) {
     if (!data) {
@@ -1035,6 +918,30 @@ async function gerarRelatorioFuncionario(
         diaRef <= fim
       ) {
         return {
+          /* =====================================
+             ID DO ATESTADO
+          ===================================== */
+
+          id:
+            Number(
+              atestado.id
+            ),
+
+          atestado_id:
+            Number(
+              atestado.id
+            ),
+
+          empresa_id:
+            Number(
+              atestado.empresa_id
+            ),
+
+          funcionario_id:
+            Number(
+              atestado.funcionario_id
+            ),
+
           arquivo:
             atestado.arquivo,
 
@@ -1046,11 +953,6 @@ async function gerarRelatorioFuncionario(
 
     return null;
   }
-
-
-  /* =====================================================
-     HELPERS DE DATA
-  ===================================================== */
 
   function zerarHora(data) {
     const d =
@@ -1066,7 +968,6 @@ async function gerarRelatorioFuncionario(
     return d;
   }
 
-
   function formatarChaveDia(data) {
     const d =
       zerarHora(data);
@@ -1078,17 +979,13 @@ async function gerarRelatorioFuncionario(
     ).padStart(2, "0")}`;
   }
 
-
   function horaParaMinutos(valor) {
     if (!valor) {
       return null;
     }
 
     const texto =
-      String(valor).slice(
-        0,
-        5
-      );
+      String(valor).slice(0, 5);
 
     const [h, m] =
       texto
@@ -1104,11 +1001,6 @@ async function gerarRelatorioFuncionario(
 
     return h * 60 + m;
   }
-
-
-  /* =====================================================
-     FUNCIONÁRIO DA MADRUGADA
-  ===================================================== */
 
   function funcionarioTrabalhaMadrugada() {
     const entradaMin =
@@ -1131,24 +1023,7 @@ async function gerarRelatorioFuncionario(
     return saidaMin <= entradaMin;
   }
 
-
-  /* =====================================================
-     DEFINIR DIA DO RELATÓRIO
-
-     data_referencia tem prioridade.
-
-     Isso mantém sua regra:
-     alterações manuais feitas no relatório
-     permanecem no dia escolhido.
-  ===================================================== */
-
-  function formatarChaveDiaRelatorio(
-    row
-  ) {
-    /*
-      PONTO ALTERADO MANUALMENTE
-    */
-
+  function formatarChaveDiaRelatorio(row) {
     if (row.data_referencia) {
       const dataRef =
         new Date(
@@ -1169,38 +1044,15 @@ async function gerarRelatorioFuncionario(
       ).padStart(2, "0")}`;
     }
 
-
-    /*
-      PONTO NORMAL
-    */
-
     const data =
       zerarHora(
         row.marcado_em
       );
 
     const tipo =
-      String(
-        row.tipo || ""
-      )
+      String(row.tipo || "")
         .trim()
         .toLowerCase();
-
-
-    /*
-      TURNO NOTURNO
-
-      Exemplo:
-
-      entrada:
-      26/08 17:30
-
-      saída:
-      27/08 05:30
-
-      relatório:
-      tudo aparece no dia 26.
-    */
 
     if (
       funcionarioTrabalhaMadrugada() &&
@@ -1213,7 +1065,7 @@ async function gerarRelatorioFuncionario(
 
       const minutosBatida =
         dataHora.getHours() *
-          60 +
+        60 +
         dataHora.getMinutes();
 
       const saidaMin =
@@ -1224,7 +1076,7 @@ async function gerarRelatorioFuncionario(
       if (
         saidaMin != null &&
         minutosBatida <=
-          saidaMin + 180
+        saidaMin + 180
       ) {
         data.setDate(
           data.getDate() - 1
@@ -1238,7 +1090,6 @@ async function gerarRelatorioFuncionario(
       data.getDate()
     ).padStart(2, "0")}`;
   }
-
 
   function formatarHora(data) {
     if (!data) {
@@ -1255,11 +1106,6 @@ async function gerarRelatorioFuncionario(
       }
     );
   }
-
-
-  /* =====================================================
-     LINHA BASE
-  ===================================================== */
 
   function linhaBaseResposta(
     dataAtual,
@@ -1284,11 +1130,8 @@ async function gerarRelatorioFuncionario(
         funcionario.cpf,
 
       entrada: "",
-
       intervalo_inicio: "",
-
       intervalo_fim: "",
-
       saida: "",
 
       total_horas: "",
@@ -1300,6 +1143,9 @@ async function gerarRelatorioFuncionario(
 
       atestado: false,
 
+      /* ID utilizado para abrir o PDF */
+      atestado_id: null,
+
       atestado_repor_horas:
         false,
 
@@ -1307,9 +1153,7 @@ async function gerarRelatorioFuncionario(
         null,
 
       falta: false,
-
       folga: false,
-
       ferias: false,
 
       falta_justificada:
@@ -1326,29 +1170,18 @@ async function gerarRelatorioFuncionario(
     };
   }
 
-
   function criarLinhaBase(row) {
     return {
       ids_originais: {
         entrada_id: null,
-
-        intervalo_inicio_id:
-          null,
-
-        intervalo_fim_id:
-          null,
-
+        intervalo_inicio_id: null,
+        intervalo_fim_id: null,
         saida_id: null,
       },
 
       entrada: null,
-
-      intervalo_inicio:
-        null,
-
-      intervalo_fim:
-        null,
-
+      intervalo_inicio: null,
+      intervalo_fim: null,
       saida: null,
 
       nome:
@@ -1379,10 +1212,7 @@ async function gerarRelatorioFuncionario(
     };
   }
 
-
-  function linhaTemAlgumaBatida(
-    linha
-  ) {
+  function linhaTemAlgumaBatida(linha) {
     return !!(
       linha.entrada ||
       linha.intervalo_inicio ||
@@ -1391,32 +1221,22 @@ async function gerarRelatorioFuncionario(
     );
   }
 
-
   function adicionarCampo(
     linha,
     tipo,
     row
   ) {
     const dataHora =
-      new Date(
-        row.marcado_em
-      );
+      new Date(row.marcado_em);
 
     if (tipo === "entrada") {
-      linha.entrada =
-        dataHora;
-
-      linha.ids_originais
-        .entrada_id =
+      linha.entrada = dataHora;
+      linha.ids_originais.entrada_id =
         row.id;
-
       return;
     }
 
-    if (
-      tipo ===
-      "intervalo_inicio"
-    ) {
+    if (tipo === "intervalo_inicio") {
       linha.intervalo_inicio =
         dataHora;
 
@@ -1427,10 +1247,7 @@ async function gerarRelatorioFuncionario(
       return;
     }
 
-    if (
-      tipo ===
-      "intervalo_fim"
-    ) {
+    if (tipo === "intervalo_fim") {
       linha.intervalo_fim =
         dataHora;
 
@@ -1442,27 +1259,19 @@ async function gerarRelatorioFuncionario(
     }
 
     if (tipo === "saida") {
-      linha.saida =
-        dataHora;
-
-      linha.ids_originais
-        .saida_id =
+      linha.saida = dataHora;
+      linha.ids_originais.saida_id =
         row.id;
     }
   }
 
-
   function toMinutos(valor) {
-    if (!valor) {
-      return null;
-    }
+    if (!valor) return null;
 
-    if (
-      valor instanceof Date
-    ) {
+    if (valor instanceof Date) {
       return (
         valor.getHours() *
-          60 +
+        60 +
         valor.getMinutes()
       );
     }
@@ -1488,7 +1297,6 @@ async function gerarRelatorioFuncionario(
     return h * 60 + m;
   }
 
-
   function escolherMaisProximo(
     lista,
     regraHora
@@ -1501,25 +1309,16 @@ async function gerarRelatorioFuncionario(
     }
 
     const regraMin =
-      toMinutos(
-        regraHora
-      );
+      toMinutos(regraHora);
 
-    if (
-      regraMin == null
-    ) {
+    if (regraMin == null) {
       return null;
     }
 
     let melhor = null;
+    let menorDiff = Infinity;
 
-    let menorDiff =
-      Infinity;
-
-    for (
-      const item
-      of lista
-    ) {
+    for (const item of lista) {
       const minutos =
         toMinutos(
           new Date(
@@ -1533,21 +1332,14 @@ async function gerarRelatorioFuncionario(
           regraMin
         );
 
-      if (
-        diff <
-        menorDiff
-      ) {
-        menorDiff =
-          diff;
-
-        melhor =
-          item;
+      if (diff < menorDiff) {
+        menorDiff = diff;
+        melhor = item;
       }
     }
 
     return melhor;
   }
-
 
   function removerItemPorId(
     lista,
@@ -1556,8 +1348,7 @@ async function gerarRelatorioFuncionario(
     const idx =
       lista.findIndex(
         (item) =>
-          item.id ===
-          idRemover
+          item.id === idRemover
       );
 
     if (idx >= 0) {
@@ -1568,12 +1359,11 @@ async function gerarRelatorioFuncionario(
     }
   }
 
-    /* =====================================================
-     MONTAR LINHAS DO DIA
-  ===================================================== */
-
   function montarLinhasDoDia(lista) {
-    if (!lista || lista.length === 0) {
+    if (
+      !lista ||
+      lista.length === 0
+    ) {
       return [];
     }
 
@@ -1617,18 +1407,15 @@ async function gerarRelatorioFuncionario(
       }
     }
 
-
-    /* ===================================================
-       ENTRADA PRINCIPAL
-    =================================================== */
-
     if (entradas.length > 0) {
       adicionarCampo(
         primeiraLinha,
         "entrada",
         entradas.shift()
       );
-    } else if (autos.length > 0) {
+    } else if (
+      autos.length > 0
+    ) {
       adicionarCampo(
         primeiraLinha,
         "entrada",
@@ -1636,16 +1423,10 @@ async function gerarRelatorioFuncionario(
       );
     }
 
-
-    /* ===================================================
-       INTERVALO INÍCIO PRINCIPAL
-    =================================================== */
-
     let principalIntervaloInicio =
       escolherMaisProximo(
         intervalosInicio,
-        primeiraLinha.regras
-          .intervalo_in
+        primeiraLinha.regras.intervalo_in
       );
 
     if (
@@ -1656,9 +1437,7 @@ async function gerarRelatorioFuncionario(
         autos.shift();
     }
 
-    if (
-      principalIntervaloInicio
-    ) {
+    if (principalIntervaloInicio) {
       adicionarCampo(
         primeiraLinha,
         "intervalo_inicio",
@@ -1671,16 +1450,10 @@ async function gerarRelatorioFuncionario(
       );
     }
 
-
-    /* ===================================================
-       INTERVALO FIM PRINCIPAL
-    =================================================== */
-
     let principalIntervaloFim =
       escolherMaisProximo(
         intervalosFim,
-        primeiraLinha.regras
-          .intervalo_fi
+        primeiraLinha.regras.intervalo_fi
       );
 
     if (
@@ -1691,9 +1464,7 @@ async function gerarRelatorioFuncionario(
         autos.shift();
     }
 
-    if (
-      principalIntervaloFim
-    ) {
+    if (principalIntervaloFim) {
       adicionarCampo(
         primeiraLinha,
         "intervalo_fim",
@@ -1705,11 +1476,6 @@ async function gerarRelatorioFuncionario(
         principalIntervaloFim.id
       );
     }
-
-
-    /* ===================================================
-       SAÍDA PRINCIPAL
-    =================================================== */
 
     if (saidas.length > 0) {
       adicionarCampo(
@@ -1726,11 +1492,6 @@ async function gerarRelatorioFuncionario(
         autos.shift()
       );
     }
-
-
-    /* ===================================================
-       INTERVALOS EXTRAS
-    =================================================== */
 
     while (
       intervalosInicio.length > 0 ||
@@ -1768,11 +1529,6 @@ async function gerarRelatorioFuncionario(
       }
     }
 
-
-    /* ===================================================
-       ENTRADAS / SAÍDAS EXTRAS
-    =================================================== */
-
     while (
       entradas.length > 0 ||
       saidas.length > 0
@@ -1780,7 +1536,9 @@ async function gerarRelatorioFuncionario(
       const linha =
         criarLinhaBase(lista[0]);
 
-      if (entradas.length > 0) {
+      if (
+        entradas.length > 0
+      ) {
         adicionarCampo(
           linha,
           "entrada",
@@ -1788,7 +1546,9 @@ async function gerarRelatorioFuncionario(
         );
       }
 
-      if (saidas.length > 0) {
+      if (
+        saidas.length > 0
+      ) {
         adicionarCampo(
           linha,
           "saida",
@@ -1804,11 +1564,6 @@ async function gerarRelatorioFuncionario(
         linhas.push(linha);
       }
     }
-
-
-    /* ===================================================
-       BATIDAS AUTO RESTANTES
-    =================================================== */
 
     while (autos.length > 0) {
       const linha =
@@ -1843,7 +1598,6 @@ async function gerarRelatorioFuncionario(
       }
     }
 
-
     return linhas.filter(
       (linha) =>
         linhaTemAlgumaBatida(
@@ -1851,11 +1605,6 @@ async function gerarRelatorioFuncionario(
         )
     );
   }
-
-
-  /* =====================================================
-     AGRUPAR PONTOS PELO DIA CORRETO
-  ===================================================== */
 
   const pontosPorDia = {};
 
@@ -1865,9 +1614,7 @@ async function gerarRelatorioFuncionario(
         row
       );
 
-    if (
-      !pontosPorDia[chaveDia]
-    ) {
+    if (!pontosPorDia[chaveDia]) {
       pontosPorDia[chaveDia] =
         [];
     }
@@ -1877,18 +1624,10 @@ async function gerarRelatorioFuncionario(
     );
   }
 
-
-  /* =====================================================
-     MONTAR TURNOS
-  ===================================================== */
-
   const turnosPorDia = {};
 
   for (
-    const [
-      chaveDia,
-      lista,
-    ]
+    const [chaveDia, lista]
     of Object.entries(
       pontosPorDia
     )
@@ -1899,11 +1638,6 @@ async function gerarRelatorioFuncionario(
       );
   }
 
-
-  /* =====================================================
-     GERAR TODOS OS DIAS DO MÊS
-  ===================================================== */
-
   const final = [];
 
   const diasNoMes =
@@ -1912,7 +1646,6 @@ async function gerarRelatorioFuncionario(
       mesNum,
       0
     ).getDate();
-
 
   for (
     let dia = 1;
@@ -1947,14 +1680,33 @@ async function gerarRelatorioFuncionario(
         dataAtual
       );
 
+    /* =====================================================
+       ID DO ATESTADO
+    ===================================================== */
+
+    const atestadoId =
+      atestadoInfo?.atestado_id
+        ? Number(
+          atestadoInfo.atestado_id
+        )
+        : null;
+
+
+    /* =====================================================
+       ARQUIVO
+    ===================================================== */
+
     const arquivoAtestado =
       atestadoInfo?.arquivo ||
       null;
 
-    const atestadoReporHoras =
-      !!atestadoInfo
-        ?.repor_horas;
 
+    /* =====================================================
+       REPOR HORAS
+    ===================================================== */
+
+    const atestadoReporHoras =
+      !!atestadoInfo?.repor_horas;
 
     const ajusteDia =
       mapaAjustes[chaveDia] ||
@@ -1962,16 +1714,10 @@ async function gerarRelatorioFuncionario(
         falta: false,
         folga: false,
         ferias: false,
-
-        falta_justificada:
-          false,
-
-        justificativa_falta:
-          "",
-
+        falta_justificada: false,
+        justificativa_falta: "",
         feriado: false,
       };
-
 
     const faltaDoDia =
       !!ajusteDia.falta;
@@ -1983,25 +1729,13 @@ async function gerarRelatorioFuncionario(
       !!ajusteDia.ferias;
 
     const faltaJustificadaDoDia =
-      !!ajusteDia
-        .falta_justificada;
+      !!ajusteDia.falta_justificada;
 
     const feriadoDoDia =
       !!ajusteDia.feriado;
 
     const atestadoDoDia =
       !!arquivoAtestado;
-
-
-    /* ===================================================
-       ATESTADO COM REPOSIÇÃO DE HORAS
-
-       Se houver batida no mesmo dia, NÃO apagamos
-       as batidas.
-
-       Calculamos quanto trabalhou e quanto faltou
-       para completar a jornada.
-    =================================================== */
 
     if (
       atestadoDoDia &&
@@ -2014,14 +1748,12 @@ async function gerarRelatorioFuncionario(
 
       const intervaloInicioMin =
         horaParaMinutos(
-          funcionario
-            .intervalo_inicio
+          funcionario.intervalo_inicio
         );
 
       const intervaloFimMin =
         horaParaMinutos(
-          funcionario
-            .intervalo_fim
+          funcionario.intervalo_fim
         );
 
       const saidaMin =
@@ -2029,9 +1761,7 @@ async function gerarRelatorioFuncionario(
           funcionario.saida
         );
 
-
       let minutosPrevistos = 0;
-
 
       if (
         entradaMin != null &&
@@ -2047,7 +1777,6 @@ async function gerarRelatorioFuncionario(
           saidaMin -
           intervaloFimMin;
 
-
         if (
           primeiroPeriodo < 0
         ) {
@@ -2062,12 +1791,10 @@ async function gerarRelatorioFuncionario(
             1440;
         }
 
-
         minutosPrevistos =
           primeiroPeriodo +
           segundoPeriodo;
       }
-
 
       let minutosTrabalhados =
         0;
@@ -2075,13 +1802,11 @@ async function gerarRelatorioFuncionario(
       let linhaComBatida =
         null;
 
-
       if (
         turnosDoDia.length > 0
       ) {
         linhaComBatida =
           turnosDoDia[0];
-
 
         const calculadoBatidas =
           calcularDia({
@@ -2089,8 +1814,7 @@ async function gerarRelatorioFuncionario(
               linhaComBatida,
 
             regras:
-              linhaComBatida
-                .regras,
+              linhaComBatida.regras,
 
             ehLinhaExtra:
               false,
@@ -2099,12 +1823,9 @@ async function gerarRelatorioFuncionario(
               false,
           });
 
-
         const totalTexto =
-          calculadoBatidas
-            .total_horas ||
+          calculadoBatidas.total_horas ||
           "";
-
 
         const partes =
           String(totalTexto)
@@ -2112,13 +1833,11 @@ async function gerarRelatorioFuncionario(
             .replace("m", "")
             .split(":");
 
-
         const h =
           Number(partes[0]);
 
         const m =
           Number(partes[1]);
-
 
         if (
           !Number.isNaN(h) &&
@@ -2129,74 +1848,57 @@ async function gerarRelatorioFuncionario(
         }
       }
 
-
       const minutosFaltantes =
         Math.max(
           0,
           minutosPrevistos -
-            minutosTrabalhados
+          minutosTrabalhados
         );
-
 
       const saldoAtestado =
         -Math.abs(
           minutosFaltantes
         );
 
-
       final.push(
         linhaBaseResposta(
           dataAtual,
           {
             entrada:
-              linhaComBatida
-                ?.entrada
+              linhaComBatida?.entrada
                 ? formatarHora(
-                    linhaComBatida
-                      .entrada
-                  )
+                  linhaComBatida.entrada
+                )
                 : "",
 
             intervalo_inicio:
-              linhaComBatida
-                ?.intervalo_inicio
+              linhaComBatida?.intervalo_inicio
                 ? formatarHora(
-                    linhaComBatida
-                      .intervalo_inicio
-                  )
+                  linhaComBatida.intervalo_inicio
+                )
                 : "",
 
             intervalo_fim:
-              linhaComBatida
-                ?.intervalo_fim
+              linhaComBatida?.intervalo_fim
                 ? formatarHora(
-                    linhaComBatida
-                      .intervalo_fim
-                  )
+                  linhaComBatida.intervalo_fim
+                )
                 : "",
 
             saida:
-              linhaComBatida
-                ?.saida
+              linhaComBatida?.saida
                 ? formatarHora(
-                    linhaComBatida
-                      .saida
-                  )
+                  linhaComBatida.saida
+                )
                 : "",
-
 
             total_horas:
-              minutosTrabalhados >
-              0
+              minutosTrabalhados > 0
                 ? `${Math.floor(
-                    minutosTrabalhados /
-                      60
-                  )}h ${
-                    minutosTrabalhados %
-                    60
-                  }m`
+                  minutosTrabalhados / 60
+                )}h ${minutosTrabalhados % 60
+                }m`
                 : "",
-
 
             saldo_bruto:
               saldoAtestado,
@@ -2206,9 +1908,11 @@ async function gerarRelatorioFuncionario(
                 saldoAtestado
               ),
 
-
             atestado:
               true,
+
+            atestado_id:
+              atestadoId,
 
             atestado_repor_horas:
               true,
@@ -2220,8 +1924,7 @@ async function gerarRelatorioFuncionario(
               feriadoDoDia,
 
             ids_originais:
-              linhaComBatida
-                ?.ids_originais ||
+              linhaComBatida?.ids_originais ||
               {},
           }
         )
@@ -2229,11 +1932,6 @@ async function gerarRelatorioFuncionario(
 
       continue;
     }
-
-
-    /* ===================================================
-       FALTA
-    =================================================== */
 
     if (faltaDoDia) {
       final.push(
@@ -2256,34 +1954,20 @@ async function gerarRelatorioFuncionario(
       continue;
     }
 
+    if (faltaJustificadaDoDia) {
+      const regrasFaltaJustificada = {
+        entrada:
+          funcionario.chegada,
 
-    /* ===================================================
-       FALTA JUSTIFICADA
+        intervalo_in:
+          funcionario.intervalo_inicio,
 
-       Mantendo sua regra anterior:
-       gera o saldo correspondente à jornada.
-    =================================================== */
+        intervalo_fi:
+          funcionario.intervalo_fim,
 
-    if (
-      faltaJustificadaDoDia
-    ) {
-      const regrasFaltaJustificada =
-        {
-          entrada:
-            funcionario.chegada,
-
-          intervalo_in:
-            funcionario
-              .intervalo_inicio,
-
-          intervalo_fi:
-            funcionario
-              .intervalo_fim,
-
-          saida:
-            funcionario.saida,
-        };
-
+        saida:
+          funcionario.saida,
+      };
 
       const calculadoFaltaJustificada =
         calcularDia({
@@ -2299,36 +1983,29 @@ async function gerarRelatorioFuncionario(
             true,
         });
 
-
       const saldo =
         Number(
-          calculadoFaltaJustificada
-            .saldo_bruto
+          calculadoFaltaJustificada.saldo_bruto
         ) || 0;
-
 
       final.push(
         linhaBaseResposta(
           dataAtual,
           {
             entrada:
-              calculadoFaltaJustificada
-                .entrada ||
+              calculadoFaltaJustificada.entrada ||
               "",
 
             intervalo_inicio:
-              calculadoFaltaJustificada
-                .intervalo_inicio ||
+              calculadoFaltaJustificada.intervalo_inicio ||
               "",
 
             intervalo_fim:
-              calculadoFaltaJustificada
-                .intervalo_fim ||
+              calculadoFaltaJustificada.intervalo_fim ||
               "",
 
             saida:
-              calculadoFaltaJustificada
-                .saida ||
+              calculadoFaltaJustificada.saida ||
               "",
 
             saldo_bruto:
@@ -2343,8 +2020,7 @@ async function gerarRelatorioFuncionario(
               true,
 
             justificativa_falta:
-              ajusteDia
-                .justificativa_falta ||
+              ajusteDia.justificativa_falta ||
               "",
 
             feriado:
@@ -2356,18 +2032,12 @@ async function gerarRelatorioFuncionario(
       continue;
     }
 
-
-    /* ===================================================
-       FOLGA
-    =================================================== */
-
     if (folgaDoDia) {
       final.push(
         linhaBaseResposta(
           dataAtual,
           {
             folga: true,
-
             feriado:
               feriadoDoDia,
           }
@@ -2376,11 +2046,6 @@ async function gerarRelatorioFuncionario(
 
       continue;
     }
-
-
-    /* ===================================================
-       FÉRIAS
-    =================================================== */
 
     if (feriasDoDia) {
       final.push(
@@ -2388,7 +2053,6 @@ async function gerarRelatorioFuncionario(
           dataAtual,
           {
             ferias: true,
-
             feriado:
               feriadoDoDia,
           }
@@ -2398,22 +2062,9 @@ async function gerarRelatorioFuncionario(
       continue;
     }
 
-
-    /* ===================================================
-       DIA COM BATIDAS
-    =================================================== */
-
-    if (
-      turnosDoDia.length > 0
-    ) {
+    if (turnosDoDia.length > 0) {
       const intervalosExtrasPrimeiraLinha =
         [];
-
-
-      /*
-        Intervalos extras também entram
-        no cálculo da primeira linha.
-      */
 
       turnosDoDia.forEach(
         (turno, index) => {
@@ -2421,32 +2072,23 @@ async function gerarRelatorioFuncionario(
             return;
           }
 
-
           const ehLinhaSoDeIntervalo =
             !turno.entrada &&
             !turno.saida &&
             turno.intervalo_inicio &&
             turno.intervalo_fim;
 
+          if (ehLinhaSoDeIntervalo) {
+            intervalosExtrasPrimeiraLinha.push({
+              inicio:
+                turno.intervalo_inicio,
 
-          if (
-            ehLinhaSoDeIntervalo
-          ) {
-            intervalosExtrasPrimeiraLinha.push(
-              {
-                inicio:
-                  turno
-                    .intervalo_inicio,
-
-                fim:
-                  turno
-                    .intervalo_fim,
-              }
-            );
+              fim:
+                turno.intervalo_fim,
+            });
           }
         }
       );
-
 
       turnosDoDia.forEach(
         (turno, index) => {
@@ -2458,14 +2100,12 @@ async function gerarRelatorioFuncionario(
 
             intervalo_inicio:
               formatarHora(
-                turno
-                  .intervalo_inicio
+                turno.intervalo_inicio
               ),
 
             intervalo_fim:
               formatarHora(
-                turno
-                  .intervalo_fim
+                turno.intervalo_fim
               ),
 
             saida:
@@ -2478,29 +2118,21 @@ async function gerarRelatorioFuncionario(
             saldo_bruto: 0,
           };
 
-
           const ehLinhaSoDeIntervalo =
             !turno.entrada &&
             !turno.saida &&
             turno.intervalo_inicio &&
             turno.intervalo_fim;
 
-
           const pontosCalculo =
             index === 0
               ? {
-                  ...turno,
+                ...turno,
 
-                  intervalosExtras:
-                    intervalosExtrasPrimeiraLinha,
-                }
+                intervalosExtras:
+                  intervalosExtrasPrimeiraLinha,
+              }
               : turno;
-
-
-          /*
-            Só calculamos jornada quando
-            existe entrada.
-          */
 
           if (turno.entrada) {
             const calculado =
@@ -2518,58 +2150,41 @@ async function gerarRelatorioFuncionario(
                   false,
               });
 
-
             result = {
               entrada:
-                calculado
-                  .entrada ||
+                calculado.entrada ||
                 formatarHora(
                   turno.entrada
                 ),
 
               intervalo_inicio:
-                calculado
-                  .intervalo_inicio ||
+                calculado.intervalo_inicio ||
                 formatarHora(
-                  turno
-                    .intervalo_inicio
+                  turno.intervalo_inicio
                 ),
 
               intervalo_fim:
-                calculado
-                  .intervalo_fim ||
+                calculado.intervalo_fim ||
                 formatarHora(
-                  turno
-                    .intervalo_fim
+                  turno.intervalo_fim
                 ),
 
               saida:
-                calculado
-                  .saida ||
+                calculado.saida ||
                 formatarHora(
                   turno.saida
                 ),
 
               total_horas:
-                calculado
-                  .total_horas ||
+                calculado.total_horas ||
                 "",
 
               saldo_bruto:
                 Number(
-                  calculado
-                    .saldo_bruto
+                  calculado.saldo_bruto
                 ) || 0,
             };
-          }
-
-
-          /*
-            Linha adicional somente
-            de intervalo.
-          */
-
-          else if (
+          } else if (
             ehLinhaSoDeIntervalo
           ) {
             result = {
@@ -2577,14 +2192,12 @@ async function gerarRelatorioFuncionario(
 
               intervalo_inicio:
                 formatarHora(
-                  turno
-                    .intervalo_inicio
+                  turno.intervalo_inicio
                 ),
 
               intervalo_fim:
                 formatarHora(
-                  turno
-                    .intervalo_fim
+                  turno.intervalo_fim
                 ),
 
               saida: "",
@@ -2595,7 +2208,6 @@ async function gerarRelatorioFuncionario(
             };
           }
 
-
           final.push({
             empresa_id:
               empresaId,
@@ -2604,10 +2216,9 @@ async function gerarRelatorioFuncionario(
               funcionario.id,
 
             data:
-              dataAtual
-                .toLocaleDateString(
-                  "pt-BR"
-                ),
+              dataAtual.toLocaleDateString(
+                "pt-BR"
+              ),
 
             nome:
               turno.nome ||
@@ -2622,13 +2233,11 @@ async function gerarRelatorioFuncionario(
               "",
 
             intervalo_inicio:
-              result
-                .intervalo_inicio ||
+              result.intervalo_inicio ||
               "",
 
             intervalo_fim:
-              result
-                .intervalo_fim ||
+              result.intervalo_fim ||
               "",
 
             saida:
@@ -2636,37 +2245,34 @@ async function gerarRelatorioFuncionario(
               "",
 
             total_horas:
-              result
-                .total_horas ||
+              result.total_horas ||
               "",
 
             saldo_bruto:
               Number(
-                result
-                  .saldo_bruto
+                result.saldo_bruto
               ) || 0,
 
             atraso_total:
               formatarSaldo(
                 Number(
-                  result
-                    .saldo_bruto
+                  result.saldo_bruto
                 ) || 0
               ),
 
             atestado:
               atestadoDoDia,
 
+            atestado_id:
+              atestadoId,
+
             atestado_repor_horas:
               false,
 
             arquivo_atestado:
               arquivoAtestado,
-
             falta: false,
-
             folga: false,
-
             ferias: false,
 
             falta_justificada:
@@ -2679,26 +2285,21 @@ async function gerarRelatorioFuncionario(
               feriadoDoDia,
 
             ids_originais:
-              turno
-                .ids_originais ||
+              turno.ids_originais ||
               {},
           });
         }
       );
-    }
-
-
-    /* ===================================================
-       DIA SEM BATIDAS
-    =================================================== */
-
-    else {
+    } else {
       final.push(
         linhaBaseResposta(
           dataAtual,
           {
             atestado:
               atestadoDoDia,
+
+            atestado_id:
+              atestadoId,
 
             atestado_repor_horas:
               false,
@@ -2714,79 +2315,12 @@ async function gerarRelatorioFuncionario(
     }
   }
 
-
   return final;
 }
 
 
 /* =========================================================
-   DESCOBRIR EMPRESA DA REQUISIÇÃO
-========================================================= */
-
-function obterEmpresaIdDaRequisicao(
-  req
-) {
-  /*
-    ADMIN EMPRESA:
-    sempre usa empresa do JWT.
-  */
-
-  if (
-    req.user?.role ===
-    "admin_empresa"
-  ) {
-    const empresaId =
-      Number(
-        req.user.empresa_id
-      );
-
-    if (
-      Number.isInteger(
-        empresaId
-      ) &&
-      empresaId > 0
-    ) {
-      return empresaId;
-    }
-
-    return null;
-  }
-
-
-  /*
-    SUPER ADMIN:
-    escolhe usando ?empresa_id=X
-  */
-
-  if (
-    req.user?.role ===
-    "super_admin"
-  ) {
-    const empresaId =
-      Number(
-        req.query?.empresa_id
-      );
-
-    if (
-      Number.isInteger(
-        empresaId
-      ) &&
-      empresaId > 0
-    ) {
-      return empresaId;
-    }
-
-    return null;
-  }
-
-
-  return null;
-}
-
-
-/* =========================================================
    RELATÓRIO DE UM FUNCIONÁRIO
-   MULTIEMPRESA
 ========================================================= */
 
 async function relatorioFuncionario(
@@ -2802,22 +2336,42 @@ async function relatorioFuncionario(
       ano,
     } = req.query;
 
-
     const empresaId =
       obterEmpresaIdDaRequisicao(
         req
       );
 
+    console.log(
+      "📊 RELATÓRIO:",
+      {
+        usuario:
+          req.user?.username,
+
+        role:
+          req.user?.role,
+
+        empresa_id:
+          req.user?.empresa_id,
+
+        empresa_identificada:
+          empresaId,
+
+        funcionario:
+          id,
+
+        mes,
+        ano,
+      }
+    );
 
     if (!empresaId) {
       return res
         .status(400)
         .json({
           error:
-            "Empresa não informada.",
+            "Não foi possível identificar a empresa do usuário logado.",
         });
     }
-
 
     const dados =
       await gerarRelatorioFuncionario(
@@ -2827,23 +2381,20 @@ async function relatorioFuncionario(
         empresaId
       );
 
-
     return res.json(
       dados
     );
-
   } catch (error) {
     console.error(
       "Erro ao gerar relatório do funcionário:",
       error
     );
 
-
     if (
       error.message ===
-        "Funcionário não encontrado." ||
+      "Funcionário não encontrado." ||
       error.message ===
-        "Empresa não encontrada."
+      "Empresa não encontrada."
     ) {
       return res
         .status(404)
@@ -2852,7 +2403,6 @@ async function relatorioFuncionario(
             error.message,
         });
     }
-
 
     if (
       error.message ===
@@ -2866,7 +2416,6 @@ async function relatorioFuncionario(
         });
     }
 
-
     if (
       error.message ===
       "Parâmetros inválidos."
@@ -2878,7 +2427,6 @@ async function relatorioFuncionario(
             error.message,
         });
     }
-
 
     return res
       .status(500)
@@ -2893,7 +2441,6 @@ async function relatorioFuncionario(
 
 /* =========================================================
    RELATÓRIO DE TODOS OS FUNCIONÁRIOS
-   MULTIEMPRESA
 ========================================================= */
 
 async function relatorioTodosFuncionarios(
@@ -2906,23 +2453,17 @@ async function relatorioTodosFuncionarios(
       ano,
     } = req.query;
 
-
     const mesNum =
       Number(mes);
 
     const anoNum =
       Number(ano);
 
-
     if (
-      !Number.isInteger(
-        mesNum
-      ) ||
+      !Number.isInteger(mesNum) ||
       mesNum < 1 ||
       mesNum > 12 ||
-      !Number.isInteger(
-        anoNum
-      ) ||
+      !Number.isInteger(anoNum) ||
       anoNum < 2000
     ) {
       return res
@@ -2933,30 +2474,42 @@ async function relatorioTodosFuncionarios(
         });
     }
 
-
-    /* ===================================================
-       EMPRESA
-    =================================================== */
-
     const empresaId =
       obterEmpresaIdDaRequisicao(
         req
       );
 
+    console.log(
+      "📊 RELATÓRIO TODOS:",
+      {
+        usuario:
+          req.user?.username,
+
+        role:
+          req.user?.role,
+
+        empresa_id_jwt:
+          req.user?.empresa_id,
+
+        empresa_identificada:
+          empresaId,
+
+        mes:
+          mesNum,
+
+        ano:
+          anoNum,
+      }
+    );
 
     if (!empresaId) {
       return res
         .status(400)
         .json({
           error:
-            "Empresa não informada.",
+            "Não foi possível identificar a empresa do usuário logado.",
         });
     }
-
-
-    /* ===================================================
-       VERIFICAR EMPRESA
-    =================================================== */
 
     const empresaResult =
       await pool.query(
@@ -2966,20 +2519,15 @@ async function relatorioTodosFuncionarios(
           nome,
           nome_fantasia,
           ativo
-
         FROM empresas
-
         WHERE id = $1
-
         LIMIT 1
         `,
         [empresaId]
       );
 
-
     if (
-      empresaResult.rows
-        .length === 0
+      empresaResult.rows.length === 0
     ) {
       return res
         .status(404)
@@ -2989,10 +2537,8 @@ async function relatorioTodosFuncionarios(
         });
     }
 
-
     const empresa =
       empresaResult.rows[0];
-
 
     if (!empresa.ativo) {
       return res
@@ -3002,11 +2548,6 @@ async function relatorioTodosFuncionarios(
             "Empresa desativada.",
         });
     }
-
-
-    /* ===================================================
-       SOMENTE FUNCIONÁRIOS DA EMPRESA
-    =================================================== */
 
     const {
       rows: funcionarios,
@@ -3018,24 +2559,15 @@ async function relatorioTodosFuncionarios(
           empresa_id,
           nome,
           cpf
-
         FROM funcionarios
-
         WHERE empresa_id = $1
           AND ativo = true
-
         ORDER BY nome ASC
         `,
         [empresaId]
       );
 
-
-    /* ===================================================
-       GERAR RELATÓRIOS
-    =================================================== */
-
     const relatorios = [];
-
 
     for (
       const funcionario
@@ -3049,15 +2581,13 @@ async function relatorioTodosFuncionarios(
           empresaId
         );
 
-
       relatorios.push({
         funcionario: {
           id:
             funcionario.id,
 
           empresa_id:
-            funcionario
-              .empresa_id,
+            funcionario.empresa_id,
 
           nome:
             funcionario.nome,
@@ -3070,21 +2600,17 @@ async function relatorioTodosFuncionarios(
       });
     }
 
-
     return res.json({
       ok: true,
-
 
       empresa: {
         id:
           empresa.id,
 
         nome:
-          empresa
-            .nome_fantasia ||
+          empresa.nome_fantasia ||
           empresa.nome,
       },
-
 
       mes:
         mesNum,
@@ -3092,20 +2618,16 @@ async function relatorioTodosFuncionarios(
       ano:
         anoNum,
 
-
       total_funcionarios:
         funcionarios.length,
 
-
       relatorios,
     });
-
   } catch (error) {
     console.error(
       "Erro ao gerar relatório de todos:",
       error
     );
-
 
     return res
       .status(500)

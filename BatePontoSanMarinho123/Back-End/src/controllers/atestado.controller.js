@@ -17,72 +17,84 @@ const PASTA_UPLOADS =
 
 /* =========================================================
    OBTER EMPRESA DA REQUISIÇÃO
+
+   REGRAS:
+
+   RH_EMPRESA / ADMIN_EMPRESA / PONTO_EMPRESA
+   -> empresa vem obrigatoriamente do TOKEN.
+
+   SUPER_ADMIN
+   -> pode informar empresa_id no body ou query.
 ========================================================= */
 
 function obterEmpresaIdDaRequisicao(req) {
-  /*
-    ADMIN_EMPRESA
 
-    A empresa SEMPRE vem do token.
+  const role =
+    String(
+      req.user?.role || ""
+    )
+      .trim()
+      .toLowerCase();
 
-    Mesmo que tente enviar outra empresa
-    pelo body/query, será ignorada.
-  */
+
+  /* =======================================================
+     USUÁRIOS VINCULADOS À EMPRESA
+
+     Sempre usa empresa_id do TOKEN.
+  ======================================================= */
 
   if (
-    req.user?.role ===
-    "admin_empresa"
+    role === "rh_empresa" ||
+    role === "admin_empresa" ||
+    role === "ponto_empresa"
   ) {
+
     const empresaId =
       Number(
-        req.user.empresa_id
+        req.user?.empresa_id
       );
 
+
     if (
-      Number.isInteger(
-        empresaId
-      ) &&
+      Number.isInteger(empresaId) &&
       empresaId > 0
     ) {
+
       return empresaId;
+
     }
+
 
     return null;
   }
 
 
-  /*
-    SUPER_ADMIN
+  /* =======================================================
+     SUPER ADMIN
 
-    Pode escolher empresa.
-
-    GET:
-    ?empresa_id=1
-
-    POST/DELETE:
-    {
-      "empresa_id": 1
-    }
-  */
+     Pode selecionar a empresa.
+  ======================================================= */
 
   if (
-    req.user?.role ===
-    "super_admin"
+    role === "super_admin"
   ) {
+
     const empresaId =
       Number(
-        req.query?.empresa_id ||
-        req.body?.empresa_id
+        req.body?.empresa_id ||
+        req.query?.empresa_id
       );
 
+
     if (
-      Number.isInteger(
-        empresaId
-      ) &&
+      Number.isInteger(empresaId) &&
       empresaId > 0
     ) {
+
       return empresaId;
+
     }
+
 
     return null;
   }
@@ -90,7 +102,6 @@ function obterEmpresaIdDaRequisicao(req) {
 
   return null;
 }
-
 
 /* =========================================================
    GARANTIR TABELA ATESTADOS
@@ -1027,11 +1038,12 @@ async function removerAtestado(
    PROTEGIDO POR EMPRESA
 ========================================================= */
 
-async function visualizarAtestado(
-  req,
-  res
-) {
+async function visualizarAtestado(req, res) {
   try {
+    /* =====================================================
+       GARANTIR TABELAS
+    ===================================================== */
+
     await garantirTabelaAtestados();
 
 
@@ -1040,186 +1052,225 @@ async function visualizarAtestado(
     ===================================================== */
 
     const atestadoId =
-      Number(
-        req.params.id
-      );
+      Number(req.params.id);
 
 
     if (
-      !Number.isInteger(
-        atestadoId
-      ) ||
+      !Number.isInteger(atestadoId) ||
       atestadoId <= 0
     ) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "ID do atestado inválido.",
-        });
+      return res.status(400).json({
+        error: "ID do atestado inválido.",
+      });
     }
 
 
     /* =====================================================
-       EMPRESA
+       IDENTIFICAR EMPRESA
     ===================================================== */
 
     const empresaId =
-      obterEmpresaIdDaRequisicao(
-        req
-      );
+      obterEmpresaIdDaRequisicao(req);
 
 
-    if (!empresaId) {
-      return res
-        .status(400)
-        .json({
-          error:
-            "Empresa não informada.",
-        });
-    }
-
-
-    /* =====================================================
-       EMPRESA ATIVA
-    ===================================================== */
-
-    const empresa =
-      await buscarEmpresa(
-        empresaId
-      );
-
-
-    if (!empresa) {
-      return res
-        .status(404)
-        .json({
-          error:
-            "Empresa não encontrada.",
-        });
-    }
-
-
-    if (!empresa.ativo) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Empresa desativada.",
-        });
+    if (
+      !Number.isInteger(Number(empresaId)) ||
+      Number(empresaId) <= 0
+    ) {
+      return res.status(400).json({
+        error: "Empresa não informada.",
+      });
     }
 
 
     /* =====================================================
        BUSCAR ATESTADO
 
-       ID + EMPRESA
+       Importante:
+       busca pelo ID + empresa para impedir que uma empresa
+       visualize atestado pertencente a outra.
     ===================================================== */
 
-    const { rows } =
+    const resultado =
       await pool.query(
         `
         SELECT
-          a.id,
-          a.empresa_id,
-          a.funcionario_id,
-          a.arquivo,
+          id,
+          empresa_id,
+          funcionario_id,
+          data_inicio,
+          data_fim,
+          arquivo,
+          repor_horas,
+          created_at
 
-          f.nome AS funcionario_nome
+        FROM atestados
 
-        FROM atestados a
-
-        INNER JOIN funcionarios f
-          ON f.id =
-             a.funcionario_id
-
-         AND f.empresa_id =
-             a.empresa_id
-
-        WHERE a.id = $1
-          AND a.empresa_id = $2
+        WHERE id = $1
+          AND empresa_id = $2
 
         LIMIT 1
         `,
         [
           atestadoId,
-          empresaId,
+          Number(empresaId),
         ]
       );
 
 
-    /*
-      Retornamos 404 em vez de informar
-      que existe em outra empresa.
-    */
-
-    if (
-      rows.length === 0
-    ) {
-      return res
-        .status(404)
-        .json({
-          error:
-            "Atestado não encontrado.",
-        });
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({
+        error: "Atestado não encontrado.",
+      });
     }
 
 
     const atestado =
-      rows[0];
+      resultado.rows[0];
 
 
     /* =====================================================
-       PROTEGER CONTRA PATH TRAVERSAL
+       VALIDAR NOME/CAMINHO DO ARQUIVO
     ===================================================== */
 
-    const nomeSeguro =
-      path.basename(
-        atestado.arquivo
-      );
+    if (!atestado.arquivo) {
+      return res.status(404).json({
+        error: "Arquivo do atestado não encontrado.",
+      });
+    }
 
 
-    if (
-      nomeSeguro !==
-      atestado.arquivo
-    ) {
-      console.error(
-        "Nome de arquivo inválido no banco:",
-        atestado.arquivo
-      );
+    /*
+     * O banco pode ter:
+     *
+     * arquivo.pdf
+     *
+     * ou:
+     *
+     * uploads/atestados/arquivo.pdf
+     *
+     * Por isso tratamos os dois casos.
+     */
+
+    const arquivoBanco =
+      String(atestado.arquivo)
+        .trim()
+        .replace(/\\/g, "/");
 
 
-      return res
-        .status(400)
-        .json({
-          error:
-            "Arquivo inválido.",
-        });
+    /* =====================================================
+       MONTAR POSSÍVEIS CAMINHOS ABSOLUTOS
+    ===================================================== */
+
+    const nomeArquivo =
+      path.basename(arquivoBanco);
+
+
+    const candidatos = [
+      /*
+       * Back-End/uploads/atestados/arquivo.pdf
+       */
+      path.resolve(
+        process.cwd(),
+        "uploads",
+        "atestados",
+        nomeArquivo
+      ),
+
+      /*
+       * Caso seus arquivos estejam diretamente em uploads
+       */
+      path.resolve(
+        process.cwd(),
+        "uploads",
+        nomeArquivo
+      ),
+
+      /*
+       * Caso o banco já tenha salvo:
+       * uploads/atestados/arquivo.pdf
+       */
+      path.resolve(
+        process.cwd(),
+        arquivoBanco
+      ),
+
+      /*
+       * Caminho relativo ao controller:
+       * src/controllers -> Back-End
+       */
+      path.resolve(
+        __dirname,
+        "..",
+        "..",
+        "uploads",
+        "atestados",
+        nomeArquivo
+      ),
+
+      path.resolve(
+        __dirname,
+        "..",
+        "..",
+        "uploads",
+        nomeArquivo
+      ),
+    ];
+
+
+    /* =====================================================
+       PROCURAR O ARQUIVO QUE REALMENTE EXISTE
+    ===================================================== */
+
+    let caminhoArquivo = null;
+
+
+    for (const candidato of candidatos) {
+      if (fs.existsSync(candidato)) {
+        caminhoArquivo = candidato;
+        break;
+      }
     }
 
 
     /* =====================================================
-       CAMINHO FÍSICO
+       DEBUG
     ===================================================== */
 
-    const caminhoArquivo =
-      path.join(
-        PASTA_UPLOADS,
-        nomeSeguro
+    console.log("📄 VISUALIZAR ATESTADO:", {
+      atestado_id:
+        atestado.id,
+
+      empresa_id:
+        atestado.empresa_id,
+
+      arquivo_banco:
+        atestado.arquivo,
+
+      nome_arquivo:
+        nomeArquivo,
+
+      caminho_encontrado:
+        caminhoArquivo,
+
+      candidatos,
+    });
+
+
+    /* =====================================================
+       NÃO ENCONTROU ARQUIVO FÍSICO
+    ===================================================== */
+
+    if (!caminhoArquivo) {
+      console.error(
+        "❌ Arquivo físico do atestado não encontrado:",
+        candidatos
       );
 
-
-    if (
-      !fs.existsSync(
-        caminhoArquivo
-      )
-    ) {
-      return res
-        .status(404)
-        .json({
-          error:
-            "Arquivo físico não encontrado.",
-        });
+      return res.status(404).json({
+        error:
+          "Arquivo PDF do atestado não foi encontrado no servidor.",
+      });
     }
 
 
@@ -1228,75 +1279,75 @@ async function visualizarAtestado(
     ===================================================== */
 
     const stats =
-      fs.statSync(
-        caminhoArquivo
-      );
+      fs.statSync(caminhoArquivo);
 
 
-    if (
-      !stats.isFile()
-    ) {
-      return res
-        .status(404)
-        .json({
-          error:
-            "Arquivo não encontrado.",
-        });
+    if (!stats.isFile()) {
+      return res.status(404).json({
+        error:
+          "Arquivo PDF do atestado não foi encontrado.",
+      });
     }
 
 
     /* =====================================================
        ENVIAR PDF
+
+       caminhoArquivo agora é ABSOLUTO.
+
+       Isso corrige:
+       TypeError: path must be absolute or specify root
     ===================================================== */
 
-    res.setHeader(
-      "Content-Type",
-      "application/pdf"
-    );
-
-
-    res.setHeader(
-      "Content-Disposition",
-      `inline; filename="atestado-${atestado.id}.pdf"`
-    );
-
-
-    res.setHeader(
-      "X-Content-Type-Options",
-      "nosniff"
-    );
-
-
-    res.setHeader(
-      "Cache-Control",
-      "private, no-store"
-    );
-
-
     return res.sendFile(
-      caminhoArquivo
+      caminhoArquivo,
+      {
+        headers: {
+          "Content-Type":
+            "application/pdf",
+
+          "Content-Disposition":
+            `inline; filename="${nomeArquivo}"`,
+
+          "Cache-Control":
+            "no-store",
+        },
+      },
+      (erro) => {
+        if (erro) {
+          console.error(
+            "❌ Erro ao enviar PDF do atestado:",
+            erro
+          );
+
+          /*
+           * Se os headers ainda não foram enviados,
+           * podemos retornar JSON.
+           */
+          if (!res.headersSent) {
+            return res.status(500).json({
+              error:
+                "Erro ao abrir o arquivo do atestado.",
+            });
+          }
+        }
+      }
     );
 
   } catch (error) {
     console.error(
-      "🔥 ERRO AO VISUALIZAR ATESTADO:",
+      "❌ ERRO AO VISUALIZAR ATESTADO:",
       error
     );
 
-
-    if (
-      !res.headersSent
-    ) {
-      return res
-        .status(500)
-        .json({
-          error:
-            "Erro ao abrir atestado.",
-        });
+    if (!res.headersSent) {
+      return res.status(500).json({
+        error:
+          "Erro ao visualizar atestado.",
+      });
     }
   }
 }
-
 
 /* =========================================================
    EXPORTS

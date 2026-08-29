@@ -15,12 +15,13 @@ import fundoPadrao from "../../assets/logo/hotel-fundo.jpg";
 
 import "./layout.css";
 
+
 export default function DashboardLayout() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
   const [open, setOpen] =
     useState(false);
+
 
   /* =========================================================
      USUÁRIO LOGADO
@@ -29,9 +30,7 @@ export default function DashboardLayout() {
   const usuario = useMemo(() => {
     try {
       const salvo =
-        localStorage.getItem(
-          "usuario"
-        );
+        localStorage.getItem("usuario");
 
       if (!salvo) {
         return null;
@@ -48,26 +47,25 @@ export default function DashboardLayout() {
     }
   }, []);
 
+
   /* =========================================================
      TIPO DE USUÁRIO
   ========================================================= */
 
   const isSuperAdmin =
-    usuario?.role ===
-    "super_admin";
+    usuario?.role === "super_admin";
 
   const isRH =
-    usuario?.role ===
-    "rh_empresa";
+    usuario?.role === "rh_empresa";
 
   const isPonto =
-    usuario?.role ===
-    "ponto_empresa";
+    usuario?.role === "ponto_empresa";
+
 
   /* =========================================================
      PROTEÇÃO EXTRA
 
-     ponto_empresa não deve acessar Dashboard.
+     ponto_empresa não deve acessar Dashboard
   ========================================================= */
 
   useEffect(() => {
@@ -84,6 +82,7 @@ export default function DashboardLayout() {
     navigate,
   ]);
 
+
   /* =========================================================
      IDENTIDADE VISUAL
   ========================================================= */
@@ -92,21 +91,17 @@ export default function DashboardLayout() {
     identidade,
     setIdentidade,
   ] = useState({
-    nome:
-      "Hotel San Marinho",
+    nome: "Hotel San Marinho",
 
-    logo:
-      logoPadrao,
+    logo: logoPadrao,
 
-    fundo:
-      fundoPadrao,
+    fundo: fundoPadrao,
 
-    corPrimaria:
-      "#0d6efd",
+    corPrimaria: "#0d6efd",
 
-    corSecundaria:
-      "#084298",
+    corSecundaria: "#084298",
   });
+
 
   /* =========================================================
      CARREGAR IDENTIDADE VISUAL
@@ -120,10 +115,8 @@ export default function DashboardLayout() {
         );
 
       /*
-        Super Admin não pertence
-        obrigatoriamente a uma empresa.
-
-        Nesse caso será usada a identidade padrão.
+        Se não existir identidade salva,
+        mantém a identidade padrão.
       */
 
       if (!salva) {
@@ -132,6 +125,21 @@ export default function DashboardLayout() {
 
       const dados =
         JSON.parse(salva);
+
+
+      /* =====================================================
+         DEBUG
+
+         Pode deixar por enquanto.
+         Assim conseguimos conferir no console
+         exatamente o que foi salvo.
+      ===================================================== */
+
+      console.log(
+        "Identidade da empresa:",
+        dados
+      );
+
 
       setIdentidade({
         nome:
@@ -142,19 +150,23 @@ export default function DashboardLayout() {
 
         logo:
           dados.logo_url ||
+          dados.logo ||
           logoPadrao,
 
         fundo:
           dados.dashboard_background_url ||
           dados.fundo_url ||
+          dados.fundo ||
           fundoPadrao,
 
         corPrimaria:
           dados.cor_primaria ||
+          dados.corPrimaria ||
           "#0d6efd",
 
         corSecundaria:
           dados.cor_secundaria ||
+          dados.corSecundaria ||
           "#084298",
       });
     } catch (error) {
@@ -163,7 +175,98 @@ export default function DashboardLayout() {
         error
       );
     }
-  }, [usuario]);
+  }, [
+    usuario,
+  ]);
+
+
+  /* =========================================================
+     APLICAR IDENTIDADE GLOBALMENTE
+
+     IMPORTANTE:
+     Agora as cores ficam disponíveis para TODAS
+     as páginas do sistema.
+  ========================================================= */
+
+  useEffect(() => {
+    const root =
+      document.documentElement;
+
+
+    const corPrimaria =
+      identidade.corPrimaria ||
+      "#0d6efd";
+
+
+    const corSecundaria =
+      identidade.corSecundaria ||
+      "#084298";
+
+
+    /* =====================================================
+       VARIÁVEIS PRINCIPAIS
+    ===================================================== */
+
+    root.style.setProperty(
+      "--empresa-cor-primaria",
+      corPrimaria
+    );
+
+    root.style.setProperty(
+      "--empresa-cor-secundaria",
+      corSecundaria
+    );
+
+
+    /* =====================================================
+       COMPATIBILIDADE COM CSS ANTIGO
+
+       Algumas páginas estão usando:
+       --cor-primaria
+       --cor-secundaria
+    ===================================================== */
+
+    root.style.setProperty(
+      "--cor-primaria",
+      corPrimaria
+    );
+
+    root.style.setProperty(
+      "--cor-secundaria",
+      corSecundaria
+    );
+
+
+    /* =====================================================
+       FUNDO
+    ===================================================== */
+
+    if (identidade.fundo) {
+      root.style.setProperty(
+        "--empresa-dashboard-background",
+        `url("${identidade.fundo}")`
+      );
+    }
+
+
+    /* =====================================================
+       DEBUG
+    ===================================================== */
+
+    console.log(
+      "Tema aplicado:",
+      {
+        corPrimaria,
+        corSecundaria,
+        fundo:
+          identidade.fundo,
+      }
+    );
+
+  }, [
+    identidade,
+  ]);
+
 
   /* =========================================================
      LOGOUT
@@ -194,6 +297,35 @@ export default function DashboardLayout() {
       "identidade_empresa"
     );
 
+
+    /* =====================================================
+       LIMPAR TEMA DA EMPRESA
+    ===================================================== */
+
+    const root =
+      document.documentElement;
+
+    root.style.removeProperty(
+      "--empresa-cor-primaria"
+    );
+
+    root.style.removeProperty(
+      "--empresa-cor-secundaria"
+    );
+
+    root.style.removeProperty(
+      "--cor-primaria"
+    );
+
+    root.style.removeProperty(
+      "--cor-secundaria"
+    );
+
+    root.style.removeProperty(
+      "--empresa-dashboard-background"
+    );
+
+
     navigate(
       "/",
       {
@@ -201,6 +333,7 @@ export default function DashboardLayout() {
       }
     );
   };
+
 
   /* =========================================================
      ABRIR / FECHAR MENU
@@ -213,12 +346,16 @@ export default function DashboardLayout() {
     );
   };
 
+
   const closeOnClick = () => {
     setOpen(false);
   };
 
+
   /* =========================================================
-     VARIÁVEIS DO TEMA
+     VARIÁVEIS DO TEMA NO CONTAINER
+
+     Mantemos também no container por segurança.
   ========================================================= */
 
   const estiloTema = {
@@ -228,9 +365,16 @@ export default function DashboardLayout() {
     "--empresa-cor-secundaria":
       identidade.corSecundaria,
 
+    "--cor-primaria":
+      identidade.corPrimaria,
+
+    "--cor-secundaria":
+      identidade.corSecundaria,
+
     "--empresa-dashboard-background":
       `url("${identidade.fundo}")`,
   };
+
 
   /* =========================================================
      JSX
@@ -238,11 +382,10 @@ export default function DashboardLayout() {
 
   return (
     <div
-      className={`dashContainer ${
-        open
+      className={`dashContainer ${open
           ? "menu-open"
           : ""
-      }`}
+        }`}
       style={estiloTema}
     >
 
@@ -265,6 +408,7 @@ export default function DashboardLayout() {
           : "☰"}
       </button>
 
+
       {/* =====================================================
           OVERLAY
       ===================================================== */}
@@ -273,23 +417,21 @@ export default function DashboardLayout() {
         <button
           type="button"
           className="dashOverlay"
-          onClick={
-            closeOnClick
-          }
+          onClick={closeOnClick}
           aria-label="Fechar menu"
         />
       )}
+
 
       {/* =====================================================
           SIDEBAR
       ===================================================== */}
 
       <aside
-        className={`dashSidebar ${
-          open
+        className={`dashSidebar ${open
             ? "show"
             : ""
-        }`}
+          }`}
       >
 
         {/* ===================================================
@@ -299,25 +441,23 @@ export default function DashboardLayout() {
         <div className="sidebarHeader">
 
           <img
-            src={
-              identidade.logo
-            }
+            src={identidade.logo}
             className="sidebarLogo"
-            alt={
-              identidade.nome
-            }
+            alt={identidade.nome}
             onError={(e) => {
               e.currentTarget.src =
                 logoPadrao;
             }}
           />
 
+
           <div className="sidebarEmpresa">
             {isSuperAdmin
               ? "Super Administrador"
               : usuario?.empresa_nome ||
-                identidade.nome}
+              identidade.nome}
           </div>
+
 
           {/* =================================================
               TIPO DE USUÁRIO
@@ -328,6 +468,7 @@ export default function DashboardLayout() {
               RH
             </div>
           )}
+
 
           {/* =================================================
               USERNAME
@@ -341,9 +482,10 @@ export default function DashboardLayout() {
 
         </div>
 
+
         {/* ===================================================
-            MENU SUPER ADMIN
-        =================================================== */}
+    MENU SUPER ADMIN
+=================================================== */}
 
         {isSuperAdmin && (
           <nav className="dashMenu">
@@ -352,48 +494,64 @@ export default function DashboardLayout() {
               Administração Geral
             </div>
 
+
             {/* ===============================================
-                EMPRESAS
-            =============================================== */}
+        EMPRESAS
+    =============================================== */}
 
             <NavLink
               to="/app/empresas"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Empresas
             </NavLink>
 
+
             {/* ===============================================
-                ACESSOS DAS EMPRESAS
-            =============================================== */}
+        ACESSOS DAS EMPRESAS
+    =============================================== */}
 
             <NavLink
               to="/app/acessos"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Acessos das Empresas
+            </NavLink>
+
+
+            {/* ===============================================
+        LOGS DO SISTEMA
+    =============================================== */}
+
+            <NavLink
+              to="/app/logs"
+              className={({
+                isActive,
+              }) =>
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
+                }`
+              }
+              onClick={closeOnClick}
+            >
+              Logs do Sistema
             </NavLink>
 
           </nav>
@@ -414,41 +572,38 @@ export default function DashboardLayout() {
               Funcionários
             </div>
 
+
             <NavLink
               to="/app/registrar-funcionario"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Cadastrar Funcionário
             </NavLink>
+
 
             <NavLink
               to="/app/funcionarios"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Ver Funcionários
             </NavLink>
+
 
             {/* ===============================================
                 CONTROLE DE PONTO
@@ -458,80 +613,73 @@ export default function DashboardLayout() {
               Controle de Ponto
             </div>
 
+
             <NavLink
               to="/app/relatorio"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Relatório
             </NavLink>
+
 
             <NavLink
               to="/app/manual"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Inserir Ponto Manual
             </NavLink>
+
 
             <NavLink
               to="/app/atestado"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Anexar Atestado
             </NavLink>
+
 
             <NavLink
               to="/app/bancoHoras"
               className={({
                 isActive,
               }) =>
-                `dashLink ${
-                  isActive
-                    ? "active"
-                    : ""
+                `dashLink ${isActive
+                  ? "active"
+                  : ""
                 }`
               }
-              onClick={
-                closeOnClick
-              }
+              onClick={closeOnClick}
             >
               Banco de Horas
             </NavLink>
 
           </nav>
         )}
+
 
         {/* ===================================================
             SAIR
@@ -546,6 +694,7 @@ export default function DashboardLayout() {
         </button>
 
       </aside>
+
 
       {/* =====================================================
           CONTEÚDO

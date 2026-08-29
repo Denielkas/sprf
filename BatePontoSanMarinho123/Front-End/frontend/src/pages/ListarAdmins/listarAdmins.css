@@ -1,230 +1,924 @@
+/* ==========================================================
+   PÁGINA DE ADMINISTRADORES
+========================================================== */
+
 .adminPage {
   padding: 20px;
-  font-family: system-ui, Arial;
-  backdrop-filter: blur(4px);
-  background: rgba(0, 0, 0, 0.45);
+
+  font-family:
+    system-ui,
+    Arial,
+    sans-serif;
+
+  backdrop-filter:
+    blur(4px);
+
+  -webkit-backdrop-filter:
+    blur(4px);
+
+  background:
+    rgba(0, 0, 0, 0.45);
+
   border-radius: 14px;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
-  color: #fff;
+
+  box-shadow:
+    0 0 25px
+    rgba(0, 0, 0, 0.4);
+
+  color: #ffffff;
 }
+
+
+/* ==========================================================
+   TÍTULO DA PÁGINA
+========================================================== */
+
+.adminPage > h2 {
+  margin-top: 0;
+
+  margin-bottom: 22px;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  font-size: 28px;
+
+  font-weight: 800;
+}
+
+
+/* ==========================================================
+   AÇÕES SUPERIORES
+========================================================== */
 
 .adminActions {
   display: flex;
+
   align-items: center;
+
   gap: 14px;
+
   margin-bottom: 20px;
+
+  flex-wrap: wrap;
 }
+
+
+/* ==========================================================
+   TOTAL
+========================================================== */
 
 .total {
-  opacity: 0.8;
-  font-size: 16px;
+  padding:
+    7px 12px;
+
+  border-radius: 8px;
+
+  background:
+    rgba(255, 255, 255, 0.08);
+
   color: #dfe3ea;
-}
 
-.adminMsg {
-  color: #ff4d4d;
-  margin-bottom: 10px;
-  font-weight: bold;
-}
+  font-size: 16px;
 
-.tableWrap {
-  overflow-x: auto;
-  background: rgba(255, 255, 255, 0.06);
-  padding: 10px;
-  border-radius: 10px;
-}
-
-.adminTable {
-  width: 100%;
-  border-collapse: collapse;
-  color: #fff;
-}
-
-.adminTable th {
-  background: rgba(255, 255, 255, 0.18);
-  text-align: left;
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-  font-weight: 700;
-  white-space: nowrap;
-  font-size: 15px;
-}
-
-.adminTable td {
-  padding: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  white-space: nowrap;
-  font-size: 14px;
-}
-
-.emptyRow {
-  text-align: center;
-  padding: 20px;
-  color: #ccc;
-}
-
-.btnPrimary {
-  padding: 8px 14px;
-  background: #0d6efd;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-  transition: 0.2s;
-}
-
-.btnPrimary:hover {
-  background: #0759d3;
-}
-
-.btnSecondary {
-  padding: 7px 12px;
-  background: #6c757d;
-  border: none;
-  border-radius: 8px;
-  color: #fff;
-  cursor: pointer;
-}
-
-.btnSecondary:hover {
-  background: #565e64;
-}
-
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-  z-index: 9999;
-}
-
-.modal-card {
-  width: min(650px, 95vw);
-  background: #1a1a1a;
-  padding: 28px;
-  border-radius: 14px;
-  box-shadow: 0 12px 40px rgba(0,0,0,0.45);
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  color: #fff;
-}
-
-.modal-card h3 {
-  text-align: center;
-  margin: 0;
-  font-size: 22px;
-  color: #0d6efd;
-  font-weight: 700;
-}
-
-.modal-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
-}
-
-.modal-card label {
-  display: block;
-  margin-bottom: 6px;
-  color: #d1d5db;
   font-weight: 600;
 }
 
+
+/* ==========================================================
+   MENSAGEM
+========================================================== */
+
+.adminMsg {
+  margin-bottom: 12px;
+
+  padding:
+    10px 12px;
+
+  border-radius: 8px;
+
+  background:
+    rgba(239, 68, 68, 0.10);
+
+  color: #ff6b6b;
+
+  font-weight: 700;
+}
+
+
+/* ==========================================================
+   CONTAINER DA TABELA
+========================================================== */
+
+.tableWrap {
+  width: 100%;
+
+  box-sizing: border-box;
+
+  overflow-x: auto;
+
+  padding: 10px;
+
+  border-radius: 10px;
+
+  background:
+    rgba(255, 255, 255, 0.06);
+}
+
+
+/* ==========================================================
+   TABELA
+========================================================== */
+
+.adminTable {
+  width: 100%;
+
+  border-collapse: collapse;
+
+  color: #ffffff;
+}
+
+
+/* ==========================================================
+   CABEÇALHO DA TABELA
+========================================================== */
+
+.adminTable th {
+  padding: 12px;
+
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 18%,
+      rgba(255, 255, 255, 0.12)
+    );
+
+  border-bottom:
+    2px solid
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 55%,
+      transparent
+    );
+
+  color: #ffffff;
+
+  text-align: left;
+
+  font-size: 15px;
+
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+
+/* ==========================================================
+   CÉLULAS
+========================================================== */
+
+.adminTable td {
+  padding: 12px;
+
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.12);
+
+  font-size: 14px;
+
+  white-space: nowrap;
+}
+
+
+/* ==========================================================
+   HOVER DA LINHA
+========================================================== */
+
+.adminTable tbody tr {
+  transition:
+    background 0.15s ease;
+}
+
+
+.adminTable tbody tr:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 9%,
+      transparent
+    );
+}
+
+
+/* ==========================================================
+   SEM ADMINISTRADORES
+========================================================== */
+
+.emptyRow {
+  padding: 20px !important;
+
+  color: #cccccc;
+
+  text-align: center !important;
+}
+
+
+/* ==========================================================
+   BOTÃO ATUALIZAR
+   COR PRIMÁRIA
+========================================================== */
+
+.btnPrimary {
+  padding:
+    9px 16px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 14px;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 5px 14px
+    rgba(0, 0, 0, 0.18);
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+/* ==========================================================
+   BOTÃO ATUALIZAR — HOVER
+   COR SECUNDÁRIA
+========================================================== */
+
+.btnPrimary:hover {
+  background:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    0 8px 18px
+    rgba(0, 0, 0, 0.24);
+}
+
+
+/* ==========================================================
+   BOTÃO ALTERAR SENHA
+========================================================== */
+
+.btnSecondary {
+  padding:
+    8px 13px;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 40%,
+      transparent
+    );
+
+  border-radius: 8px;
+
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 20%,
+      #4b5563
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+/* ==========================================================
+   ALTERAR SENHA — HOVER
+========================================================== */
+
+.btnSecondary:hover {
+  background:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  border-color:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* ==========================================================
+   MODAL — FUNDO
+========================================================== */
+
+.modal-overlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 99999;
+
+  display: flex;
+
+  justify-content: center;
+
+  align-items: center;
+
+  padding: 20px;
+
+  background:
+    rgba(0, 0, 0, 0.60);
+
+  backdrop-filter:
+    blur(3px);
+
+  -webkit-backdrop-filter:
+    blur(3px);
+}
+
+
+/* ==========================================================
+   MODAL — CARD
+========================================================== */
+
+.modal-card {
+  width:
+    min(
+      650px,
+      95vw
+    );
+
+  box-sizing: border-box;
+
+  padding: 28px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 22px;
+
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 35%,
+      transparent
+    );
+
+  border-radius: 14px;
+
+  background: #1a1a1a;
+
+  color: #ffffff;
+
+  box-shadow:
+    0 12px 40px
+    rgba(0, 0, 0, 0.45);
+}
+
+
+/* ==========================================================
+   TÍTULO DO MODAL
+========================================================== */
+
+.modal-card h3 {
+  margin: 0;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  text-align: center;
+
+  font-size: 22px;
+
+  font-weight: 800;
+}
+
+
+/* ==========================================================
+   GRID DO MODAL
+========================================================== */
+
+.modal-grid {
+  display: grid;
+
+  grid-template-columns:
+    1fr 1fr;
+
+  gap: 20px;
+}
+
+
+/* ==========================================================
+   LABELS
+========================================================== */
+
+.modal-card label {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #d1d5db;
+
+  font-weight: 600;
+}
+
+
+/* ==========================================================
+   INPUTS
+========================================================== */
+
 .modal-card input {
   width: 100%;
-  padding: 12px 42px 12px 14px;
-  border-radius: 10px;
-  background: #262626;
-  border: 2px solid #3a3a3a;
-  font-size: 15px;
-  color: #fff;
-  transition: 0.2s;
+
   box-sizing: border-box;
+
+  padding:
+    12px 42px 12px 14px;
+
+  border:
+    2px solid
+    #3a3a3a;
+
+  border-radius: 10px;
+
+  background: #262626;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 15px;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
 }
+
+
+/* ==========================================================
+   INPUT FOCUS
+   COR PRIMÁRIA
+========================================================== */
 
 .modal-card input:focus {
-  border-color: #0d6efd;
-  box-shadow: 0 0 6px rgba(13,110,253,0.4);
-  outline: none;
+  border-color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 25%,
+      transparent
+    );
 }
 
+
+/* ==========================================================
+   INPUT DESABILITADO
+========================================================== */
+
 .modal-card input:disabled {
-  opacity: 0.7;
+  opacity: 0.65;
+
   cursor: not-allowed;
+
+  background: #202020;
 }
+
+
+/* ==========================================================
+   CAMPO DE SENHA
+========================================================== */
 
 .passwordField {
   position: relative;
 }
 
+
+/* ==========================================================
+   BOTÃO DO OLHO
+========================================================== */
+
 .eyeButton {
   position: absolute;
-  right: 12px;
-  top: 39px;
-  border: none;
-  background: transparent;
-  color: #0d6efd;
-  font-size: 18px;
-  cursor: pointer;
+
+  right: 10px;
+
+  top: 37px;
+
+  width: 32px;
+
+  height: 32px;
+
+  padding: 0;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
+  border: none;
+
+  border-radius: 6px;
+
+  background: transparent;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  font-size: 18px;
+
+  cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
+
+
+/* ==========================================================
+   OLHO — HOVER
+========================================================== */
+
+.eyeButton:hover {
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 12%,
+      transparent
+    );
+
+  color:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+}
+
+
+/* ==========================================================
+   BOTÃO EXCLUIR ADMIN
+   MANTÉM VERMELHO POR SER AÇÃO DESTRUTIVA
+========================================================== */
+
+.btn-excluir-admin {
+  align-self: flex-start;
+
+  padding:
+    10px 18px;
+
+  border: none;
+
+  border-radius: 10px;
+
+  background: #dc2626;
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+
+/* ==========================================================
+   EXCLUIR — HOVER
+========================================================== */
+
+.btn-excluir-admin:hover:not(:disabled) {
+  background: #b91c1c;
+
+  transform:
+    translateY(-1px);
+}
+
+
+/* ==========================================================
+   EXCLUIR — DESABILITADO
+========================================================== */
+
+.btn-excluir-admin:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ==========================================================
+   AÇÕES DO MODAL
+========================================================== */
 
 .modal-actions {
   display: flex;
+
   justify-content: flex-end;
+
   gap: 14px;
 }
 
+
+/* ==========================================================
+   BOTÃO SALVAR
+   COR PRIMÁRIA
+========================================================== */
+
 .modal-btn-primary {
-  padding: 10px 18px;
-  border-radius: 10px;
-  background: #0d6efd;
-  color: white;
+  padding:
+    10px 18px;
+
   border: none;
+
+  border-radius: 10px;
+
+  background:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-weight: 700;
+
   cursor: pointer;
-  transition: 0.2s;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
-.modal-btn-primary:hover {
-  background: #0b57d1;
+
+/* ==========================================================
+   SALVAR — HOVER
+   COR SECUNDÁRIA
+========================================================== */
+
+.modal-btn-primary:hover:not(:disabled) {
+  background:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform:
+    translateY(-1px);
 }
+
+
+/* ==========================================================
+   SALVAR — DESABILITADO
+========================================================== */
+
+.modal-btn-primary:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ==========================================================
+   BOTÃO CANCELAR
+========================================================== */
 
 .modal-btn-light {
-  padding: 10px 18px;
+  padding:
+    10px 18px;
+
+  border:
+    1px solid #cccccc;
+
   border-radius: 10px;
+
   background: #f1f1f1;
-  color: #111;
-  border: 1px solid #ccc;
+
+  color: #111111;
+
+  font-family: inherit;
+
+  font-weight: 600;
+
   cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease;
 }
 
-.modal-btn-light:hover {
+
+/* ==========================================================
+   CANCELAR — HOVER
+========================================================== */
+
+.modal-btn-light:hover:not(:disabled) {
   background: #e2e2e2;
+
+  transform:
+    translateY(-1px);
 }
 
-@media (max-width: 700px) {
+
+/* ==========================================================
+   CANCELAR — DESABILITADO
+========================================================== */
+
+.modal-btn-light:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+
+  transform: none;
+}
+
+
+/* ==========================================================
+   TABLET / MOBILE
+========================================================== */
+
+@media (
+  max-width: 700px
+) {
+
+  .adminPage {
+    padding: 15px;
+  }
+
+
+  .adminPage > h2 {
+    font-size: 23px;
+
+    text-align: center;
+  }
+
+
   .modal-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns:
+      1fr;
+  }
+
+
+  /*
+    No JSX existe um <div></div> vazio depois
+    do campo Usuário. No mobile escondemos.
+  */
+
+  .modal-grid > div:empty {
+    display: none;
+  }
+
+
+  .modal-card {
+    padding: 22px;
+
+    gap: 18px;
+  }
+
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+
+  .modal-btn-primary,
+  .modal-btn-light,
+  .btn-excluir-admin {
+    width: 100%;
+  }
+
+
+  .btn-excluir-admin {
+    align-self: stretch;
   }
 }
 
-.btn-excluir-admin {
-  background: #dc2626;
-  color: #fff;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-}
 
-.btn-excluir-admin:hover {
-  background: #b91c1c;
+/* ==========================================================
+   MOBILE PEQUENO
+========================================================== */
+
+@media (
+  max-width: 420px
+) {
+
+  .adminPage {
+    padding: 12px;
+  }
+
+
+  .adminActions {
+    justify-content: space-between;
+  }
+
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+
+  .modal-card {
+    padding: 18px;
+
+    border-radius: 12px;
+  }
+
+
+  .modal-card h3 {
+    font-size: 20px;
+  }
 }

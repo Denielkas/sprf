@@ -7,4 +7,5 @@ class FaceEnroll(BaseModel):
 
 
 class FaceRecognize(BaseModel):
+    empresa_id: int
     image_base64: str

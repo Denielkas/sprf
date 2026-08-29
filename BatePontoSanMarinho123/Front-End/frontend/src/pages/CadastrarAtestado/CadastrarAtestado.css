@@ -1,245 +1,377 @@
-/* ============================
+/* ==========================================================
    CONTAINER
-============================ */
-.atestado-container{
-  max-width:700px;
-  margin:40px auto;
-  padding:30px;
+========================================================== */
 
-  background:rgba(0,0,0,0.55);
+.atestado-container {
+  max-width: 700px;
+  margin: 40px auto;
+  padding: 30px;
+
+  background: rgba(0, 0, 0, 0.55);
+
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
 
-  border-radius:16px;
+  border-radius: 16px;
 
-  box-shadow:0 0 25px rgba(0,0,0,.45);
+  box-shadow:
+    0 0 25px rgba(0, 0, 0, 0.45);
 
-  font-family:system-ui, Arial;
-  color:#fff;
+  font-family: system-ui, Arial, sans-serif;
+
+  color: #ffffff;
 }
 
-/* ============================
-   TITULO
-============================ */
-.atestado-container h2{
-  text-align:center;
-  font-size:26px;
-  font-weight:700;
 
-  margin-bottom:30px;
+/* ==========================================================
+   TÍTULO
+   COR PRIMÁRIA DA EMPRESA
+========================================================== */
 
-  color:#ff9800;
+.atestado-container h2 {
+  text-align: center;
 
-  text-shadow:0 0 10px rgba(0,0,0,.5);
+  font-size: 26px;
+  font-weight: 700;
+
+  margin-bottom: 30px;
+
+  color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
+
+  text-shadow:
+    0 0 10px rgba(0, 0, 0, 0.5);
 }
 
-/* ============================
+
+/* ==========================================================
+   SELECT
+========================================================== */
+
+.atestado-container select {
+  width: 100%;
+}
+
+
+/* ==========================================================
+   INPUT
+========================================================== */
+
+.atestado-container input {
+  width: 96%;
+}
+
+
+/* ==========================================================
    INPUTS E SELECT
-============================ */
-
-.atestado-container select{
-  width:100%;
-}
-
-.atestado-container input{
-  width:96%;
-}
+========================================================== */
 
 .atestado-container select,
-.atestado-container input{
+.atestado-container input {
+  padding: 14px 16px;
 
-  padding:14px 16px;
+  border-radius: 10px;
 
-  border-radius:10px;
-  border:2px solid rgba(255,255,255,0.15);
+  border:
+    2px solid rgba(255, 255, 255, 0.15);
 
-  background:rgba(255,255,255,0.08);
-  color:#fff;
+  background:
+    rgba(255, 255, 255, 0.08);
 
-  font-size:17px;
+  color: #ffffff;
 
-  margin-bottom:22px;
+  font-size: 17px;
 
-  transition:0.2s ease;
+  margin-bottom: 22px;
+
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-/* ============================
+
+/* ==========================================================
    FOCUS
-============================ */
+   COR PRIMÁRIA
+========================================================== */
 
 .atestado-container select:focus,
-.atestado-container input:focus{
+.atestado-container input:focus {
+  outline: none;
 
-  outline:none;
+  border-color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 
-  border-color:#ff9800;
+  background:
+    rgba(255, 255, 255, 0.15);
 
-  background:rgba(255,255,255,0.15);
-
-  box-shadow:0 0 6px rgba(255,152,0,0.5);
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 25%,
+      transparent
+    );
 }
 
-/* ============================
+
+/* ==========================================================
    OPTIONS
-============================ */
+========================================================== */
 
-.atestado-container select option{
-  background:#ffffff;
-  color:#000;
+.atestado-container select option {
+  background: #ffffff;
+  color: #000000;
 }
 
-/* ============================
+
+/* ==========================================================
    INPUT FILE
-============================ */
+========================================================== */
 
-.atestado-container input[type="file"]{
+.atestado-container input[type="file"] {
+  background:
+    rgba(255, 255, 255, 0.15);
 
-  background:rgba(255,255,255,0.15);
+  cursor: pointer;
 
-  cursor:pointer;
-
-  padding:10px;
+  padding: 10px;
 }
 
-/* ============================
-   BOTÃO
-============================ */
 
-.atestado-container button{
+/* ==========================================================
+   BOTÃO PRINCIPAL
+   COR PRIMÁRIA
+========================================================== */
 
-  width:100%;
+.atestado-container button {
+  width: 100%;
 
-  padding:15px;
+  padding: 15px;
 
-  background:#ff9800;
+  background:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 
-  border:none;
+  border: none;
 
-  border-radius:10px;
+  border-radius: 10px;
 
-  font-size:18px;
-  font-weight:600;
+  font-family: inherit;
 
-  color:white;
+  font-size: 18px;
+  font-weight: 600;
 
-  cursor:pointer;
+  color: #ffffff;
 
-  transition:0.2s ease;
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
-.atestado-container button:hover{
 
-  background:#e68900;
+/* ==========================================================
+   BOTÃO HOVER
+   COR SECUNDÁRIA
+========================================================== */
 
-  transform:scale(1.02);
+.atestado-container button:hover {
+  background:
+    var(
+      --cor-secundaria,
+      #084298
+    );
+
+  transform: scale(1.02);
+
+  box-shadow:
+    0 7px 18px rgba(0, 0, 0, 0.25);
 }
 
-/* ============================
-   MOBILE
-============================ */
 
-@media (max-width:768px){
+/* ==========================================================
+   BOTÃO DESABILITADO
+========================================================== */
 
-.atestado-container{
+.atestado-container button:disabled {
+  opacity: 0.6;
 
-margin:15px;
-padding:22px;
+  cursor: not-allowed;
 
+  transform: none;
+
+  box-shadow: none;
 }
 
+
+/* ==========================================================
+   ÍCONE DO INPUT DATE
+========================================================== */
+
+.atestado-container
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+
+  opacity: 0.85;
 }
 
-/* ============================
-   ICONES DATE
-============================ */
 
-.atestado-container input[type="date"]::-webkit-calendar-picker-indicator{
-  
-  filter:invert(62%) sepia(96%) saturate(1500%) hue-rotate(5deg);
-
-  cursor:pointer;
-
-}
+/* ==========================================================
+   MODAL
+========================================================== */
 
 .modal-ponto {
   position: fixed;
+
   inset: 0;
-  background: rgba(0, 0, 0, 0.55);
+
+  background:
+    rgba(0, 0, 0, 0.55);
+
   display: flex;
+
   align-items: center;
   justify-content: center;
-  z-index: 9999;
-  animation: fadeIn 0.3s ease;
+
+  z-index: 99999;
+
+  animation:
+    fadeIn 0.3s ease;
 }
+
+
+/* ==========================================================
+   CAIXA DO MODAL
+========================================================== */
 
 .modal-box {
-  background: #ffffffdd;
+  background:
+    rgba(255, 255, 255, 0.94);
+
   padding: 30px 45px;
+
   border-radius: 18px;
+
   text-align: center;
-  color: #000;
-  animation: scaleIn 0.25s ease;
+
+  color: #000000;
+
+  animation:
+    scaleIn 0.25s ease;
+
   min-width: 320px;
+
   max-width: 90vw;
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.30);
 }
 
+
+/* ==========================================================
+   MODAL DE ERRO
+========================================================== */
+
 .modal-box-erro {
-  background: rgba(255, 240, 240, 0.96);
+  background:
+    rgba(255, 240, 240, 0.96);
 }
+
+
+/* ==========================================================
+   ÍCONE DE SUCESSO
+========================================================== */
 
 .modal-icon {
   font-size: 60px;
+
   color: #2ecc71;
+
   margin-bottom: 10px;
 }
 
+
+/* ==========================================================
+   ÍCONE DE ERRO
+========================================================== */
+
 .modal-icon-erro {
+  font-size: 60px;
+
   color: #e74c3c;
+
+  margin-bottom: 10px;
 }
+
+
+/* ==========================================================
+   TÍTULO MODAL
+========================================================== */
 
 .modal-box h3 {
   font-size: 28px;
+
   font-weight: bold;
+
   margin-bottom: 8px;
 }
 
+
+/* ==========================================================
+   TEXTO MODAL
+========================================================== */
+
 .modal-box p {
   font-size: 18px;
+
   font-weight: 600;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
 
-@keyframes scaleIn {
-  from {
-    transform: scale(0.6);
-  }
-  to {
-    transform: scale(1);
-  }
-}
+/* ==========================================================
+   CARDS DE OPÇÃO
+========================================================== */
 
 .atestado-card-opcao {
   width: 100%;
-  max-width: 160px;
-  min-height: 115px;
-  padding: 14px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.25);
 
-  background: rgba(15, 23, 42, 0.72);
+  max-width: 160px;
+
+  min-height: 115px;
+
+  padding: 14px 12px;
+
+  border-radius: 14px;
+
+  border:
+    1px solid rgba(148, 163, 184, 0.25);
+
+  background:
+    rgba(15, 23, 42, 0.72);
 
   color: #ffffff;
 
   display: flex;
+
   flex-direction: column;
+
   align-items: flex-start;
+
   justify-content: center;
 
   gap: 8px;
@@ -248,22 +380,46 @@ padding:22px;
 
   text-align: left;
 
-  transition: 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
+
+/* ==========================================================
+   TÍTULO DO CARD
+========================================================== */
 
 .atestado-card-opcao strong {
   font-size: 15px;
+
   font-weight: 800;
+
   color: #ffffff;
 }
 
+
+/* ==========================================================
+   TEXTO MENOR
+========================================================== */
+
 .atestado-card-opcao small {
   font-size: 12px;
-  color: #dbeafe;
+
+  color: #e2e8f0;
 }
+
+
+/* ==========================================================
+   INDICADOR DO CARD
+========================================================== */
 
 .atestado-card-opcao span {
   width: 100%;
+
+  box-sizing: border-box;
 
   margin-top: 4px;
 
@@ -271,63 +427,246 @@ padding:22px;
 
   border-radius: 999px;
 
-  background: rgba(148, 163, 184, 0.16);
+  background:
+    rgba(148, 163, 184, 0.16);
 
   color: #ffffff;
 
   font-size: 12px;
+
   font-weight: 700;
 
   text-align: center;
 }
 
-.atestado-card-opcao:hover {
-  transform: translateY(-1px);
 
-  border-color: rgba(96, 165, 250, 0.45);
+/* ==========================================================
+   CARD HOVER
+   COR PRIMÁRIA
+========================================================== */
+
+.atestado-card-opcao:hover {
+  transform:
+    translateY(-2px);
+
+  border-color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 }
+
+
+/* ==========================================================
+   CARD ATIVO
+========================================================== */
 
 .atestado-card-opcao.ativo {
-  border-color: rgba(96, 165, 250, 0.55);
+  border-color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 
-  background: rgba(30, 41, 59, 0.88);
+  background:
+    rgba(30, 41, 59, 0.88);
 
-  box-shadow: 0 0 0 1px rgba(96, 165, 250, 0.15);
+  box-shadow:
+    0 0 0 2px
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 20%,
+      transparent
+    );
 }
+
+
+/* ==========================================================
+   INDICADOR DO CARD ATIVO
+   COR PRIMÁRIA
+========================================================== */
 
 .atestado-card-opcao.ativo span {
-  background: rgba(59, 130, 246, 0.25);
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 28%,
+      transparent
+    );
 
-  color: #bfdbfe;
+  color: #ffffff;
 }
+
+
+/* ==========================================================
+   GRID
+========================================================== */
 
 .atestado-grid {
   display: flex;
+
   justify-content: center;
+
   margin-top: 10px;
+
   margin-bottom: 16px;
 }
 
+
+/* ==========================================================
+   CARD TRANSPARENTE
+========================================================== */
+
 .atestado-card {
-  background: rgba(255, 255, 255, 0.025) !important;
+  background:
+    rgba(255, 255, 255, 0.025) !important;
 }
+
+
+/* ==========================================================
+   CARD TRANSPARENTE HOVER
+========================================================== */
 
 .atestado-card:hover {
-  background: rgba(255, 255, 255, 0.04) !important;
+  background:
+    rgba(255, 255, 255, 0.04) !important;
 
-  transform: translateY(-2px);
+  transform:
+    translateY(-2px);
 }
+
+
+/* ==========================================================
+   CARD TRANSPARENTE ATIVO
+========================================================== */
 
 .atestado-card.ativo {
-  border-color: rgba(148, 163, 184, 0.25);
+  border-color:
+    var(
+      --cor-primaria,
+      #0d6efd
+    );
 
-  background: rgba(255, 255, 255, 0.06) !important;
+  background:
+    rgba(255, 255, 255, 0.06) !important;
 
-  backdrop-filter: blur(4px);
+  backdrop-filter:
+    blur(4px);
+
+  -webkit-backdrop-filter:
+    blur(4px);
+
+  box-shadow:
+    0 0 0 1px
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 25%,
+      transparent
+    );
 }
 
-.atestado-card.ativo span {
-  background: rgba(148, 163, 184, 0.18);
 
-  color: #e2e8f0;
+/* ==========================================================
+   CARD ATIVO SPAN
+========================================================== */
+
+.atestado-card.ativo span {
+  background:
+    color-mix(
+      in srgb,
+      var(
+        --cor-primaria,
+        #0d6efd
+      ) 22%,
+      transparent
+    );
+
+  color: #ffffff;
+}
+
+
+/* ==========================================================
+   ANIMAÇÕES
+========================================================== */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+
+@keyframes scaleIn {
+  from {
+    transform:
+      scale(0.6);
+
+    opacity: 0;
+  }
+
+  to {
+    transform:
+      scale(1);
+
+    opacity: 1;
+  }
+}
+
+
+/* ==========================================================
+   MOBILE
+========================================================== */
+
+@media (
+  max-width: 768px
+) {
+
+  .atestado-container {
+    margin: 15px;
+
+    padding: 22px;
+  }
+
+
+  .atestado-container input {
+    width: 100%;
+
+    box-sizing: border-box;
+  }
+
+
+  .atestado-grid {
+    flex-wrap: wrap;
+
+    gap: 12px;
+  }
+
+
+  .atestado-card-opcao {
+    max-width: 100%;
+  }
+
+
+  .modal-box {
+    min-width: 0;
+
+    width: calc(100% - 40px);
+
+    box-sizing: border-box;
+
+    padding: 25px 20px;
+  }
 }

@@ -11,6 +11,7 @@ const ctrl = require(
 
 const router = Router();
 
+
 /* =========================================================
    ROTAS DE FUNCIONÁRIOS
 
@@ -26,7 +27,8 @@ const router = Router();
    - cadastrar
    - editar
    - inativar
-   - excluir imagem facial
+   - visualizar imagens faciais
+   - excluir imagens faciais
 ========================================================= */
 
 
@@ -45,13 +47,62 @@ router.get(
 
 
 /* =========================================================
-   VISUALIZAR IMAGEM DO ROSTO
+   LISTAR TODAS AS IMAGENS FACIAIS DO FUNCIONÁRIO
 
-   GET /api/funcionarios/:id/imagem
+   GET /api/funcionarios/:id/imagens
+
+   Exemplo:
+
+   GET /api/funcionarios/2/imagens
+
+   Retorna:
+
+   {
+     "ok": true,
+     "quantidade": 3,
+     "imagens": [
+       {
+         "id": 10,
+         "funcionario_id": 2,
+         "foto_mime": "image/jpeg",
+         "tamanho_bytes": 150000,
+         "created_at": "..."
+       },
+       {
+         "id": 11,
+         "funcionario_id": 2,
+         "foto_mime": "image/jpeg",
+         "tamanho_bytes": 160000,
+         "created_at": "..."
+       }
+     ]
+   }
 ========================================================= */
 
 router.get(
-  "/:id/imagem",
+  "/:id/imagens",
+  auth,
+  somenteRH,
+  ctrl.listarImagensRosto
+);
+
+
+/* =========================================================
+   VISUALIZAR UMA IMAGEM FACIAL ESPECÍFICA
+
+   GET /api/funcionarios/:id/rostos/:fotoId
+
+   Exemplo:
+
+   GET /api/funcionarios/2/rostos/10
+
+   Retorna diretamente:
+
+   image/jpeg
+========================================================= */
+
+router.get(
+  "/:id/rostos/:fotoId",
   auth,
   somenteRH,
   ctrl.verImagemRosto
@@ -59,9 +110,52 @@ router.get(
 
 
 /* =========================================================
-   EXCLUIR IMAGEM DO ROSTO
+   EXCLUIR UMA IMAGEM FACIAL ESPECÍFICA
+
+   DELETE /api/funcionarios/:id/rostos/:fotoId
+
+   Exemplo:
+
+   DELETE /api/funcionarios/2/rostos/10
+
+   IMPORTANTE:
+
+   Apaga somente a foto escolhida.
+
+   As outras fotos do funcionário continuam cadastradas.
+========================================================= */
+
+router.delete(
+  "/:id/rostos/:fotoId",
+  auth,
+  somenteRH,
+  ctrl.excluirUmaImagemRosto
+);
+
+
+/* =========================================================
+   EXCLUIR TODO O CADASTRO FACIAL
 
    DELETE /api/funcionarios/:id/imagem
+
+   IMPORTANTE:
+
+   Essa rota continua existindo.
+
+   Ela apaga TODAS as imagens e TODOS os embeddings
+   cadastrados para o funcionário.
+
+   Exemplo:
+
+   funcionário 2 possui:
+
+   foto 10
+   foto 11
+   foto 12
+
+   DELETE /api/funcionarios/2/imagem
+
+   apaga as três.
 ========================================================= */
 
 router.delete(
@@ -76,6 +170,15 @@ router.delete(
    BUSCAR FUNCIONÁRIO POR ID
 
    GET /api/funcionarios/:id
+
+   IMPORTANTE:
+
+   Esta rota fica DEPOIS das rotas específicas como:
+
+   /:id/imagens
+   /:id/rostos/:fotoId
+
+   para evitar conflitos.
 ========================================================= */
 
 router.get(

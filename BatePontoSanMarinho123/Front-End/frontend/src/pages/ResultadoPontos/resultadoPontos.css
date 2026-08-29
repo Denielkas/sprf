@@ -21,7 +21,10 @@
   display: flex;
   justify-content: center;
   align-items: center;
+
+  box-sizing: border-box;
 }
+
 
 /* ==========================================================
    CARD
@@ -33,16 +36,22 @@
 
   background: rgba(6, 18, 38, 0.92);
 
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
 
   border-radius: 18px;
 
   padding: 24px;
 
+  box-sizing: border-box;
+
   box-shadow:
     0 12px 28px
     rgba(0, 0, 0, 0.35);
 }
+
 
 /* ==========================================================
    TÍTULO
@@ -55,22 +64,25 @@
     0 4px 12px
     rgba(0, 0, 0, 0.6);
 
+  margin-top: 0;
   margin-bottom: 20px;
 
   text-align: center;
 
   font-size: 30px;
+  font-weight: 800;
 }
 
+
 /* ==========================================================
-   INFORMAÇÕES
+   INFORMAÇÕES DO FUNCIONÁRIO
 ========================================================== */
 
 .resultadoInfo {
   display: flex;
   flex-wrap: wrap;
 
-  gap: 16px;
+  gap: 12px 24px;
 
   margin-bottom: 20px;
 
@@ -81,14 +93,34 @@
   background:
     rgba(255, 255, 255, 0.06);
 
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
   border-radius: 12px;
 
   padding: 14px 16px;
+
+  box-sizing: border-box;
+}
+
+.resultadoInfo span {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 5px;
 }
 
 .resultadoInfo strong {
-  color: #ffffff;
+  color:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  font-weight: 700;
 }
+
 
 /* ==========================================================
    TABELA RESPONSIVA
@@ -100,7 +132,14 @@
   overflow-x: auto;
 
   border-radius: 14px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  box-sizing: border-box;
 }
+
 
 /* ==========================================================
    TABELA
@@ -118,37 +157,65 @@
   border-radius: 14px;
 }
 
+
+/* ==========================================================
+   CABEÇALHO DA TABELA
+========================================================== */
+
 .resultadoTable thead tr {
   background:
-    rgba(17, 34, 64, 0.95);
+    var(
+      --empresa-cor-secundaria,
+      #112240
+    );
 }
 
 .resultadoTable th {
-  color: #ffffff;
+  color:
+    var(
+      --empresa-cor-primaria,
+      #ffffff
+    );
 
   font-size: 15px;
   font-weight: 700;
 
-  text-align: left;
+  text-align: center;
 
   padding: 16px 14px;
 
   border-bottom:
     1px solid
-    rgba(255, 255, 255, 0.08);
+    rgba(255, 255, 255, 0.1);
+
+  white-space: nowrap;
 }
+
+
+/* ==========================================================
+   CÉLULAS
+========================================================== */
 
 .resultadoTable td {
   color: #ffffff;
 
   font-size: 15px;
 
+  text-align: center;
+
   padding: 16px 14px;
 
   border-bottom:
     1px solid
     rgba(255, 255, 255, 0.05);
+
+  white-space: nowrap;
 }
+
+
+/* ==========================================================
+   LINHAS
+========================================================== */
 
 .resultadoTable tbody tr:nth-child(odd) {
   background:
@@ -160,24 +227,46 @@
     rgba(6, 19, 40, 0.94);
 }
 
+.resultadoTable tbody tr {
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
 .resultadoTable tbody tr:hover {
   background:
     rgba(20, 45, 85, 0.96);
 }
+
+
+/* ==========================================================
+   HORÁRIOS
+========================================================== */
+
+.resultadoTable td:nth-child(3),
+.resultadoTable td:nth-child(4),
+.resultadoTable td:nth-child(5),
+.resultadoTable td:nth-child(6) {
+  font-weight: 600;
+}
+
 
 /* ==========================================================
    SEM DADOS
 ========================================================== */
 
 .semDados {
-  text-align: center;
+  text-align: center !important;
 
-  color: #cbd5e1;
+  color: #cbd5e1 !important;
 
-  padding: 24px;
+  padding: 24px !important;
 
   font-weight: 500;
+
+  font-size: 15px;
 }
+
 
 /* ==========================================================
    BOTÕES
@@ -191,6 +280,7 @@
   gap: 12px;
 
   justify-content: center;
+  align-items: center;
 
   flex-wrap: wrap;
 }
@@ -209,18 +299,28 @@
 
   cursor: pointer;
 
-  transition: 0.2s ease;
+  transition:
+    0.2s ease;
 
   min-width: 180px;
 
   color: #ffffff;
+
+  box-shadow:
+    0 4px 12px
+    rgba(0, 0, 0, 0.18);
 }
+
+
+/* ==========================================================
+   BOTÃO PRINCIPAL
+========================================================== */
 
 .btnVoltar {
   background:
     var(
       --empresa-cor-primaria,
-      #1f6feb
+      #0d6efd
     );
 }
 
@@ -228,8 +328,17 @@
   filter: brightness(1.12);
 
   transform:
-    translateY(-1px);
+    translateY(-2px);
+
+  box-shadow:
+    0 7px 18px
+    rgba(0, 0, 0, 0.25);
 }
+
+
+/* ==========================================================
+   BOTÃO SECUNDÁRIO
+========================================================== */
 
 .btnInicio {
   background:
@@ -237,20 +346,70 @@
       --empresa-cor-secundaria,
       #1d2d44
     );
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.12);
 }
 
 .btnInicio:hover {
-  filter: brightness(1.2);
+  filter: brightness(1.25);
 
   transform:
-    translateY(-1px);
+    translateY(-2px);
+
+  box-shadow:
+    0 7px 18px
+    rgba(0, 0, 0, 0.25);
 }
+
+
+/* ==========================================================
+   BOTÕES AO CLICAR
+========================================================== */
+
+.btnVoltar:active,
+.btnInicio:active {
+  transform: scale(0.97);
+}
+
+
+/* ==========================================================
+   SCROLL DA TABELA
+========================================================== */
+
+.tableResponsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tableResponsive::-webkit-scrollbar-track {
+  background:
+    rgba(255, 255, 255, 0.05);
+
+  border-radius: 10px;
+}
+
+.tableResponsive::-webkit-scrollbar-thumb {
+  background:
+    var(
+      --empresa-cor-primaria,
+      #0d6efd
+    );
+
+  border-radius: 10px;
+}
+
+.tableResponsive::-webkit-scrollbar-thumb:hover {
+  filter: brightness(1.15);
+}
+
 
 /* ==========================================================
    MOBILE
 ========================================================== */
 
 @media (max-width: 520px) {
+
   .resultadoContainer {
     padding: 14px;
 
@@ -270,11 +429,23 @@
   }
 
   .resultadoInfo {
+    flex-direction: column;
+
+    align-items: flex-start;
+
     font-size: 13px;
 
-    gap: 10px;
+    gap: 8px;
 
     padding: 12px;
+  }
+
+  .resultadoInfo span {
+    width: 100%;
+  }
+
+  .resultadoTable {
+    min-width: 700px;
   }
 
   .resultadoTable th,
@@ -284,23 +455,33 @@
     padding: 12px 10px;
   }
 
+  .resultadoActions {
+    flex-direction: column;
+
+    width: 100%;
+  }
+
   .btnVoltar,
   .btnInicio {
     width: 100%;
 
     min-width: unset;
+
+    padding: 14px 18px;
   }
 }
+
 
 /* ==========================================================
    TABLET
 ========================================================== */
 
-@media (
-  min-width: 600px
-) and (
-  max-width: 900px
-) {
+@media (min-width: 600px) and (max-width: 900px) {
+
+  .resultadoContainer {
+    padding: 20px;
+  }
+
   .resultadoCard {
     max-width: 950px;
 
@@ -333,5 +514,26 @@
     font-size: 16px;
 
     padding: 13px 24px;
+  }
+}
+
+
+/* ==========================================================
+   TELAS GRANDES
+========================================================== */
+
+@media (min-width: 1200px) {
+
+  .resultadoCard {
+    padding: 30px;
+  }
+
+  .resultadoCard h2 {
+    font-size: 32px;
+  }
+
+  .resultadoTable th,
+  .resultadoTable td {
+    padding: 17px 16px;
   }
 }

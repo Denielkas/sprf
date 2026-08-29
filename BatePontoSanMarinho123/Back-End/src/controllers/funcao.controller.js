@@ -1,18 +1,38 @@
 const pool = require("../database/pool");
 
+/* =========================================================
+   ROLES
+========================================================= */
+
+const ROLES = {
+  SUPER_ADMIN: "super_admin",
+  RH_EMPRESA: "rh_empresa",
+  PONTO_EMPRESA: "ponto_empresa",
+  ADMIN_EMPRESA_ANTIGO: "admin_empresa",
+};
 
 /* =========================================================
    OBTER EMPRESA DA REQUISIÇÃO
 ========================================================= */
 
 function obterEmpresaIdDaRequisicao(req) {
-  /*
-    ADMIN_EMPRESA:
-    a empresa sempre vem do token.
-  */
-  if (req.user?.role === "admin_empresa") {
+  const role = req.user?.role;
+
+  const rolesEmpresa = [
+    ROLES.RH_EMPRESA,
+    ROLES.PONTO_EMPRESA,
+    ROLES.ADMIN_EMPRESA_ANTIGO,
+  ];
+
+  /* =======================================================
+     USUÁRIO NORMAL DA EMPRESA
+
+     Sempre pega empresa_id do TOKEN.
+  ======================================================= */
+
+  if (rolesEmpresa.includes(role)) {
     const empresaId = Number(
-      req.user.empresa_id
+      req.user?.empresa_id
     );
 
     if (
@@ -25,23 +45,19 @@ function obterEmpresaIdDaRequisicao(req) {
     return null;
   }
 
+  /* =======================================================
+     SUPER ADMIN
 
-  /*
-    SUPER_ADMIN:
-    pode escolher a empresa.
+     Pode informar empresa_id pela query ou body.
+  ======================================================= */
 
-    GET:
-    ?empresa_id=1
+  if (role === ROLES.SUPER_ADMIN) {
+    const valorEmpresa =
+      req.query?.empresa_id ??
+      req.body?.empresa_id;
 
-    POST/PUT:
-    {
-      "empresa_id": 1
-    }
-  */
-  if (req.user?.role === "super_admin") {
     const empresaId = Number(
-      req.query?.empresa_id ||
-      req.body?.empresa_id
+      valorEmpresa
     );
 
     if (
@@ -57,28 +73,54 @@ function obterEmpresaIdDaRequisicao(req) {
   return null;
 }
 
+/* =========================================================
+   GARANTIR TABELA EMPRESAS
+========================================================= */
+
+async function garantirTabelaEmpresas() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS empresas (
+      id BIGSERIAL PRIMARY KEY,
+
+      nome VARCHAR(200)
+        NOT NULL,
+
+      nome_fantasia VARCHAR(200),
+
+      cnpj VARCHAR(14),
+
+      ativo BOOLEAN
+        NOT NULL
+        DEFAULT true,
+
+      created_at TIMESTAMP
+        DEFAULT NOW(),
+
+      updated_at TIMESTAMP
+        DEFAULT NOW()
+    );
+  `);
+}
 
 /* =========================================================
-   GARANTE TABELA FUNÇÕES
-   MULTIEMPRESA
+   GARANTIR TABELA FUNÇÕES
 ========================================================= */
 
 async function garantirTabelaFuncoes() {
-  /*
-    Cria a tabela caso ainda não exista.
+  await garantirTabelaEmpresas();
 
-    IMPORTANTE:
-    não colocamos mais UNIQUE diretamente em nome.
-  */
+  /* =======================================================
+     CRIAR TABELA
+  ======================================================= */
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS funcoes (
       id BIGSERIAL PRIMARY KEY,
 
-      empresa_id BIGINT
-        REFERENCES empresas(id)
-        ON DELETE RESTRICT,
+      empresa_id BIGINT,
 
-      nome VARCHAR(150) NOT NULL,
+      nome VARCHAR(150)
+        NOT NULL,
 
       created_at TIMESTAMP
         DEFAULT NOW(),
@@ -88,70 +130,79 @@ async function garantirTabelaFuncoes() {
     );
   `);
 
-
-  /* =====================================================
-     ADICIONAR empresa_id EM TABELA ANTIGA
-  ===================================================== */
-
-  await pool.query(`
-    ALTER TABLE funcoes
-    ADD COLUMN IF NOT EXISTS empresa_id
-    BIGINT REFERENCES empresas(id)
-    ON DELETE RESTRICT
-  `);
-
-
-  /* =====================================================
-     ADICIONAR updated_at
-  ===================================================== */
+  /* =======================================================
+     GARANTIR COLUNAS
+  ======================================================= */
 
   await pool.query(`
     ALTER TABLE funcoes
-    ADD COLUMN IF NOT EXISTS updated_at
-    TIMESTAMP DEFAULT NOW()
+    ADD COLUMN IF NOT EXISTS
+      empresa_id BIGINT;
   `);
 
+  await pool.query(`
+    ALTER TABLE funcoes
+    ADD COLUMN IF NOT EXISTS
+      nome VARCHAR(150);
+  `);
 
-  /* =====================================================
-     REMOVER UNIQUE ANTIGO DO CAMPO nome
+  await pool.query(`
+    ALTER TABLE funcoes
+    ADD COLUMN IF NOT EXISTS
+      created_at TIMESTAMP DEFAULT NOW();
+  `);
 
-     Antes tínhamos:
+  await pool.query(`
+    ALTER TABLE funcoes
+    ADD COLUMN IF NOT EXISTS
+      updated_at TIMESTAMP DEFAULT NOW();
+  `);
 
-     nome VARCHAR(150) UNIQUE
+  /* =======================================================
+     REMOVER UNIQUE ANTIGO DE nome
+
+     Antigamente:
+       nome UNIQUE
 
      Isso impediria:
+       Empresa 1 -> RECEPCIONISTA
+       Empresa 2 -> RECEPCIONISTA
 
-     Empresa 1 -> Gerente
-     Empresa 2 -> Gerente
-
-     Agora cada empresa poderá ter seus próprios cargos.
-  ===================================================== */
+     Agora a função é única POR EMPRESA.
+  ======================================================= */
 
   await pool.query(`
     DO $$
     DECLARE
-      constraint_record RECORD;
+      registro RECORD;
     BEGIN
 
-      FOR constraint_record IN
+      FOR registro IN
+
         SELECT
-          tc.constraint_name
+          con.conname
 
-        FROM information_schema.table_constraints tc
+        FROM pg_constraint con
 
-        INNER JOIN information_schema.constraint_column_usage ccu
-          ON tc.constraint_name = ccu.constraint_name
-         AND tc.constraint_schema = ccu.constraint_schema
+        JOIN pg_class rel
+          ON rel.oid =
+             con.conrelid
 
-        WHERE tc.table_name = 'funcoes'
-          AND tc.constraint_type = 'UNIQUE'
-          AND ccu.column_name = 'nome'
+        WHERE rel.relname =
+              'funcoes'
+
+          AND con.contype =
+              'u'
+
+          AND pg_get_constraintdef(
+                con.oid
+              ) = 'UNIQUE (nome)'
 
       LOOP
 
         EXECUTE format(
           'ALTER TABLE funcoes DROP CONSTRAINT IF EXISTS %I',
-          constraint_record.constraint_name
+          registro.conname
         );
 
       END LOOP;
@@ -159,109 +210,201 @@ async function garantirTabelaFuncoes() {
     END $$;
   `);
 
+  /* =======================================================
+     REMOVER ÍNDICE UNIQUE ANTIGO APENAS EM nome
+  ======================================================= */
 
-  /* =====================================================
+  const indices =
+    await pool.query(`
+      SELECT
+        indexname,
+        indexdef
+
+      FROM pg_indexes
+
+      WHERE tablename =
+            'funcoes'
+
+        AND indexdef ILIKE
+            '%UNIQUE%';
+    `);
+
+  for (
+    const indice of
+    indices.rows
+  ) {
+    const definicao =
+      String(
+        indice.indexdef || ""
+      )
+        .toLowerCase()
+        .replace(/\s+/g, " ");
+
+    const somenteNome =
+      definicao.includes("(nome)") &&
+      !definicao.includes("empresa_id");
+
+    if (somenteNome) {
+      try {
+        await pool.query(
+          `DROP INDEX IF EXISTS "${indice.indexname}";`
+        );
+
+        console.log(
+          "Índice antigo removido:",
+          indice.indexname
+        );
+
+      } catch (erro) {
+        console.log(
+          "Não foi possível remover índice:",
+          indice.indexname,
+          erro.message
+        );
+      }
+    }
+  }
+
+  /* =======================================================
      MIGRAR FUNÇÕES ANTIGAS
 
-     Descobre a empresa através dos funcionários
-     que já utilizam aquela função.
+     Caso uma função antiga esteja com empresa_id NULL,
+     tentamos descobrir a empresa pelos funcionários.
+  ======================================================= */
 
-     Isso preserva os cargos existentes.
-  ===================================================== */
+  const migracao =
+    await pool.query(`
+      UPDATE funcoes fn
 
-  const migracao = await pool.query(`
-    UPDATE funcoes fn
+      SET empresa_id =
+        origem.empresa_id
 
-    SET empresa_id = origem.empresa_id
+      FROM (
+        SELECT
+          funcao_id,
+          MIN(empresa_id)
+            AS empresa_id
 
-    FROM (
-      SELECT
-        funcao_id,
-        MIN(empresa_id) AS empresa_id
+        FROM funcionarios
 
-      FROM funcionarios
+        WHERE funcao_id
+              IS NOT NULL
 
-      WHERE funcao_id IS NOT NULL
-        AND empresa_id IS NOT NULL
+          AND empresa_id
+              IS NOT NULL
 
-      GROUP BY funcao_id
-    ) origem
+        GROUP BY
+          funcao_id
+      ) origem
 
-    WHERE fn.id = origem.funcao_id
-      AND fn.empresa_id IS NULL
-  `);
+      WHERE fn.id =
+            origem.funcao_id
 
+        AND fn.empresa_id
+            IS NULL;
+    `);
 
-  if (migracao.rowCount > 0) {
+  if (
+    migracao.rowCount > 0
+  ) {
     console.log(
-      `✅ ${migracao.rowCount} função(ões) antiga(s) vinculada(s) às empresas.`
+      `Funções antigas migradas: ${migracao.rowCount}`
     );
   }
 
+  /* =======================================================
+     FOREIGN KEY
+  ======================================================= */
 
-  /* =====================================================
-     ÍNDICE
-  ===================================================== */
+  await pool.query(`
+    DO $$
+    BEGIN
+
+      IF NOT EXISTS (
+        SELECT 1
+
+        FROM pg_constraint
+
+        WHERE conname =
+          'funcoes_empresa_id_fkey'
+      ) THEN
+
+        ALTER TABLE funcoes
+
+        ADD CONSTRAINT
+          funcoes_empresa_id_fkey
+
+        FOREIGN KEY (
+          empresa_id
+        )
+
+        REFERENCES empresas(id)
+
+        ON DELETE RESTRICT;
+
+      END IF;
+
+    END $$;
+  `);
+
+  /* =======================================================
+     ÍNDICE EMPRESA
+  ======================================================= */
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
-    idx_funcoes_empresa_id
+      idx_funcoes_empresa_id
 
-    ON funcoes(empresa_id)
+    ON funcoes(
+      empresa_id
+    );
   `);
 
-
-  /* =====================================================
-     UNIQUE MULTIEMPRESA
-
-     Uma mesma empresa não poderá cadastrar
-     o mesmo nome duas vezes.
-
-     Mas empresas diferentes poderão ter:
-
-     Empresa 1 -> Gerente
-     Empresa 2 -> Gerente
-  ===================================================== */
+  /* =======================================================
+     FUNÇÃO ÚNICA POR EMPRESA
+  ======================================================= */
 
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS
-    idx_funcoes_empresa_nome_unique
+      idx_funcoes_empresa_nome_unique
 
-    ON funcoes(
+    ON funcoes (
       empresa_id,
-      LOWER(nome)
+      LOWER(TRIM(nome))
     )
 
-    WHERE empresa_id IS NOT NULL
+    WHERE empresa_id
+          IS NOT NULL;
   `);
 }
 
-
 /* =========================================================
-   VERIFICAR EMPRESA
+   BUSCAR EMPRESA
 ========================================================= */
 
-async function buscarEmpresa(empresaId) {
-  const { rows } = await pool.query(
-    `
-    SELECT
-      id,
-      nome,
-      nome_fantasia,
-      ativo
+async function buscarEmpresa(
+  empresaId
+) {
+  const { rows } =
+    await pool.query(
+      `
+      SELECT
+        id,
+        nome,
+        nome_fantasia,
+        ativo
 
-    FROM empresas
+      FROM empresas
 
-    WHERE id = $1
+      WHERE id = $1
 
-    LIMIT 1
-    `,
-    [empresaId]
-  );
+      LIMIT 1
+      `,
+      [empresaId]
+    );
 
   return rows[0] || null;
 }
-
 
 /* =========================================================
    VALIDAR EMPRESA
@@ -272,39 +415,67 @@ async function validarEmpresaDaRequisicao(
   res
 ) {
   const empresaId =
-    obterEmpresaIdDaRequisicao(req);
-
+    obterEmpresaIdDaRequisicao(
+      req
+    );
 
   if (!empresaId) {
-    res.status(400).json({
-      error: "Empresa não informada.",
-    });
+    console.log(
+      "Empresa não identificada:",
+      {
+        role:
+          req.user?.role,
+
+        empresa_id_token:
+          req.user?.empresa_id,
+
+        empresa_id_query:
+          req.query?.empresa_id,
+
+        empresa_id_body:
+          req.body?.empresa_id,
+      }
+    );
+
+    res
+      .status(400)
+      .json({
+        error:
+          req.user?.role ===
+          ROLES.SUPER_ADMIN
+            ? "Selecione uma empresa."
+            : "Usuário não possui empresa vinculada.",
+      });
 
     return null;
   }
-
 
   const empresa =
-    await buscarEmpresa(empresaId);
-
+    await buscarEmpresa(
+      empresaId
+    );
 
   if (!empresa) {
-    res.status(404).json({
-      error: "Empresa não encontrada.",
-    });
+    res
+      .status(404)
+      .json({
+        error:
+          "Empresa não encontrada.",
+      });
 
     return null;
   }
-
 
   if (!empresa.ativo) {
-    res.status(403).json({
-      error: "Empresa desativada.",
-    });
+    res
+      .status(403)
+      .json({
+        error:
+          "Empresa desativada.",
+      });
 
     return null;
   }
-
 
   return {
     empresaId,
@@ -312,594 +483,732 @@ async function validarEmpresaDaRequisicao(
   };
 }
 
-
 /* =========================================================
    LISTAR FUNÇÕES
 ========================================================= */
 
-exports.listar = async (req, res) => {
-  try {
-    await garantirTabelaFuncoes();
+exports.listar =
+  async (req, res) => {
+    try {
+      await garantirTabelaFuncoes();
 
+      const validacao =
+        await validarEmpresaDaRequisicao(
+          req,
+          res
+        );
 
-    const validacao =
-      await validarEmpresaDaRequisicao(
-        req,
-        res
+      if (!validacao) {
+        return;
+      }
+
+      const {
+        empresaId,
+      } = validacao;
+
+      const { rows } =
+        await pool.query(
+          `
+          SELECT
+            fn.id,
+
+            fn.empresa_id,
+
+            fn.nome,
+
+            fn.created_at,
+
+            fn.updated_at,
+
+            COUNT(f.id)::integer
+              AS total_funcionarios
+
+          FROM funcoes fn
+
+          LEFT JOIN funcionarios f
+            ON f.funcao_id =
+               fn.id
+
+            AND f.empresa_id =
+                fn.empresa_id
+
+          WHERE fn.empresa_id =
+                $1
+
+          GROUP BY
+            fn.id,
+            fn.empresa_id,
+            fn.nome,
+            fn.created_at,
+            fn.updated_at
+
+          ORDER BY
+            fn.nome ASC
+          `,
+          [empresaId]
+        );
+
+      return res.json(
+        rows
       );
 
+    } catch (err) {
+      console.error(
+        "Erro ao listar funções:",
+        err
+      );
 
-    if (!validacao) {
-      return;
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao listar funções.",
+        });
     }
-
-
-    const { empresaId } =
-      validacao;
-
-
-    const { rows } =
-      await pool.query(
-        `
-        SELECT
-          id,
-          empresa_id,
-          nome,
-          created_at,
-          updated_at
-
-        FROM funcoes
-
-        WHERE empresa_id = $1
-
-        ORDER BY nome ASC
-        `,
-        [empresaId]
-      );
-
-
-    return res.json(rows);
-
-  } catch (err) {
-    console.error(
-      "Erro ao listar funções:",
-      err
-    );
-
-
-    return res.status(500).json({
-      error:
-        "Erro ao listar funções.",
-    });
-  }
-};
-
+  };
 
 /* =========================================================
-   BUSCAR UMA FUNÇÃO
+   BUSCAR FUNÇÃO POR ID
 ========================================================= */
 
-exports.buscarPorId = async (
-  req,
-  res
-) => {
-  try {
-    await garantirTabelaFuncoes();
+exports.buscarPorId =
+  async (req, res) => {
+    try {
+      await garantirTabelaFuncoes();
 
+      const funcaoId =
+        Number(
+          req.params.id
+        );
 
-    const { id } =
-      req.params;
+      if (
+        !Number.isInteger(
+          funcaoId
+        ) ||
+        funcaoId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ID da função inválido.",
+          });
+      }
 
+      const validacao =
+        await validarEmpresaDaRequisicao(
+          req,
+          res
+        );
 
-    const funcaoId =
-      Number(id);
+      if (!validacao) {
+        return;
+      }
 
+      const {
+        empresaId,
+      } = validacao;
 
-    if (
-      !Number.isInteger(funcaoId) ||
-      funcaoId <= 0
-    ) {
-      return res.status(400).json({
-        error:
-          "ID da função inválido.",
-      });
-    }
+      const { rows } =
+        await pool.query(
+          `
+          SELECT
+            id,
+            empresa_id,
+            nome,
+            created_at,
+            updated_at
 
+          FROM funcoes
 
-    const validacao =
-      await validarEmpresaDaRequisicao(
-        req,
-        res
+          WHERE id = $1
+            AND empresa_id = $2
+
+          LIMIT 1
+          `,
+          [
+            funcaoId,
+            empresaId,
+          ]
+        );
+
+      if (
+        rows.length === 0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Função não encontrada.",
+          });
+      }
+
+      return res.json(
+        rows[0]
       );
 
-
-    if (!validacao) {
-      return;
-    }
-
-
-    const { empresaId } =
-      validacao;
-
-
-    const { rows } =
-      await pool.query(
-        `
-        SELECT
-          id,
-          empresa_id,
-          nome,
-          created_at,
-          updated_at
-
-        FROM funcoes
-
-        WHERE id = $1
-          AND empresa_id = $2
-
-        LIMIT 1
-        `,
-        [
-          funcaoId,
-          empresaId,
-        ]
+    } catch (err) {
+      console.error(
+        "Erro ao buscar função:",
+        err
       );
 
-
-    if (rows.length === 0) {
-      return res.status(404).json({
-        error:
-          "Função não encontrada.",
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao buscar função.",
+        });
     }
-
-
-    return res.json(
-      rows[0]
-    );
-
-  } catch (err) {
-    console.error(
-      "Erro ao buscar função:",
-      err
-    );
-
-
-    return res.status(500).json({
-      error:
-        "Erro ao buscar função.",
-    });
-  }
-};
-
+  };
 
 /* =========================================================
    CRIAR FUNÇÃO
 ========================================================= */
 
-exports.criar = async (
-  req,
-  res
-) => {
-  try {
-    await garantirTabelaFuncoes();
+exports.criar =
+  async (req, res) => {
+    try {
+      await garantirTabelaFuncoes();
 
+      const nome =
+        String(
+          req.body?.nome || ""
+        ).trim();
 
-    const nome =
-      String(
-        req.body?.nome || ""
-      ).trim();
+      if (!nome) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Nome da função é obrigatório.",
+          });
+      }
 
+      if (
+        nome.length > 150
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "O nome da função deve possuir no máximo 150 caracteres.",
+          });
+      }
 
-    if (!nome) {
-      return res.status(400).json({
-        error:
-          "Nome da função é obrigatório.",
-      });
-    }
+      const validacao =
+        await validarEmpresaDaRequisicao(
+          req,
+          res
+        );
 
+      if (!validacao) {
+        return;
+      }
 
-    if (nome.length > 150) {
-      return res.status(400).json({
-        error:
-          "O nome da função deve possuir no máximo 150 caracteres.",
-      });
-    }
+      const {
+        empresaId,
+      } = validacao;
 
+      /* =====================================================
+         PADRONIZAR NOME
 
-    const validacao =
-      await validarEmpresaDaRequisicao(
-        req,
-        res
+         Isso evita:
+         recepcionista
+         RECEPCIONISTA
+         Recepcionista
+
+         virarem funções diferentes.
+      ===================================================== */
+
+      const nomeFinal =
+        nome.toUpperCase();
+
+      /* =====================================================
+         VERIFICAR DUPLICIDADE
+      ===================================================== */
+
+      const existe =
+        await pool.query(
+          `
+          SELECT
+            id
+
+          FROM funcoes
+
+          WHERE empresa_id = $1
+
+            AND LOWER(
+                  TRIM(nome)
+                ) =
+                LOWER(
+                  TRIM($2)
+                )
+
+          LIMIT 1
+          `,
+          [
+            empresaId,
+            nomeFinal,
+          ]
+        );
+
+      if (
+        existe.rows.length > 0
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Esta função já existe nesta empresa.",
+          });
+      }
+
+      /* =====================================================
+         INSERIR
+      ===================================================== */
+
+      const { rows } =
+        await pool.query(
+          `
+          INSERT INTO funcoes (
+            empresa_id,
+            nome,
+            created_at,
+            updated_at
+          )
+
+          VALUES (
+            $1,
+            $2,
+            NOW(),
+            NOW()
+          )
+
+          RETURNING
+            id,
+            empresa_id,
+            nome,
+            created_at,
+            updated_at
+          `,
+          [
+            empresaId,
+            nomeFinal,
+          ]
+        );
+
+      return res
+        .status(201)
+        .json({
+          ok: true,
+
+          message:
+            "Função cadastrada com sucesso.",
+
+          funcao:
+            rows[0],
+        });
+
+    } catch (err) {
+      console.error(
+        "Erro ao criar função:",
+        err
       );
 
+      if (
+        err.code === "23505"
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Esta função já existe nesta empresa.",
+          });
+      }
 
-    if (!validacao) {
-      return;
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao cadastrar função.",
+        });
     }
-
-
-    const { empresaId } =
-      validacao;
-
-
-    /* ===================================================
-       VERIFICAR DUPLICIDADE NA MESMA EMPRESA
-    =================================================== */
-
-    const existe =
-      await pool.query(
-        `
-        SELECT id
-
-        FROM funcoes
-
-        WHERE empresa_id = $1
-          AND LOWER(TRIM(nome)) =
-              LOWER(TRIM($2))
-
-        LIMIT 1
-        `,
-        [
-          empresaId,
-          nome,
-        ]
-      );
-
-
-    if (
-      existe.rows.length > 0
-    ) {
-      return res.status(409).json({
-        error:
-          "Esta função já existe nesta empresa.",
-      });
-    }
-
-
-    /* ===================================================
-       CRIAR
-    =================================================== */
-
-    const { rows } =
-      await pool.query(
-        `
-        INSERT INTO funcoes (
-          empresa_id,
-          nome,
-          created_at,
-          updated_at
-        )
-
-        VALUES (
-          $1,
-          $2,
-          NOW(),
-          NOW()
-        )
-
-        RETURNING
-          id,
-          empresa_id,
-          nome,
-          created_at,
-          updated_at
-        `,
-        [
-          empresaId,
-          nome,
-        ]
-      );
-
-
-    return res.status(201).json({
-      ok: true,
-
-      message:
-        "Função cadastrada com sucesso.",
-
-      funcao:
-        rows[0],
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao criar função:",
-      err
-    );
-
-
-    /*
-      Proteção adicional caso duas requisições
-      tentem cadastrar simultaneamente.
-    */
-    if (
-      err.code === "23505"
-    ) {
-      return res.status(409).json({
-        error:
-          "Esta função já existe nesta empresa.",
-      });
-    }
-
-
-    return res.status(500).json({
-      error:
-        "Erro ao cadastrar função.",
-    });
-  }
-};
-
+  };
 
 /* =========================================================
    ALTERAR FUNÇÃO
 ========================================================= */
 
-exports.alterar = async (
-  req,
-  res
-) => {
-  try {
-    await garantirTabelaFuncoes();
+exports.alterar =
+  async (req, res) => {
+    try {
+      await garantirTabelaFuncoes();
 
+      const funcaoId =
+        Number(
+          req.params.id
+        );
 
-    const funcaoId =
-      Number(
-        req.params.id
-      );
+      const nome =
+        String(
+          req.body?.nome || ""
+        ).trim();
 
+      if (
+        !Number.isInteger(
+          funcaoId
+        ) ||
+        funcaoId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ID da função inválido.",
+          });
+      }
 
-    const nome =
-      String(
-        req.body?.nome || ""
-      ).trim();
+      if (!nome) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Nome da função é obrigatório.",
+          });
+      }
 
+      if (
+        nome.length > 150
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "O nome da função deve possuir no máximo 150 caracteres.",
+          });
+      }
 
-    if (
-      !Number.isInteger(funcaoId) ||
-      funcaoId <= 0
-    ) {
-      return res.status(400).json({
-        error:
-          "ID da função inválido.",
-      });
-    }
+      const validacao =
+        await validarEmpresaDaRequisicao(
+          req,
+          res
+        );
 
+      if (!validacao) {
+        return;
+      }
 
-    if (!nome) {
-      return res.status(400).json({
-        error:
-          "Nome da função é obrigatório.",
-      });
-    }
+      const {
+        empresaId,
+      } = validacao;
 
+      const nomeFinal =
+        nome.toUpperCase();
 
-    if (nome.length > 150) {
-      return res.status(400).json({
-        error:
-          "O nome da função deve possuir no máximo 150 caracteres.",
-      });
-    }
+      /* =====================================================
+         VERIFICAR EXISTÊNCIA
+      ===================================================== */
 
+      const funcaoAtual =
+        await pool.query(
+          `
+          SELECT
+            id,
+            empresa_id,
+            nome
 
-    const validacao =
-      await validarEmpresaDaRequisicao(
-        req,
-        res
-      );
+          FROM funcoes
 
+          WHERE id = $1
+            AND empresa_id = $2
 
-    if (!validacao) {
-      return;
-    }
+          LIMIT 1
+          `,
+          [
+            funcaoId,
+            empresaId,
+          ]
+        );
 
+      if (
+        funcaoAtual.rows.length ===
+        0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Função não encontrada.",
+          });
+      }
 
-    const { empresaId } =
-      validacao;
+      /* =====================================================
+         VERIFICAR DUPLICIDADE
+      ===================================================== */
 
+      const duplicada =
+        await pool.query(
+          `
+          SELECT id
 
-    /* ===================================================
-       VERIFICAR SE A FUNÇÃO PERTENCE À EMPRESA
-    =================================================== */
+          FROM funcoes
 
-    const funcaoAtual =
+          WHERE empresa_id = $1
+
+            AND LOWER(
+                  TRIM(nome)
+                ) =
+                LOWER(
+                  TRIM($2)
+                )
+
+            AND id <> $3
+
+          LIMIT 1
+          `,
+          [
+            empresaId,
+            nomeFinal,
+            funcaoId,
+          ]
+        );
+
+      if (
+        duplicada.rows.length >
+        0
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Já existe outra função com este nome nesta empresa.",
+          });
+      }
+
+      /* =====================================================
+         ATUALIZAR FUNÇÃO
+      ===================================================== */
+
+      const { rows } =
+        await pool.query(
+          `
+          UPDATE funcoes
+
+          SET
+            nome = $1,
+            updated_at = NOW()
+
+          WHERE id = $2
+            AND empresa_id = $3
+
+          RETURNING
+            id,
+            empresa_id,
+            nome,
+            created_at,
+            updated_at
+          `,
+          [
+            nomeFinal,
+            funcaoId,
+            empresaId,
+          ]
+        );
+
+      /* =====================================================
+         SINCRONIZAR FUNCIONÁRIOS
+
+         Como funcionarios também possui a coluna
+         "funcao", atualizamos o texto.
+
+         Assim:
+           funcao_id = 3
+           funcao = RECEPCIONISTA
+      ===================================================== */
+
       await pool.query(
         `
-        SELECT
-          id,
-          empresa_id,
-          nome
-
-        FROM funcoes
-
-        WHERE id = $1
-          AND empresa_id = $2
-
-        LIMIT 1
-        `,
-        [
-          funcaoId,
-          empresaId,
-        ]
-      );
-
-
-    if (
-      funcaoAtual.rows.length === 0
-    ) {
-      return res.status(404).json({
-        error:
-          "Função não encontrada.",
-      });
-    }
-
-
-    /* ===================================================
-       VERIFICAR OUTRA FUNÇÃO COM MESMO NOME
-    =================================================== */
-
-    const duplicada =
-      await pool.query(
-        `
-        SELECT id
-
-        FROM funcoes
-
-        WHERE empresa_id = $1
-
-          AND LOWER(TRIM(nome)) =
-              LOWER(TRIM($2))
-
-          AND id <> $3
-
-        LIMIT 1
-        `,
-        [
-          empresaId,
-          nome,
-          funcaoId,
-        ]
-      );
-
-
-    if (
-      duplicada.rows.length > 0
-    ) {
-      return res.status(409).json({
-        error:
-          "Já existe outra função com este nome nesta empresa.",
-      });
-    }
-
-
-    /* ===================================================
-       ALTERAR
-    =================================================== */
-
-    const { rows } =
-      await pool.query(
-        `
-        UPDATE funcoes
+        UPDATE funcionarios
 
         SET
-          nome = $1,
+          funcao = $1,
           updated_at = NOW()
 
-        WHERE id = $2
+        WHERE funcao_id = $2
           AND empresa_id = $3
-
-        RETURNING
-          id,
-          empresa_id,
-          nome,
-          created_at,
-          updated_at
         `,
         [
-          nome,
+          nomeFinal,
           funcaoId,
           empresaId,
         ]
       );
 
+      return res.json({
+        ok: true,
 
-    return res.json({
-      ok: true,
+        message:
+          "Função alterada com sucesso.",
 
-      message:
-        "Função alterada com sucesso.",
-
-      funcao:
-        rows[0],
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao alterar função:",
-      err
-    );
-
-
-    if (
-      err.code === "23505"
-    ) {
-      return res.status(409).json({
-        error:
-          "Já existe uma função com este nome nesta empresa.",
+        funcao:
+          rows[0],
       });
+
+    } catch (err) {
+      console.error(
+        "Erro ao alterar função:",
+        err
+      );
+
+      if (
+        err.code === "23505"
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              "Já existe uma função com este nome nesta empresa.",
+          });
+      }
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao alterar função.",
+        });
     }
-
-
-    return res.status(500).json({
-      error:
-        "Erro ao alterar função.",
-    });
-  }
-};
-
+  };
 
 /* =========================================================
    EXCLUIR FUNÇÃO
 ========================================================= */
 
-exports.excluir = async (
-  req,
-  res
-) => {
-  try {
-    await garantirTabelaFuncoes();
+exports.excluir =
+  async (req, res) => {
+    try {
+      await garantirTabelaFuncoes();
 
+      const funcaoId =
+        Number(
+          req.params.id
+        );
 
-    const funcaoId =
-      Number(
-        req.params.id
-      );
+      if (
+        !Number.isInteger(
+          funcaoId
+        ) ||
+        funcaoId <= 0
+      ) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "ID da função inválido.",
+          });
+      }
 
+      const validacao =
+        await validarEmpresaDaRequisicao(
+          req,
+          res
+        );
 
-    if (
-      !Number.isInteger(funcaoId) ||
-      funcaoId <= 0
-    ) {
-      return res.status(400).json({
-        error:
-          "ID da função inválido.",
-      });
-    }
+      if (!validacao) {
+        return;
+      }
 
+      const {
+        empresaId,
+      } = validacao;
 
-    const validacao =
-      await validarEmpresaDaRequisicao(
-        req,
-        res
-      );
+      /* =====================================================
+         VERIFICAR EXISTÊNCIA
+      ===================================================== */
 
+      const funcao =
+        await pool.query(
+          `
+          SELECT
+            id,
+            nome
 
-    if (!validacao) {
-      return;
-    }
+          FROM funcoes
 
+          WHERE id = $1
+            AND empresa_id = $2
 
-    const { empresaId } =
-      validacao;
+          LIMIT 1
+          `,
+          [
+            funcaoId,
+            empresaId,
+          ]
+        );
 
+      if (
+        funcao.rows.length ===
+        0
+      ) {
+        return res
+          .status(404)
+          .json({
+            error:
+              "Função não encontrada.",
+          });
+      }
 
-    /* ===================================================
-       VERIFICAR SE EXISTE NA EMPRESA
-    =================================================== */
+      /* =====================================================
+         VERIFICAR FUNCIONÁRIOS
+      ===================================================== */
 
-    const funcao =
+      const funcionarios =
+        await pool.query(
+          `
+          SELECT
+            COUNT(*)::integer
+              AS total
+
+          FROM funcionarios
+
+          WHERE funcao_id = $1
+            AND empresa_id = $2
+          `,
+          [
+            funcaoId,
+            empresaId,
+          ]
+        );
+
+      const totalFuncionarios =
+        Number(
+          funcionarios
+            .rows[0]
+            ?.total
+        ) || 0;
+
+      if (
+        totalFuncionarios > 0
+      ) {
+        return res
+          .status(409)
+          .json({
+            error:
+              `Não é possível excluir esta função. Existem ${totalFuncionarios} funcionário(s) utilizando ela.`,
+          });
+      }
+
+      /* =====================================================
+         EXCLUIR
+      ===================================================== */
+
       await pool.query(
         `
-        SELECT
-          id,
-          nome
-
-        FROM funcoes
+        DELETE FROM funcoes
 
         WHERE id = $1
           AND empresa_id = $2
-
-        LIMIT 1
         `,
         [
           funcaoId,
@@ -907,100 +1216,34 @@ exports.excluir = async (
         ]
       );
 
+      return res.json({
+        ok: true,
 
-    if (
-      funcao.rows.length === 0
-    ) {
-      return res.status(404).json({
-        error:
-          "Função não encontrada.",
+        message:
+          "Função excluída com sucesso.",
       });
-    }
 
-
-    /* ===================================================
-       VERIFICAR FUNCIONÁRIOS UTILIZANDO A FUNÇÃO
-    =================================================== */
-
-    const funcionarios =
-      await pool.query(
-        `
-        SELECT COUNT(*)::integer
-          AS total
-
-        FROM funcionarios
-
-        WHERE funcao_id = $1
-          AND empresa_id = $2
-        `,
-        [
-          funcaoId,
-          empresaId,
-        ]
+    } catch (err) {
+      console.error(
+        "Erro ao excluir função:",
+        err
       );
 
-
-    const totalFuncionarios =
-      Number(
-        funcionarios.rows[0]
-          ?.total
-      ) || 0;
-
-
-    if (
-      totalFuncionarios > 0
-    ) {
-      return res.status(409).json({
-        error:
-          `Não é possível excluir esta função. Existem ${totalFuncionarios} funcionário(s) utilizando ela.`,
-      });
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao excluir função.",
+        });
     }
-
-
-    /* ===================================================
-       EXCLUIR
-    =================================================== */
-
-    await pool.query(
-      `
-      DELETE FROM funcoes
-
-      WHERE id = $1
-        AND empresa_id = $2
-      `,
-      [
-        funcaoId,
-        empresaId,
-      ]
-    );
-
-
-    return res.json({
-      ok: true,
-
-      message:
-        "Função excluída com sucesso.",
-    });
-
-  } catch (err) {
-    console.error(
-      "Erro ao excluir função:",
-      err
-    );
-
-
-    return res.status(500).json({
-      error:
-        "Erro ao excluir função.",
-    });
-  }
-};
-
+  };
 
 /* =========================================================
-   EXPORTAR FUNÇÃO AUXILIAR
-   CASO OUTRO CONTROLLER PRECISE
+   EXPORTS AUXILIARES
 ========================================================= */
 
 exports.garantirTabelaFuncoes =
   garantirTabelaFuncoes;
+
+exports.obterEmpresaIdDaRequisicao =
+  obterEmpresaIdDaRequisicao;
