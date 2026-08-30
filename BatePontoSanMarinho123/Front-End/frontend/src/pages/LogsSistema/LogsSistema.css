@@ -1,0 +1,1121 @@
+/* ==========================================================
+   LOGS DO SISTEMA — PADRÃO DEK
+========================================================== */
+
+.logsPage {
+  position: relative;
+
+  width: 100%;
+  min-height: 100vh;
+
+  padding: 36px;
+
+  box-sizing: border-box;
+
+  color: #f3f8ff;
+
+  background:
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(0, 142, 255, 0.18) 0%,
+      rgba(0, 91, 210, 0.07) 30%,
+      transparent 57%
+    ),
+    radial-gradient(
+      circle at 12% 82%,
+      rgba(0, 106, 255, 0.10) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      125deg,
+      #010307 0%,
+      #020813 27%,
+      #041329 53%,
+      #06265a 78%,
+      #073b80 100%
+    );
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+
+/* ==========================================================
+   GRID DISCRETO
+========================================================== */
+
+.logsPage::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    );
+
+  background-size: 75px 75px;
+
+  opacity: 0.17;
+}
+
+
+.logsPage > * {
+  position: relative;
+  z-index: 1;
+}
+
+
+/* ==========================================================
+   CABEÇALHO
+========================================================== */
+
+.logsHeader {
+  position: relative;
+
+  margin-bottom: 22px;
+  padding: 27px 30px;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 17, 34, 0.97),
+      rgba(2, 10, 22, 0.99)
+    );
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.30),
+    0 0 40px rgba(0, 105, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+
+.logsHeader::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 30px;
+
+  width: 250px;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #009dff,
+      rgba(0, 157, 255, 0.55),
+      transparent
+    );
+
+  box-shadow:
+    0 0 15px rgba(0, 157, 255, 0.40);
+}
+
+
+.logsTag {
+  display: inline-flex;
+
+  margin-bottom: 7px;
+  padding: 5px 10px;
+
+  border:
+    1px solid rgba(0, 174, 255, 0.22);
+
+  border-radius: 20px;
+
+  background:
+    rgba(0, 140, 255, 0.08);
+
+  color: #36b9ff;
+
+  font-size: 10px;
+  font-weight: 800;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.8px;
+}
+
+
+.logsHeader h1 {
+  margin: 0 0 5px;
+
+  color: #f3f8ff;
+
+  font-size: 30px;
+  font-weight: 800;
+
+  letter-spacing: -0.6px;
+}
+
+
+.logsHeader p {
+  margin: 0;
+
+  color: #7f93ad;
+
+  font-size: 14px;
+}
+
+
+/* ==========================================================
+   FILTROS
+========================================================== */
+
+.logsFiltros {
+  margin-bottom: 20px;
+  padding: 25px;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      150deg,
+      rgba(6, 17, 34, 0.97),
+      rgba(2, 10, 22, 0.99)
+    );
+
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+
+.logsFiltrosGrid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(4, minmax(170px, 1fr));
+
+  gap: 15px;
+}
+
+
+.logsCampo {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+
+.logsCampo label {
+  color: #8ba2bd;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+
+/* ==========================================================
+   INPUTS / SELECTS
+========================================================== */
+
+.logsCampo input,
+.logsCampo select,
+.logsBuscaInput {
+  width: 100%;
+  height: 50px;
+
+  box-sizing: border-box;
+
+  padding: 0 14px;
+
+  outline: none;
+
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.25);
+
+  border-radius: 12px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 20, 42, 0.98),
+      rgba(3, 12, 27, 0.99)
+    );
+
+  color: #f3f8ff;
+
+  font-family: inherit;
+
+  font-size: 13px;
+
+  caret-color: #00b7ff;
+
+  color-scheme: dark;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+
+.logsCampo select {
+  cursor: pointer;
+}
+
+
+.logsCampo select option {
+  background: #06142a;
+
+  color: #f3f8ff;
+}
+
+
+.logsCampo input:focus,
+.logsCampo select:focus,
+.logsBuscaInput:focus {
+  border-color: #009dff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(7, 30, 61, 0.99),
+      rgba(4, 18, 40, 0.99)
+    );
+
+  box-shadow:
+    0 0 0 3px rgba(0, 157, 255, 0.08),
+    0 0 24px rgba(0, 132, 255, 0.12);
+}
+
+
+.logsBuscaInput::placeholder {
+  color: #5f7591;
+}
+
+
+/* ==========================================================
+   BUSCA
+========================================================== */
+
+.logsBuscaArea {
+  display: flex;
+
+  gap: 10px;
+
+  margin-top: 16px;
+}
+
+
+.logsBuscaInput {
+  flex: 1;
+}
+
+
+/* ==========================================================
+   BOTÕES
+========================================================== */
+
+.logsBtnPesquisar,
+.logsBtnLimpar {
+  min-width: 125px;
+  height: 50px;
+
+  padding: 0 18px;
+
+  border-radius: 12px;
+
+  font-family: inherit;
+
+  font-size: 13px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+.logsBtnPesquisar {
+  border:
+    1px solid
+    rgba(48, 198, 255, 0.35);
+
+  background:
+    linear-gradient(
+      105deg,
+      #073786 0%,
+      #0758c7 28%,
+      #007ee9 62%,
+      #009fe8 100%
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 10px 24px rgba(0, 91, 220, 0.25);
+}
+
+
+.logsBtnPesquisar:hover {
+  transform: translateY(-2px);
+
+  filter: brightness(1.10);
+
+  box-shadow:
+    0 14px 30px rgba(0, 105, 235, 0.34);
+}
+
+
+.logsBtnLimpar {
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.25);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.95),
+      rgba(3, 13, 29, 0.98)
+    );
+
+  color: #91a8c2;
+}
+
+
+.logsBtnLimpar:hover {
+  color: #ffffff;
+
+  border-color:
+    rgba(0, 157, 255, 0.45);
+}
+
+
+/* ==========================================================
+   TOTAL
+========================================================== */
+
+.logsTotal {
+  display: inline-flex;
+  align-items: center;
+
+  gap: 7px;
+
+  margin-bottom: 13px;
+  padding: 7px 11px;
+
+  border:
+    1px solid rgba(0, 157, 255, 0.15);
+
+  border-radius: 20px;
+
+  background:
+    rgba(0, 140, 255, 0.06);
+
+  color: #8ba2bd;
+
+  font-size: 12px;
+  font-weight: 650;
+}
+
+
+/* ==========================================================
+   ERRO
+========================================================== */
+
+.logsErro {
+  margin-bottom: 16px;
+  padding: 13px 15px;
+
+  border:
+    1px solid rgba(239, 68, 68, 0.22);
+
+  border-radius: 11px;
+
+  background:
+    rgba(239, 68, 68, 0.09);
+
+  color: #fca5a5;
+
+  font-size: 13px;
+  font-weight: 650;
+}
+
+
+/* ==========================================================
+   TABELA CONTAINER
+========================================================== */
+
+.logsTabelaCard {
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 18px;
+
+  background:
+    linear-gradient(
+      150deg,
+      rgba(6, 17, 34, 0.98),
+      rgba(2, 10, 22, 0.99)
+    );
+
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+
+.logsTabelaScroll {
+  width: 100%;
+
+  overflow-x: auto;
+}
+
+
+.logsTabela {
+  width: 100%;
+
+  min-width: 1100px;
+
+  border-collapse: collapse;
+}
+
+
+/* ==========================================================
+   CABEÇALHO DA TABELA
+========================================================== */
+
+.logsTabela thead {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(7, 40, 79, 0.92),
+      rgba(4, 25, 52, 0.96)
+    );
+}
+
+
+.logsTabela th {
+  padding: 15px 14px;
+
+  border-bottom:
+    1px solid
+    rgba(0, 157, 255, 0.18);
+
+  color: #9cc7e9;
+
+  text-align: left;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.45px;
+
+  white-space: nowrap;
+}
+
+
+/* ==========================================================
+   LINHAS
+========================================================== */
+
+.logsTabela tbody tr {
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.08);
+
+  transition:
+    background 0.18s ease;
+}
+
+
+.logsTabela tbody tr:last-child {
+  border-bottom: none;
+}
+
+
+.logsTabela tbody tr:hover {
+  background:
+    rgba(0, 140, 255, 0.055);
+}
+
+
+.logsTabela td {
+  padding: 15px 14px;
+
+  color: #b6c9dc;
+
+  font-size: 13px;
+
+  vertical-align: top;
+}
+
+
+.logsUsuarioRole {
+  display: block;
+
+  margin-top: 3px;
+
+  color: #667f9b;
+
+  font-size: 10px;
+}
+
+
+/* ==========================================================
+   TIPO / AÇÃO
+========================================================== */
+
+.logsTipo {
+  display: inline-flex;
+
+  padding: 5px 8px;
+
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.16);
+
+  border-radius: 7px;
+
+  background:
+    rgba(0, 140, 255, 0.07);
+
+  color: #48bfff;
+
+  font-size: 10px;
+  font-weight: 750;
+
+  text-transform: capitalize;
+}
+
+
+.logsAcao {
+  color: #d4e6f8;
+
+  font-weight: 650;
+
+  text-transform: capitalize;
+}
+
+
+.logsDescricao {
+  max-width: 330px;
+
+  color: #91a8c2 !important;
+
+  line-height: 1.5;
+}
+
+
+/* ==========================================================
+   BOTÃO VER
+========================================================== */
+
+.logsBtnVer {
+  min-width: 54px;
+  height: 35px;
+
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.24);
+
+  border-radius: 8px;
+
+  background:
+    rgba(0, 140, 255, 0.08);
+
+  color: #48bfff;
+
+  font-family: inherit;
+
+  font-size: 11px;
+  font-weight: 750;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+.logsBtnVer:hover {
+  transform: translateY(-1px);
+
+  color: #ffffff;
+
+  border-color:
+    rgba(0, 183, 255, 0.50);
+
+  background:
+    linear-gradient(
+      135deg,
+      #0758c7,
+      #009fe8
+    );
+}
+
+
+/* ==========================================================
+   SEM REGISTROS
+========================================================== */
+
+.logsVazio {
+  padding: 50px !important;
+
+  color: #7188a4 !important;
+
+  text-align: center;
+
+  font-size: 13px !important;
+}
+
+
+/* ==========================================================
+   PAGINAÇÃO
+========================================================== */
+
+.logsPaginacao {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-top: 18px;
+}
+
+
+.logsPaginacaoInfo {
+  color: #8ba2bd;
+
+  font-size: 12px;
+}
+
+
+.logsPaginacaoInfo strong {
+  color: #36b9ff;
+}
+
+
+.logsPaginaBtn {
+  min-width: 105px;
+  height: 42px;
+
+  padding: 0 15px;
+
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.22);
+
+  border-radius: 10px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.95),
+      rgba(3, 13, 29, 0.98)
+    );
+
+  color: #9eb3ca;
+
+  font-family: inherit;
+
+  font-size: 12px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+
+.logsPaginaBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+
+  color: #ffffff;
+
+  border-color:
+    rgba(0, 157, 255, 0.45);
+}
+
+
+.logsPaginaBtn:disabled {
+  opacity: 0.35;
+
+  cursor: not-allowed;
+}
+
+
+/* ==========================================================
+   MODAL
+========================================================== */
+
+.logsModalOverlay {
+  position: fixed;
+
+  inset: 0;
+
+  z-index: 20000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background:
+    rgba(1, 4, 10, 0.82);
+
+  backdrop-filter: blur(8px);
+
+  -webkit-backdrop-filter: blur(8px);
+}
+
+
+.logsModal {
+  position: relative;
+
+  width: 100%;
+  max-width: 720px;
+
+  max-height: 85vh;
+
+  overflow-y: auto;
+
+  padding: 26px;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.24);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      150deg,
+      #061122,
+      #020a16
+    );
+
+  color: #f3f8ff;
+
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.65),
+    0 0 50px rgba(0, 105, 255, 0.08);
+}
+
+
+.logsModal::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+
+  width: 70%;
+  height: 1px;
+
+  transform: translateX(-50%);
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #008cff,
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px rgba(0, 140, 255, 0.40);
+}
+
+
+/* ==========================================================
+   HEADER MODAL
+========================================================== */
+
+.logsModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 15px;
+
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.10);
+}
+
+
+.logsModalHeader h2 {
+  margin: 0;
+
+  color: #f3f8ff;
+
+  font-size: 21px;
+  font-weight: 800;
+}
+
+
+.logsModalClose {
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.18);
+
+  border-radius: 9px;
+
+  background:
+    rgba(239, 68, 68, 0.07);
+
+  color: #f87171;
+
+  font-size: 22px;
+
+  cursor: pointer;
+}
+
+
+.logsModalClose:hover {
+  background:
+    rgba(239, 68, 68, 0.15);
+
+  color: #ffffff;
+}
+
+
+/* ==========================================================
+   DETALHES
+========================================================== */
+
+.logsDetalhe {
+  padding: 11px 0;
+
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.09);
+}
+
+
+.logsDetalheTitulo {
+  margin-bottom: 4px;
+
+  color: #667f9b;
+
+  font-size: 10px;
+  font-weight: 700;
+
+  text-transform: uppercase;
+
+  letter-spacing: 0.5px;
+}
+
+
+.logsDetalheValor {
+  color: #c6d9ec;
+
+  font-size: 13px;
+
+  line-height: 1.5;
+
+  word-break: break-word;
+}
+
+
+/* ==========================================================
+   DADOS ADICIONAIS
+========================================================== */
+
+.logsDados {
+  margin-top: 20px;
+}
+
+
+.logsDados > strong {
+  color: #dcecff;
+
+  font-size: 13px;
+}
+
+
+.logsDados pre {
+  margin: 9px 0 0;
+
+  padding: 16px;
+
+  overflow-x: auto;
+
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.16);
+
+  border-radius: 11px;
+
+  background:
+    #020a16;
+
+  color: #8fb8d8;
+
+  font-size: 12px;
+
+  line-height: 1.6;
+
+  white-space: pre-wrap;
+
+  word-break: break-word;
+}
+
+
+/* ==========================================================
+   SCROLL
+========================================================== */
+
+.logsTabelaScroll::-webkit-scrollbar,
+.logsModal::-webkit-scrollbar,
+.logsDados pre::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+
+.logsTabelaScroll::-webkit-scrollbar-track,
+.logsModal::-webkit-scrollbar-track,
+.logsDados pre::-webkit-scrollbar-track {
+  background: #020a16;
+}
+
+
+.logsTabelaScroll::-webkit-scrollbar-thumb,
+.logsModal::-webkit-scrollbar-thumb,
+.logsDados pre::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+
+  background:
+    rgba(0, 157, 255, 0.25);
+}
+
+
+/* ==========================================================
+   RESPONSIVO
+========================================================== */
+
+@media (max-width: 1000px) {
+  .logsFiltrosGrid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+
+@media (max-width: 650px) {
+  .logsPage {
+    padding:
+      85px 12px 25px;
+  }
+
+  .logsHeader {
+    padding: 21px 19px;
+
+    border-radius: 17px;
+  }
+
+  .logsHeader h1 {
+    font-size: 24px;
+  }
+
+  .logsFiltros {
+    padding: 18px;
+
+    border-radius: 17px;
+  }
+
+  .logsFiltrosGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .logsBuscaArea {
+    flex-direction: column;
+  }
+
+  .logsBtnPesquisar,
+  .logsBtnLimpar {
+    width: 100%;
+  }
+
+  .logsTabelaCard {
+    border-radius: 15px;
+  }
+
+  .logsPaginacao {
+    flex-wrap: wrap;
+  }
+
+  .logsPaginaBtn {
+    flex: 1;
+  }
+
+  .logsPaginacaoInfo {
+    width: 100%;
+
+    order: -1;
+
+    text-align: center;
+  }
+
+  .logsModal {
+    padding: 19px;
+
+    border-radius: 17px;
+  }
+}

@@ -21,6 +21,7 @@ import fundoPadrao from "../../assets/logo/hotel.jpg";
 
 import "./home.css";
 
+
 /* =========================================================
    NORMALIZAR URL
 ========================================================= */
@@ -60,6 +61,7 @@ function normalizarUrlImagem(url) {
   return `/${valor}`;
 }
 
+
 /* =========================================================
    HOME
 ========================================================= */
@@ -67,6 +69,7 @@ function normalizarUrlImagem(url) {
 export default function Home() {
   const navigate =
     useNavigate();
+
 
   /* =======================================================
      USUÁRIO
@@ -96,6 +99,7 @@ export default function Home() {
         return null;
       }
     }, []);
+
 
   /* =======================================================
      EMPRESA SALVA NO LOGIN
@@ -142,6 +146,7 @@ export default function Home() {
       }
     }, []);
 
+
   /* =======================================================
      DESCOBRIR EMPRESA ID
 
@@ -159,6 +164,7 @@ export default function Home() {
     usuario?.empresa_id ||
     null;
 
+
   /* =======================================================
      IDENTIDADE VISUAL
   ======================================================= */
@@ -170,6 +176,7 @@ export default function Home() {
         empresaSalva?.nome_fantasia ||
         usuario?.empresa_nome ||
         "Empresa";
+
 
       /* ===================================================
          LOGO
@@ -193,6 +200,7 @@ export default function Home() {
         logoEmpresa =
           `/api/empresas/${empresaId}/logo`;
       }
+
 
       /* ===================================================
          FUNDO
@@ -218,6 +226,7 @@ export default function Home() {
         fundoEmpresa =
           `/api/empresas/${empresaId}/fundo`;
       }
+
 
       return {
         id:
@@ -246,6 +255,7 @@ export default function Home() {
       empresaId,
       usuario,
     ]);
+
 
   /* =======================================================
      DEBUG
@@ -298,6 +308,7 @@ export default function Home() {
     identidade,
   ]);
 
+
   /* =======================================================
      RELÓGIO
   ======================================================= */
@@ -321,6 +332,7 @@ export default function Home() {
         }
       )
     );
+
 
   /* =======================================================
      ATUALIZAR RELÓGIO
@@ -354,6 +366,7 @@ export default function Home() {
     };
   }, []);
 
+
   /* =======================================================
      ESTILO DINÂMICO
   ======================================================= */
@@ -368,6 +381,7 @@ export default function Home() {
     backgroundImage:
       `url("${identidade.fundo}")`,
   };
+
 
   /* =======================================================
      ERRO NA LOGO
@@ -393,6 +407,100 @@ export default function Home() {
       logoPadrao;
   }
 
+
+  /* =======================================================
+     VOLTAR PARA O LOGIN
+
+     Encerra a sessão atual do terminal.
+
+     IMPORTANTE:
+     Não removemos:
+       lembrar_login
+       ultimo_usuario
+
+     Assim, caso o usuário tenha marcado
+     "Lembrar meu usuário neste dispositivo",
+     o login continua preenchido.
+  ======================================================= */
+
+  function voltarLogin() {
+    /*
+      Remove autenticação.
+    */
+
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "usuario"
+    );
+
+    localStorage.removeItem(
+      "role"
+    );
+
+
+    /*
+      Remove identidade da empresa
+      da sessão atual.
+    */
+
+    localStorage.removeItem(
+      "identidade_empresa"
+    );
+
+    localStorage.removeItem(
+      "empresa"
+    );
+
+
+    /*
+      Remove possíveis variáveis
+      de tema aplicadas anteriormente.
+    */
+
+    const root =
+      document.documentElement;
+
+    root.style.removeProperty(
+      "--empresa-cor-primaria"
+    );
+
+    root.style.removeProperty(
+      "--empresa-cor-secundaria"
+    );
+
+    root.style.removeProperty(
+      "--cor-primaria"
+    );
+
+    root.style.removeProperty(
+      "--cor-secundaria"
+    );
+
+    root.style.removeProperty(
+      "--empresa-dashboard-background"
+    );
+
+
+    /*
+      Retorna ao login.
+
+      replace impede que o botão "voltar"
+      do navegador retorne facilmente
+      para a tela /ponto.
+    */
+
+    navigate(
+      "/",
+      {
+        replace: true,
+      }
+    );
+  }
+
+
   /* =======================================================
      JSX
   ======================================================= */
@@ -404,15 +512,45 @@ export default function Home() {
     >
 
       {/* ===================================================
+          BOTÃO SAIR / VOLTAR AO LOGIN
+      =================================================== */}
+
+      <button
+        type="button"
+        className="homeLogoutButton"
+        onClick={voltarLogin}
+        title="Voltar para o login"
+        aria-label="Voltar para o login"
+      >
+
+        <span
+          className="homeLogoutIcon"
+          aria-hidden="true"
+        >
+          ←
+        </span>
+
+        <span
+          className="homeLogoutText"
+        >
+          Sair
+        </span>
+
+      </button>
+
+
+      {/* ===================================================
           LOGO DA EMPRESA
       =================================================== */}
 
       <header
         className="homeHeader"
       >
+
         <div
           className="brand"
         >
+
           <img
             key={
               identidade.logo
@@ -428,8 +566,11 @@ export default function Home() {
               erroLogo
             }
           />
+
         </div>
+
       </header>
+
 
       {/* ===================================================
           CONTEÚDO
@@ -452,11 +593,13 @@ export default function Home() {
             )
           }
         >
+
           <img
             src={relogio}
             className="clockIcon"
             alt="Relógio"
           />
+
 
           <span
             className="clockTime"
@@ -464,12 +607,15 @@ export default function Home() {
             {time}
           </span>
 
+
           <span
             className="clockLabel"
           >
             Bater ponto
           </span>
+
         </button>
+
 
         {/* =================================================
             VER PONTOS
@@ -484,17 +630,21 @@ export default function Home() {
             )
           }
         >
+
           <span
             className="viewPointsEmoji"
+            aria-hidden="true"
           >
             📋
           </span>
+
 
           <span
             className="viewPointsLabel"
           >
             Ver pontos batidos
           </span>
+
         </button>
 
       </main>

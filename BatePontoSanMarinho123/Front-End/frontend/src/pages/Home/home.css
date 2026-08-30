@@ -38,9 +38,6 @@
 
 /* ==========================================================
    CAMADA SOBRE O FUNDO
-
-   Serve para melhorar a leitura caso a empresa cadastre
-   uma imagem de fundo muito clara.
 ========================================================== */
 
 .homeScreen::before {
@@ -60,6 +57,150 @@
     );
 
   pointer-events: none;
+}
+
+
+/* ==========================================================
+   BOTÃO SAIR / VOLTAR PARA LOGIN
+========================================================== */
+
+.homeLogoutButton {
+  position: absolute;
+
+  top: 22px;
+  right: 24px;
+
+  z-index: 20;
+
+  min-width: 94px;
+  height: 45px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  gap: 8px;
+
+  padding: 0 16px;
+
+  box-sizing: border-box;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.25);
+
+  border-radius: 12px;
+
+  outline: none;
+
+  background:
+    rgba(3, 10, 22, 0.68);
+
+  -webkit-backdrop-filter:
+    blur(12px);
+
+  backdrop-filter:
+    blur(12px);
+
+  color: #ffffff;
+
+  font-family: inherit;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 8px 25px
+    rgba(0, 0, 0, 0.25),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.08);
+
+  transition:
+    transform 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+/* ==========================================================
+   HOVER BOTÃO SAIR
+========================================================== */
+
+.homeLogoutButton:hover {
+  transform:
+    translateY(-2px);
+
+  background:
+    linear-gradient(
+      135deg,
+      var(
+        --home-cor-secundaria,
+        #084298
+      ),
+      var(
+        --home-cor-primaria,
+        #0d6efd
+      )
+    );
+
+  border-color:
+    rgba(255, 255, 255, 0.38);
+
+  box-shadow:
+    0 12px 30px
+    rgba(0, 0, 0, 0.32);
+}
+
+
+/* ==========================================================
+   CLIQUE BOTÃO SAIR
+========================================================== */
+
+.homeLogoutButton:active {
+  transform:
+    scale(0.97);
+}
+
+
+/* ==========================================================
+   SETA
+========================================================== */
+
+.homeLogoutIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-top: -1px;
+
+  color: #ffffff;
+
+  font-size: 21px;
+  font-weight: 500;
+
+  line-height: 1;
+}
+
+
+/* ==========================================================
+   TEXTO SAIR
+========================================================== */
+
+.homeLogoutText {
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  line-height: 1;
+
+  white-space: nowrap;
 }
 
 
@@ -99,9 +240,6 @@
 
 /* ==========================================================
    LOGO DA EMPRESA
-
-   Não colocamos fundo branco para permitir logos PNG
-   transparentes.
 ========================================================== */
 
 .brandLogo {
@@ -247,8 +385,6 @@
 
 /* ==========================================================
    HORA
-
-   A cor vem da empresa.
 ========================================================== */
 
 .clockTime {
@@ -444,6 +580,7 @@ and (
       28px 20px 10px;
   }
 
+
   .brandLogo {
     max-width:
       min(
@@ -455,10 +592,12 @@ and (
       160px;
   }
 
+
   .homeMain {
     padding:
       25px 20px 60px;
   }
+
 
   .clockButton {
     width:
@@ -474,18 +613,22 @@ and (
       28px;
   }
 
+
   .clockIcon {
     width: 135px;
     height: 135px;
   }
 
+
   .clockTime {
     font-size: 58px;
   }
 
+
   .clockLabel {
     font-size: 28px;
   }
+
 
   .viewPointsButton {
     min-width: 270px;
@@ -513,10 +656,40 @@ and (
       center center;
   }
 
+
+  /* ========================================================
+     BOTÃO SAIR NO CELULAR
+  ======================================================== */
+
+  .homeLogoutButton {
+    top: 14px;
+    right: 14px;
+
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+
+    padding: 0;
+
+    border-radius: 11px;
+  }
+
+
+  .homeLogoutText {
+    display: none;
+  }
+
+
+  .homeLogoutIcon {
+    font-size: 22px;
+  }
+
+
   .homeHeader {
     padding:
       22px 15px 5px;
   }
+
 
   .brandLogo {
     max-width:
@@ -529,6 +702,7 @@ and (
       110px;
   }
 
+
   .homeMain {
     justify-content:
       center;
@@ -538,6 +712,7 @@ and (
     padding:
       15px 15px 35px;
   }
+
 
   .clockButton {
     width:
@@ -556,18 +731,22 @@ and (
       23px;
   }
 
+
   .clockIcon {
     width: 90px;
     height: 90px;
   }
 
+
   .clockTime {
     font-size: 40px;
   }
 
+
   .clockLabel {
     font-size: 22px;
   }
+
 
   .viewPointsButton {
     width:
@@ -596,18 +775,30 @@ and (
   max-width: 380px
 ) {
 
+  .homeLogoutButton {
+    top: 10px;
+    right: 10px;
+
+    width: 41px;
+    height: 41px;
+  }
+
+
   .homeHeader {
     padding-top: 15px;
   }
+
 
   .brandLogo {
     max-width: 190px;
     max-height: 90px;
   }
 
+
   .homeMain {
     padding-bottom: 25px;
   }
+
 
   .clockButton {
     width: 90vw;
@@ -620,18 +811,22 @@ and (
     border-radius: 20px;
   }
 
+
   .clockIcon {
     width: 72px;
     height: 72px;
   }
 
+
   .clockTime {
     font-size: 34px;
   }
 
+
   .clockLabel {
     font-size: 19px;
   }
+
 
   .viewPointsButton {
     width: 90vw;
@@ -643,8 +838,6 @@ and (
 
 /* ==========================================================
    TELAS BAIXAS
-
-   Importante para tablet ou computador com pouca altura.
 ========================================================== */
 
 @media (
@@ -659,9 +852,11 @@ and (
       12px 20px 5px;
   }
 
+
   .brandLogo {
     max-height: 90px;
   }
+
 
   .homeMain {
     gap: 14px;
@@ -670,20 +865,24 @@ and (
       10px 20px 25px;
   }
 
+
   .clockButton {
     min-height: 300px;
 
     padding: 20px;
   }
 
+
   .clockIcon {
     width: 85px;
     height: 85px;
   }
 
+
   .clockTime {
     font-size: 48px;
   }
+
 
   .clockLabel {
     font-size: 23px;

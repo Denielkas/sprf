@@ -1,16 +1,87 @@
 /* ==========================================================
-   PÁGINA EMPRESAS
+   PÁGINA EMPRESAS - PADRÃO DEK
 ========================================================== */
 
 .empresasPage {
-  width: 100%;
-  max-width: 1380px;
-  margin: 0 auto;
+  position: relative;
 
-  padding: 34px;
+  width: 100%;
+  min-height: calc(100vh - 56px);
+
+  margin: 0;
+  padding: 36px;
+
   box-sizing: border-box;
 
-  color: #172033;
+  color: #f3f8ff;
+
+  background:
+    radial-gradient(
+      circle at 77% 22%,
+      rgba(0, 142, 255, 0.18) 0%,
+      rgba(0, 91, 210, 0.07) 30%,
+      transparent 57%
+    ),
+    radial-gradient(
+      circle at 12% 80%,
+      rgba(0, 106, 255, 0.10) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      125deg,
+      #010307 0%,
+      #020813 27%,
+      #041329 53%,
+      #06265a 78%,
+      #073b80 100%
+    );
+
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Arial,
+    sans-serif;
+}
+
+
+/* ==========================================================
+   GRID DISCRETO DO FUNDO
+========================================================== */
+
+.empresasPage::before {
+  content: "";
+
+  position: absolute;
+  inset: 0;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, 0.012) 1px,
+      transparent 1px
+    );
+
+  background-size: 75px 75px;
+
+  opacity: 0.17;
+}
+
+
+/* ==========================================================
+   CONTEÚDO ACIMA DO FUNDO
+========================================================== */
+
+.empresasPage > * {
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -19,30 +90,105 @@
 ========================================================== */
 
 .empresasHeader {
+  position: relative;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
 
   gap: 24px;
 
-  padding: 25px 28px;
+  padding: 27px 30px;
   margin-bottom: 22px;
 
-  background: rgba(255, 255, 255, 0.96);
+  overflow: hidden;
 
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 18px;
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 17, 34, 0.97),
+      rgba(2, 10, 22, 0.99)
+    );
 
   box-shadow:
-    0 12px 35px rgba(0, 0, 0, 0.18);
+    0 20px 50px
+    rgba(0, 0, 0, 0.32),
 
-  backdrop-filter: blur(14px);
+    0 0 40px
+    rgba(0, 105, 255, 0.05),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.035);
 }
 
-.empresasHeader h1 {
-  margin: 0 0 4px;
 
-  color: #172033;
+/* LINHA SUPERIOR */
+
+.empresasHeader::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 30px;
+
+  width: 250px;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #009dff,
+      rgba(0, 157, 255, 0.55),
+      transparent
+    );
+
+  box-shadow:
+    0 0 15px
+    rgba(0, 157, 255, 0.40);
+}
+
+
+/* BRILHO */
+
+.empresasHeader::after {
+  content: "";
+
+  position: absolute;
+
+  width: 300px;
+  height: 180px;
+
+  top: -130px;
+  right: 100px;
+
+  border-radius: 50%;
+
+  background:
+    rgba(0, 127, 255, 0.09);
+
+  filter: blur(60px);
+
+  pointer-events: none;
+}
+
+
+.empresasHeader > div {
+  position: relative;
+  z-index: 2;
+}
+
+
+.empresasHeader h1 {
+  margin: 0 0 5px;
+
+  color: #f3f8ff;
 
   font-size: 30px;
   font-weight: 800;
@@ -50,18 +196,19 @@
   letter-spacing: -0.6px;
 }
 
+
 .empresasHeader p {
   margin: 0;
 
-  color: #64748b;
+  color: #7f93ad;
 
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 
 /* ==========================================================
-   BOTÕES DO CABEÇALHO
+   BOTÕES DO HEADER
 ========================================================== */
 
 .empresasHeaderButtons {
@@ -71,9 +218,10 @@
   gap: 10px;
 }
 
+
 .empresasRefreshButton,
 .empresasAddButton {
-  min-height: 44px;
+  min-height: 46px;
 
   display: inline-flex;
   align-items: center;
@@ -83,62 +231,116 @@
 
   padding: 10px 18px;
 
-  border-radius: 10px;
+  border-radius: 12px;
 
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
+
+  font-size: 13px;
+  font-weight: 750;
 
   cursor: pointer;
 
   transition:
     transform 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    filter 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
 
 .empresasRefreshButton {
-  border: 1px solid #d8e0e9;
-
-  background: #ffffff;
-
-  color: #475569;
-
-  box-shadow:
-    0 2px 7px rgba(15, 23, 42, 0.06);
-}
-
-.empresasRefreshButton:hover {
-  transform: translateY(-1px);
-
-  background: #f8fafc;
-
-  box-shadow:
-    0 6px 14px rgba(15, 23, 42, 0.1);
-}
-
-.empresasAddButton {
-  border: none;
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.24);
 
   background:
-    var(
-      --empresa-cor-primaria,
-      #0d6efd
+    linear-gradient(
+      145deg,
+      rgba(7, 28, 57, 0.98),
+      rgba(3, 15, 32, 0.99)
+    );
+
+  color: #8ab4d9;
+
+  box-shadow:
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.035);
+}
+
+
+.empresasRefreshButton:hover:not(:disabled) {
+  color: #ffffff;
+
+  transform: translateY(-2px);
+
+  border-color:
+    rgba(0, 183, 255, 0.50);
+
+  background:
+    linear-gradient(
+      135deg,
+      #073b80,
+      #007fd4
+    );
+
+  box-shadow:
+    0 10px 22px
+    rgba(0, 105, 235, 0.20);
+}
+
+
+.empresasAddButton {
+  position: relative;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(48, 198, 255, 0.35);
+
+  background:
+    linear-gradient(
+      105deg,
+      #073786 0%,
+      #0758c7 28%,
+      #007ee9 62%,
+      #009fe8 100%
     );
 
   color: #ffffff;
 
   box-shadow:
-    0 7px 18px rgba(13, 110, 253, 0.25);
+    0 12px 27px
+    rgba(0, 91, 220, 0.26),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.18);
 }
 
-.empresasAddButton:hover {
+
+.empresasAddButton:hover:not(:disabled) {
   transform: translateY(-2px);
 
-  filter: brightness(1.06);
+  filter: brightness(1.10);
+
+  border-color:
+    rgba(87, 218, 255, 0.62);
 
   box-shadow:
-    0 10px 22px rgba(13, 110, 253, 0.3);
+    0 15px 32px
+    rgba(0, 105, 235, 0.34),
+
+    0 0 25px
+    rgba(0, 183, 255, 0.10);
+}
+
+
+.empresasRefreshButton:disabled,
+.empresasAddButton:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
 }
 
 
@@ -149,76 +351,137 @@
 .empresasMensagem {
   margin-bottom: 18px;
 
-  padding: 14px 17px;
+  padding: 13px 16px;
 
   border-radius: 11px;
 
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
 
-  box-shadow:
-    0 5px 15px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(10px);
 }
+
 
 .empresasMensagemSucesso {
-  border: 1px solid #bbf7d0;
+  border:
+    1px solid
+    rgba(34, 197, 94, 0.20);
 
-  background: #f0fdf4;
+  background:
+    rgba(34, 197, 94, 0.08);
 
-  color: #15803d;
+  color: #86efac;
 }
 
+
 .empresasMensagemErro {
-  border: 1px solid #fecaca;
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.22);
 
-  background: #fef2f2;
+  background:
+    rgba(239, 68, 68, 0.09);
 
-  color: #b91c1c;
+  color: #fca5a5;
 }
 
 
 /* ==========================================================
-   CARD DO FORMULÁRIO
+   FORMULÁRIO PRINCIPAL
 ========================================================== */
 
 .empresaFormCard {
+  position: relative;
+
   margin-bottom: 22px;
 
   padding: 28px;
 
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 18px;
+  overflow: hidden;
 
-  background: rgba(255, 255, 255, 0.97);
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      150deg,
+      rgba(6, 17, 34, 0.97),
+      rgba(2, 10, 22, 0.99)
+    );
 
   box-shadow:
-    0 14px 38px rgba(0, 0, 0, 0.2);
+    0 20px 50px
+    rgba(0, 0, 0, 0.32),
 
-  backdrop-filter: blur(14px);
+    0 0 40px
+    rgba(0, 105, 255, 0.045),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.035);
 }
 
+
+.empresaFormCard::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  width: 72%;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(0, 174, 255, 0.40),
+      #008cff,
+      rgba(0, 174, 255, 0.40),
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(0, 140, 255, 0.35);
+}
+
+
 .empresaFormHeader {
+  position: relative;
+  z-index: 2;
+
   margin-bottom: 24px;
   padding-bottom: 18px;
 
-  border-bottom: 1px solid #e8edf3;
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.10);
 }
+
 
 .empresaFormHeader h2 {
   margin: 0 0 5px;
 
-  color: #172033;
+  color: #f3f8ff;
 
-  font-size: 22px;
+  font-size: 21px;
   font-weight: 800;
 }
+
 
 .empresaFormHeader p {
   margin: 0;
 
-  color: #64748b;
+  color: #7188a4;
 
-  font-size: 14px;
+  font-size: 13px;
 }
 
 
@@ -227,6 +490,9 @@
 ========================================================== */
 
 .empresaForm {
+  position: relative;
+  z-index: 2;
+
   display: grid;
 
   grid-template-columns:
@@ -235,48 +501,109 @@
   gap: 19px 22px;
 }
 
+
 .empresaFormGroup {
   min-width: 0;
 
   display: flex;
   flex-direction: column;
 
-  gap: 7px;
+  gap: 8px;
 }
+
 
 .empresaFormGroup > label:first-child {
-  color: #334155;
+  color: #8ba2bd;
 
-  font-size: 13px;
-  font-weight: 750;
+  font-size: 12px;
+  font-weight: 650;
 }
 
-.empresaFormGroup > input {
+
+/* ==========================================================
+   INPUTS
+========================================================== */
+
+.empresaFormGroup > input,
+.empresaColorField input:not([type="color"]),
+.empresaCnpjFormGrid input {
   width: 100%;
-  height: 46px;
+  height: 52px;
 
   box-sizing: border-box;
 
-  padding: 0 13px;
+  padding: 0 15px;
 
-  border: 1px solid #d7dee8;
-  border-radius: 10px;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.25);
+
+  border-radius: 13px;
 
   outline: none;
 
-  background: #ffffff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 20, 42, 0.98),
+      rgba(3, 12, 27, 0.99)
+    );
 
-  color: #1e293b;
+  color: #f3f8ff;
 
   font-family: inherit;
-  font-size: 14px;
-}
 
-.empresaFormGroup > input:focus {
-  border-color: var(--empresa-cor-primaria, #0d6efd);
+  font-size: 13px;
+  font-weight: 500;
+
+  caret-color: #00b7ff;
 
   box-shadow:
-    0 0 0 3px rgba(13, 110, 253, 0.12);
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.03),
+
+    0 6px 18px
+    rgba(0, 0, 0, 0.12);
+
+  transition:
+    border-color 0.22s ease,
+    background 0.22s ease,
+    box-shadow 0.22s ease;
+}
+
+
+.empresaFormGroup > input::placeholder,
+.empresaCnpjFormGrid input::placeholder {
+  color: #5f7591;
+}
+
+
+.empresaFormGroup > input:hover,
+.empresaColorField input:not([type="color"]):hover,
+.empresaCnpjFormGrid input:hover {
+  border-color:
+    rgba(0, 157, 255, 0.48);
+}
+
+
+.empresaFormGroup > input:focus,
+.empresaColorField input:not([type="color"]):focus,
+.empresaCnpjFormGrid input:focus {
+  border-color: #009dff;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(7, 30, 61, 0.99),
+      rgba(4, 18, 40, 0.99)
+    );
+
+  box-shadow:
+    0 0 0 3px
+    rgba(0, 157, 255, 0.08),
+
+    0 0 27px
+    rgba(0, 132, 255, 0.13);
 }
 
 
@@ -286,44 +613,47 @@
 
 .empresaColorField {
   display: flex;
+
   gap: 9px;
 }
 
+
 .empresaColorField input[type="color"] {
-  width: 54px;
-  height: 46px;
+  width: 55px;
+  height: 52px;
 
   flex-shrink: 0;
 
-  padding: 4px;
+  padding: 5px;
 
-  border: 1px solid #d7dee8;
-  border-radius: 10px;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.25);
 
-  background: #ffffff;
+  border-radius: 13px;
+
+  background: #06142a;
 
   cursor: pointer;
 }
 
+
+.empresaColorField input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+
+.empresaColorField input[type="color"]::-webkit-color-swatch {
+  border: none;
+
+  border-radius: 8px;
+}
+
+
 .empresaColorField input:not([type="color"]) {
   min-width: 0;
-  height: 46px;
 
   flex: 1;
-
-  box-sizing: border-box;
-
-  padding: 0 13px;
-
-  border: 1px solid #d7dee8;
-  border-radius: 10px;
-
-  outline: none;
-
-  color: #334155;
-
-  font-family: inherit;
-  font-size: 14px;
 }
 
 
@@ -335,8 +665,9 @@
   position: relative;
 }
 
+
 .empresaUploadButton {
-  min-height: 50px;
+  min-height: 52px;
 
   display: flex;
   align-items: center;
@@ -348,26 +679,55 @@
 
   padding: 12px 16px;
 
-  border: 1.5px dashed #cbd5e1;
-  border-radius: 11px;
+  border:
+    1px dashed
+    rgba(0, 157, 255, 0.35);
 
-  background: #f8fafc;
+  border-radius: 13px;
 
-  color: #475569;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.95),
+      rgba(3, 13, 29, 0.98)
+    );
+
+  color: #7fa7c9;
 
   font-size: 13px;
   font-weight: 700;
 
   cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
 
 .empresaUploadButton:hover {
-  border-color: var(--empresa-cor-primaria, #0d6efd);
+  border-color: #00a8ff;
 
-  background: #ffffff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(7, 31, 61, 0.98),
+      rgba(4, 17, 37, 0.99)
+    );
 
-  color: var(--empresa-cor-primaria, #0d6efd);
+  color: #36b9ff;
+
+  box-shadow:
+    0 0 20px
+    rgba(0, 157, 255, 0.08);
 }
+
+
+/* ==========================================================
+   ARQUIVO SELECIONADO
+========================================================== */
 
 .empresaArquivoSelecionado {
   min-height: 38px;
@@ -382,25 +742,32 @@
 
   padding: 7px 8px 7px 11px;
 
-  border: 1px solid #dbeafe;
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.18);
+
   border-radius: 9px;
 
-  background: #eff6ff;
+  background:
+    rgba(0, 123, 255, 0.07);
 }
+
 
 .empresaArquivoSelecionado span {
   min-width: 0;
 
   overflow: hidden;
 
-  color: #334155;
+  color: #a6bdd5;
 
   font-size: 12px;
   font-weight: 650;
 
   text-overflow: ellipsis;
+
   white-space: nowrap;
 }
+
 
 .empresaArquivoSelecionado button {
   width: 28px;
@@ -412,19 +779,23 @@
 
   padding: 0;
 
-  border: none;
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.18);
+
   border-radius: 7px;
 
-  background: #ffffff;
+  background:
+    rgba(239, 68, 68, 0.08);
 
-  color: #dc2626;
+  color: #f87171;
 
   cursor: pointer;
 }
 
 
 /* ==========================================================
-   PREVIEW
+   PREVIEW DA EMPRESA
 ========================================================== */
 
 .empresaPreview {
@@ -445,6 +816,12 @@
 
   box-sizing: border-box;
 
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.18);
+
   border-radius: 17px;
 
   background-color:
@@ -458,11 +835,11 @@
 
   color: #ffffff;
 
-  overflow: hidden;
-
   box-shadow:
-    0 12px 28px rgba(15, 23, 42, 0.16);
+    0 14px 32px
+    rgba(0, 0, 0, 0.30);
 }
+
 
 .empresaPreviewLogo {
   width: 92px;
@@ -477,16 +854,30 @@
 
   box-sizing: border-box;
 
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.15);
+
   border-radius: 19px;
 
-  background: rgba(255, 255, 255, 0.96);
+  background:
+    rgba(3, 13, 29, 0.88);
 
-  color: var(--preview-primary, #0d6efd);
+  color:
+    var(
+      --preview-primary,
+      #0d6efd
+    );
 
   font-size: 39px;
 
-  overflow: hidden;
+  box-shadow:
+    0 12px 30px
+    rgba(0, 0, 0, 0.30);
 }
+
 
 .empresaPreviewLogo img {
   width: 100%;
@@ -497,6 +888,7 @@
   border-radius: 12px;
 }
 
+
 .empresaPreview strong {
   color: #ffffff;
 
@@ -506,11 +898,14 @@
   text-align: center;
 }
 
+
 .empresaPreview > span {
-  color: rgba(255, 255, 255, 0.82);
+  color:
+    rgba(255, 255, 255, 0.72);
 
   font-size: 12px;
 }
+
 
 .empresaPreview > button {
   margin-top: 9px;
@@ -520,7 +915,11 @@
   border: none;
   border-radius: 9px;
 
-  background: var(--preview-primary, #0d6efd);
+  background:
+    var(
+      --preview-primary,
+      #0d6efd
+    );
 
   color: #ffffff;
 
@@ -543,9 +942,10 @@
   padding-top: 5px;
 }
 
+
 .empresaCancelButton,
 .empresaSaveButton {
-  min-height: 43px;
+  min-height: 45px;
 
   display: inline-flex;
   align-items: center;
@@ -555,59 +955,163 @@
 
   padding: 10px 18px;
 
-  border-radius: 9px;
+  border-radius: 11px;
 
   font-family: inherit;
+
   font-size: 13px;
   font-weight: 750;
 
   cursor: pointer;
+
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    box-shadow 0.2s ease;
 }
+
 
 .empresaCancelButton {
-  border: 1px solid #d7dee8;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.25);
 
-  background: #ffffff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.95),
+      rgba(3, 13, 29, 0.98)
+    );
 
-  color: #475569;
+  color: #91a8c2;
 }
 
-.empresaSaveButton {
-  border: none;
 
-  background: var(--empresa-cor-primaria, #0d6efd);
+.empresaCancelButton:hover:not(:disabled) {
+  border-color:
+    rgba(0, 157, 255, 0.50);
 
   color: #ffffff;
 }
 
-.empresaSaveButton:disabled {
-  opacity: 0.6;
+
+.empresaSaveButton {
+  border:
+    1px solid
+    rgba(48, 198, 255, 0.35);
+
+  background:
+    linear-gradient(
+      105deg,
+      #073786,
+      #0758c7 30%,
+      #007ee9 65%,
+      #009fe8
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 11px 25px
+    rgba(0, 91, 220, 0.25);
+}
+
+
+.empresaSaveButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+
+  box-shadow:
+    0 14px 30px
+    rgba(0, 105, 235, 0.34);
+}
+
+
+.empresaSaveButton:disabled,
+.empresaCancelButton:disabled {
+  opacity: 0.55;
+
   cursor: not-allowed;
 }
 
 
 /* ==========================================================
-   LISTA
+   LISTA DE EMPRESAS
 ========================================================== */
 
 .empresasListCard {
-  padding: 26px 28px;
+  position: relative;
 
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 18px;
+  padding: 27px 28px;
 
-  background: rgba(255, 255, 255, 0.96);
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.20);
+
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      150deg,
+      rgba(6, 17, 34, 0.97),
+      rgba(2, 10, 22, 0.99)
+    );
 
   box-shadow:
-    0 14px 38px rgba(0, 0, 0, 0.2);
+    0 20px 50px
+    rgba(0, 0, 0, 0.32),
+
+    0 0 40px
+    rgba(0, 105, 255, 0.045),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.035);
 }
 
+
+.empresasListCard::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  width: 72%;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      rgba(0, 174, 255, 0.40),
+      #008cff,
+      rgba(0, 174, 255, 0.40),
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(0, 140, 255, 0.35);
+}
+
+
 .empresasListHeader {
+  position: relative;
+  z-index: 2;
+
   margin-bottom: 20px;
   padding-bottom: 17px;
 
-  border-bottom: 1px solid #e8edf3;
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.10);
 }
+
 
 .empresasListHeader > div {
   display: flex;
@@ -616,35 +1120,45 @@
   gap: 10px;
 }
 
+
 .empresasListHeader h2 {
   margin: 0;
 
-  color: #172033;
+  color: #f3f8ff;
 
   font-size: 20px;
   font-weight: 800;
 }
 
+
 .empresasListHeader span {
   padding: 5px 10px;
 
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.18);
+
   border-radius: 20px;
 
-  background: #eef4ff;
+  background:
+    rgba(0, 140, 255, 0.08);
 
-  color: #0d6efd;
+  color: #36b9ff;
 
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 800;
 }
 
 
 /* ==========================================================
-   LOADING / VAZIO
+   LOADING / EMPTY
 ========================================================== */
 
 .empresasLoading,
 .empresasEmpty {
+  position: relative;
+  z-index: 2;
+
   min-height: 210px;
 
   display: flex;
@@ -654,50 +1168,64 @@
 
   padding: 30px;
 
-  border: 1px dashed #d5dde7;
+  border:
+    1px dashed
+    rgba(80, 143, 225, 0.25);
+
   border-radius: 14px;
 
-  background: #f8fafc;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.75),
+      rgba(3, 13, 29, 0.85)
+    );
+
+  color: #7188a4;
 
   text-align: center;
 }
 
-.empresasLoading {
-  color: #64748b;
-}
 
 .empresasEmpty > svg {
   margin-bottom: 13px;
 
-  color: #94a3b8;
+  color: #36b9ff;
 
   font-size: 30px;
 }
 
+
 .empresasEmpty h3 {
   margin: 0 0 6px;
+
+  color: #dcecff;
 }
+
 
 .empresasEmpty p {
   margin: 0;
 
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 13px;
 }
 
 
 /* ==========================================================
-   GRID
+   GRID DE EMPRESAS
 ========================================================== */
 
 .empresasGrid {
+  position: relative;
+  z-index: 2;
+
   display: grid;
 
   grid-template-columns:
     repeat(
       auto-fill,
-      minmax(320px, 1fr)
+      minmax(330px, 1fr)
     );
 
   gap: 17px;
@@ -705,7 +1233,7 @@
 
 
 /* ==========================================================
-   CARD
+   CARD DA EMPRESA
 ========================================================== */
 
 .empresaCard {
@@ -717,20 +1245,34 @@
 
   padding: 19px;
 
-  border: 1px solid #e2e8f0;
-  border-radius: 15px;
-
-  background: #ffffff;
-
   overflow: hidden;
 
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.18);
+
+  border-radius: 15px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(7, 23, 46, 0.96),
+      rgba(3, 13, 29, 0.99)
+    );
+
   box-shadow:
-    0 4px 13px rgba(15, 23, 42, 0.06);
+    0 8px 22px
+    rgba(0, 0, 0, 0.20),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.025);
 
   transition:
     transform 0.2s ease,
+    border-color 0.2s ease,
     box-shadow 0.2s ease;
 }
+
 
 .empresaCard::before {
   content: "";
@@ -741,21 +1283,40 @@
   left: 0;
   bottom: 0;
 
-  width: 4px;
+  width: 3px;
 
-  background: var(--card-primary, #0d6efd);
+  background:
+    var(
+      --card-primary,
+      #0d6efd
+    );
+
+  box-shadow:
+    0 0 12px
+    var(
+      --card-primary,
+      #0d6efd
+    );
 }
+
 
 .empresaCard:hover {
   transform: translateY(-3px);
 
+  border-color:
+    rgba(0, 157, 255, 0.30);
+
   box-shadow:
-    0 12px 25px rgba(15, 23, 42, 0.11);
+    0 15px 32px
+    rgba(0, 0, 0, 0.28),
+
+    0 0 25px
+    rgba(0, 140, 255, 0.05);
 }
 
 
 /* ==========================================================
-   ÍCONE
+   LOGO DA EMPRESA
 ========================================================== */
 
 .empresaCardIcon {
@@ -772,16 +1333,29 @@
 
   box-sizing: border-box;
 
+  overflow: hidden;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
   border-radius: 13px;
 
-  background: var(--card-primary, #0d6efd);
+  background:
+    var(
+      --card-primary,
+      #0d6efd
+    );
 
   color: #ffffff;
 
   font-size: 25px;
 
-  overflow: hidden;
+  box-shadow:
+    0 8px 20px
+    rgba(0, 0, 0, 0.20);
 }
+
 
 .empresaCardIcon img {
   width: 100%;
@@ -796,13 +1370,15 @@
 
 
 /* ==========================================================
-   CONTEÚDO
+   CONTEÚDO DO CARD
 ========================================================== */
 
 .empresaCardContent {
   min-width: 0;
+
   flex: 1;
 }
+
 
 .empresaCardTop {
   display: flex;
@@ -812,28 +1388,32 @@
   gap: 10px;
 }
 
+
 .empresaCardTop > div {
   min-width: 0;
 }
 
+
 .empresaCardTop h3 {
   margin: 0 0 3px;
 
-  color: #1e293b;
+  overflow: hidden;
+
+  color: #e9f5ff;
 
   font-size: 17px;
   font-weight: 800;
 
-  overflow: hidden;
-
   text-overflow: ellipsis;
+
   white-space: nowrap;
 }
+
 
 .empresaCardTop p {
   margin: 0;
 
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 12px;
 }
@@ -850,25 +1430,39 @@
 
   border-radius: 20px;
 
-  font-size: 10px;
-  font-weight: 800;
+  font-size: 9px;
+  font-weight: 850;
+
+  letter-spacing: 0.3px;
 }
+
 
 .empresaAtiva {
-  background: #dcfce7;
+  border:
+    1px solid
+    rgba(34, 197, 94, 0.18);
 
-  color: #15803d;
+  background:
+    rgba(34, 197, 94, 0.09);
+
+  color: #86efac;
 }
 
-.empresaInativa {
-  background: #fee2e2;
 
-  color: #b91c1c;
+.empresaInativa {
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.18);
+
+  background:
+    rgba(239, 68, 68, 0.09);
+
+  color: #fca5a5;
 }
 
 
 /* ==========================================================
-   CNPJ RESUMO
+   RESUMO CNPJ
 ========================================================== */
 
 .empresaResumoCnpj {
@@ -881,16 +1475,27 @@
 
   padding: 10px 11px;
 
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.12);
+
   border-radius: 10px;
 
-  background: #f8fafc;
+  background:
+    rgba(0, 102, 204, 0.055);
 }
 
+
 .empresaResumoCnpj > svg {
-  color: var(--card-primary, #0d6efd);
+  color:
+    var(
+      --card-primary,
+      #36b9ff
+    );
 
   font-size: 17px;
 }
+
 
 .empresaResumoCnpj div {
   display: flex;
@@ -899,15 +1504,17 @@
   gap: 7px;
 }
 
+
 .empresaResumoCnpj span {
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 12px;
   font-weight: 600;
 }
 
+
 .empresaResumoCnpj strong {
-  color: #1e293b;
+  color: #dcecff;
 
   font-size: 13px;
 }
@@ -926,17 +1533,19 @@
   margin-top: 12px;
 }
 
+
 .empresaCores div {
   display: flex;
   align-items: center;
 
   gap: 6px;
 
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 11px;
   font-weight: 600;
 }
+
 
 .empresaCores div > span {
   width: 13px;
@@ -944,13 +1553,20 @@
 
   display: block;
 
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.18);
+
   border-radius: 50%;
+
+  box-shadow:
+    0 0 7px
+    rgba(255, 255, 255, 0.04);
 }
 
 
 /* ==========================================================
-   BOTÕES DOS CARDS
+   AÇÕES DO CARD
 ========================================================== */
 
 .empresaCardActions {
@@ -962,8 +1578,11 @@
   margin-top: 15px;
   padding-top: 13px;
 
-  border-top: 1px solid #edf1f5;
+  border-top:
+    1px solid
+    rgba(128, 164, 210, 0.10);
 }
+
 
 .empresaCardActions button {
   min-height: 35px;
@@ -979,6 +1598,7 @@
   border-radius: 8px;
 
   font-family: inherit;
+
   font-size: 11px;
   font-weight: 750;
 
@@ -987,74 +1607,124 @@
   transition:
     transform 0.15s ease,
     background 0.15s ease,
+    border-color 0.15s ease,
     opacity 0.15s ease;
 }
+
 
 .empresaCardActions button:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
+
 .empresaCardActions button:disabled {
-  opacity: 0.55;
+  opacity: 0.5;
+
   cursor: not-allowed;
 }
 
+
+/* CNPJ */
+
 .empresaActionCnpj {
-  border: 1px solid #bfdbfe;
+  border:
+    1px solid
+    rgba(0, 157, 255, 0.20);
 
-  background: #eff6ff;
+  background:
+    rgba(0, 140, 255, 0.08);
 
-  color: #1d4ed8;
+  color: #48bfff;
 }
+
+
+.empresaActionCnpj:hover:not(:disabled) {
+  border-color:
+    rgba(0, 183, 255, 0.45);
+
+  background:
+    rgba(0, 140, 255, 0.14);
+}
+
+
+/* EDITAR */
 
 .empresaActionEdit {
-  border: 1px solid #d7dee8;
+  border:
+    1px solid
+    rgba(128, 164, 210, 0.18);
 
-  background: #f8fafc;
+  background:
+    rgba(128, 164, 210, 0.06);
 
-  color: #475569;
+  color: #a6bdd5;
 }
+
+
+.empresaActionEdit:hover:not(:disabled) {
+  border-color:
+    rgba(128, 190, 255, 0.35);
+
+  background:
+    rgba(128, 164, 210, 0.10);
+}
+
+
+/* DESATIVAR */
 
 .empresaActionDisable {
-  border: 1px solid #fecaca;
+  border:
+    1px solid
+    rgba(245, 158, 11, 0.20);
 
-  background: #fef2f2;
+  background:
+    rgba(245, 158, 11, 0.07);
 
-  color: #dc2626;
+  color: #fbbf24;
 }
+
+
+/* ATIVAR */
 
 .empresaActionEnable {
-  border: 1px solid #bbf7d0;
+  border:
+    1px solid
+    rgba(34, 197, 94, 0.20);
 
-  background: #f0fdf4;
+  background:
+    rgba(34, 197, 94, 0.07);
 
-  color: #15803d;
+  color: #86efac;
 }
 
 
-/* ==========================================================
-   EXCLUIR EMPRESA
-========================================================== */
+/* EXCLUIR */
 
 .empresaActionDelete {
-  border: 1px solid #fca5a5;
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.20);
 
-  background: #fff1f2;
+  background:
+    rgba(239, 68, 68, 0.07);
 
-  color: #b91c1c;
+  color: #f87171;
 }
 
+
 .empresaActionDelete:hover:not(:disabled) {
-  border-color: #ef4444;
+  border-color:
+    rgba(239, 68, 68, 0.45);
 
-  background: #fee2e2;
+  background:
+    rgba(239, 68, 68, 0.14);
 
-  color: #991b1b;
+  color: #fca5a5;
 }
 
 
 /* ==========================================================
-   MODAL
+   MODAL OVERLAY
 ========================================================== */
 
 .empresaModalOverlay {
@@ -1070,12 +1740,23 @@
 
   padding: 20px;
 
-  background: rgba(2, 6, 23, 0.68);
+  background:
+    rgba(1, 4, 10, 0.82);
 
-  backdrop-filter: blur(6px);
+  backdrop-filter: blur(10px);
+
+  -webkit-backdrop-filter:
+    blur(10px);
 }
 
+
+/* ==========================================================
+   MODAL
+========================================================== */
+
 .empresaModal {
+  position: relative;
+
   width: 100%;
   max-width: 720px;
   max-height: 90vh;
@@ -1086,13 +1767,92 @@
 
   box-sizing: border-box;
 
-  border-radius: 18px;
+  border:
+    1px solid
+    rgba(67, 145, 255, 0.22);
 
-  background: #ffffff;
+  border-radius: 20px;
+
+  background:
+    linear-gradient(
+      150deg,
+      rgba(6, 17, 34, 0.99),
+      rgba(2, 10, 22, 1)
+    );
+
+  color: #f3f8ff;
 
   box-shadow:
-    0 25px 70px rgba(0, 0, 0, 0.35);
+    0 30px 90px
+    rgba(0, 0, 0, 0.60),
+
+    0 0 55px
+    rgba(0, 105, 255, 0.08),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.035);
 }
+
+
+.empresaModal::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 50%;
+
+  transform: translateX(-50%);
+
+  width: 70%;
+  height: 1px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #008cff,
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(0, 140, 255, 0.40);
+}
+
+
+/* ==========================================================
+   SCROLLBAR DO MODAL
+========================================================== */
+
+.empresaModal::-webkit-scrollbar {
+  width: 8px;
+}
+
+
+.empresaModal::-webkit-scrollbar-track {
+  background:
+    rgba(255, 255, 255, 0.02);
+}
+
+
+.empresaModal::-webkit-scrollbar-thumb {
+  border-radius: 10px;
+
+  background:
+    rgba(0, 157, 255, 0.25);
+}
+
+
+.empresaModal::-webkit-scrollbar-thumb:hover {
+  background:
+    rgba(0, 157, 255, 0.40);
+}
+
+
+/* ==========================================================
+   HEADER DO MODAL
+========================================================== */
 
 .empresaModalHeader {
   display: flex;
@@ -1104,47 +1864,76 @@
   margin-bottom: 20px;
   padding-bottom: 16px;
 
-  border-bottom: 1px solid #e8edf3;
+  border-bottom:
+    1px solid
+    rgba(128, 164, 210, 0.10);
 }
+
 
 .empresaModalHeader h2 {
   margin: 0 0 4px;
+
+  color: #f3f8ff;
 
   font-size: 21px;
   font-weight: 800;
 }
 
+
 .empresaModalHeader p {
   margin: 0;
 
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 13px;
 }
 
+
 .empresaModalClose {
-  width: 36px;
-  height: 36px;
+  width: 37px;
+  height: 37px;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
+  flex-shrink: 0;
+
   padding: 0;
 
-  border: 1px solid #e2e8f0;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.18);
+
   border-radius: 9px;
 
-  background: #f8fafc;
+  background:
+    rgba(128, 164, 210, 0.06);
 
-  color: #64748b;
+  color: #7f98b5;
 
   cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+
+.empresaModalClose:hover {
+  color: #ffffff;
+
+  border-color:
+    rgba(239, 68, 68, 0.30);
+
+  background:
+    rgba(239, 68, 68, 0.12);
 }
 
 
 /* ==========================================================
-   LISTA CNPJ
+   LISTA DE CNPJ
 ========================================================== */
 
 .empresaCnpjLista {
@@ -1156,20 +1945,26 @@
   margin-bottom: 21px;
 }
 
+
 .empresaCnpjVazio {
   padding: 25px;
 
-  border: 1px dashed #d7dee8;
+  border:
+    1px dashed
+    rgba(80, 143, 225, 0.22);
+
   border-radius: 11px;
 
-  background: #f8fafc;
+  background:
+    rgba(6, 22, 45, 0.65);
 
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 13px;
 
   text-align: center;
 }
+
 
 .empresaCnpjItem {
   display: flex;
@@ -1180,17 +1975,37 @@
 
   padding: 13px 14px;
 
-  border: 1px solid #e2e8f0;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.16);
+
   border-radius: 11px;
 
-  background: #ffffff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(7, 23, 46, 0.88),
+      rgba(3, 13, 29, 0.96)
+    );
 }
+
 
 .empresaCnpjPrincipal {
-  border-color: #bfdbfe;
+  border-color:
+    rgba(0, 157, 255, 0.35);
 
-  background: #f8fbff;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(5, 35, 70, 0.90),
+      rgba(3, 15, 31, 0.98)
+    );
 }
+
+
+/* ==========================================================
+   INFO CNPJ
+========================================================== */
 
 .empresaCnpjInfo {
   min-width: 0;
@@ -1201,17 +2016,20 @@
   gap: 3px;
 }
 
+
 .empresaCnpjInfo > strong {
-  color: #1e293b;
+  color: #dcecff;
 
   font-size: 14px;
 }
 
+
 .empresaCnpjInfo > span {
-  color: #64748b;
+  color: #7188a4;
 
   font-size: 12px;
 }
+
 
 .empresaCnpjBadges {
   display: flex;
@@ -1221,6 +2039,7 @@
 
   margin-top: 5px;
 }
+
 
 .cnpjPrincipalBadge,
 .cnpjAtivoBadge,
@@ -1240,33 +2059,53 @@
   font-weight: 800;
 }
 
-.cnpjPrincipalBadge {
-  background: #fef3c7;
 
-  color: #a16207;
+.cnpjPrincipalBadge {
+  border:
+    1px solid
+    rgba(245, 158, 11, 0.20);
+
+  background:
+    rgba(245, 158, 11, 0.08);
+
+  color: #fbbf24;
 }
+
 
 .cnpjAtivoBadge {
-  background: #dcfce7;
+  border:
+    1px solid
+    rgba(34, 197, 94, 0.18);
 
-  color: #15803d;
+  background:
+    rgba(34, 197, 94, 0.08);
+
+  color: #86efac;
 }
 
-.cnpjInativoBadge {
-  background: #fee2e2;
 
-  color: #b91c1c;
+.cnpjInativoBadge {
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.18);
+
+  background:
+    rgba(239, 68, 68, 0.08);
+
+  color: #fca5a5;
 }
 
 
 /* ==========================================================
-   BOTÕES CNPJ
+   BOTÕES DO CNPJ
 ========================================================== */
 
 .empresaCnpjButtons {
   display: flex;
+
   gap: 6px;
 }
+
 
 .empresaCnpjButtons button {
   width: 34px;
@@ -1278,22 +2117,56 @@
 
   padding: 0;
 
-  border: 1px solid #d7dee8;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.18);
+
   border-radius: 8px;
 
-  background: #f8fafc;
+  background:
+    rgba(128, 164, 210, 0.06);
 
-  color: #475569;
+  color: #8ba2bd;
 
   cursor: pointer;
+
+  transition:
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease;
 }
 
+
+.empresaCnpjButtons button:hover {
+  color: #36b9ff;
+
+  border-color:
+    rgba(0, 157, 255, 0.35);
+
+  background:
+    rgba(0, 140, 255, 0.10);
+}
+
+
 .empresaCnpjButtons .empresaCnpjDelete {
-  border-color: #fecaca;
+  border-color:
+    rgba(239, 68, 68, 0.18);
 
-  background: #fef2f2;
+  background:
+    rgba(239, 68, 68, 0.07);
 
-  color: #dc2626;
+  color: #f87171;
+}
+
+
+.empresaCnpjButtons .empresaCnpjDelete:hover {
+  border-color:
+    rgba(239, 68, 68, 0.40);
+
+  background:
+    rgba(239, 68, 68, 0.13);
+
+  color: #fca5a5;
 }
 
 
@@ -1304,18 +2177,30 @@
 .empresaCnpjForm {
   padding: 19px;
 
-  border: 1px solid #e2e8f0;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.16);
+
   border-radius: 13px;
 
-  background: #f8fafc;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(6, 22, 45, 0.78),
+      rgba(3, 13, 29, 0.90)
+    );
 }
+
 
 .empresaCnpjForm h3 {
   margin: 0 0 15px;
 
+  color: #dcecff;
+
   font-size: 16px;
   font-weight: 800;
 }
+
 
 .empresaCnpjFormGrid {
   display: grid;
@@ -1326,50 +2211,25 @@
   gap: 13px;
 }
 
+
 .empresaCnpjFormGrid > div {
   display: flex;
   flex-direction: column;
 
-  gap: 6px;
+  gap: 7px;
 }
+
 
 .empresaCnpjFormGrid label {
-  color: #475569;
+  color: #8ba2bd;
 
   font-size: 12px;
-  font-weight: 700;
-}
-
-.empresaCnpjFormGrid input {
-  width: 100%;
-  height: 43px;
-
-  box-sizing: border-box;
-
-  padding: 0 12px;
-
-  border: 1px solid #d7dee8;
-  border-radius: 9px;
-
-  outline: none;
-
-  background: #ffffff;
-
-  color: #1e293b;
-
-  font-family: inherit;
-}
-
-.empresaCnpjFormGrid input:focus {
-  border-color: #0d6efd;
-
-  box-shadow:
-    0 0 0 3px rgba(13, 110, 253, 0.1);
+  font-weight: 650;
 }
 
 
 /* ==========================================================
-   CHECKBOX
+   CHECKBOX CNPJ
 ========================================================== */
 
 .empresaCnpjChecks {
@@ -1381,13 +2241,14 @@
   margin-top: 14px;
 }
 
+
 .empresaCnpjChecks label {
   display: flex;
   align-items: center;
 
-  gap: 7px;
+  gap: 8px;
 
-  color: #475569;
+  color: #8ba2bd;
 
   font-size: 12px;
   font-weight: 650;
@@ -1396,8 +2257,18 @@
 }
 
 
+.empresaCnpjChecks input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+
+  accent-color: #009dff;
+
+  cursor: pointer;
+}
+
+
 /* ==========================================================
-   AÇÕES CNPJ
+   AÇÕES DO FORM CNPJ
 ========================================================== */
 
 .empresaCnpjFormActions {
@@ -1409,9 +2280,10 @@
   margin-top: 17px;
 }
 
+
 .empresaCnpjCancel,
 .empresaCnpjSave {
-  min-height: 39px;
+  min-height: 40px;
 
   display: inline-flex;
   align-items: center;
@@ -1421,35 +2293,91 @@
 
   padding: 8px 14px;
 
-  border-radius: 8px;
+  border-radius: 9px;
 
   font-family: inherit;
+
   font-size: 12px;
   font-weight: 750;
 
   cursor: pointer;
 }
 
+
 .empresaCnpjCancel {
-  border: 1px solid #d7dee8;
+  border:
+    1px solid
+    rgba(80, 143, 225, 0.20);
 
-  background: #ffffff;
+  background:
+    rgba(128, 164, 210, 0.06);
 
-  color: #475569;
+  color: #91a8c2;
 }
+
 
 .empresaCnpjSave {
-  border: none;
+  border:
+    1px solid
+    rgba(48, 198, 255, 0.32);
 
-  background: #0d6efd;
+  background:
+    linear-gradient(
+      105deg,
+      #073786,
+      #0758c7 30%,
+      #007ee9 65%,
+      #009fe8
+    );
 
   color: #ffffff;
+
+  box-shadow:
+    0 9px 22px
+    rgba(0, 91, 220, 0.23);
 }
 
+
 .empresaCnpjSave:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
 
   cursor: not-allowed;
+}
+
+
+/* ==========================================================
+   AUTOFILL CHROME / EDGE
+========================================================== */
+
+.empresaFormGroup input:-webkit-autofill,
+.empresaFormGroup input:-webkit-autofill:hover,
+.empresaFormGroup input:-webkit-autofill:focus,
+.empresaCnpjFormGrid input:-webkit-autofill,
+.empresaCnpjFormGrid input:-webkit-autofill:hover,
+.empresaCnpjFormGrid input:-webkit-autofill:focus {
+  -webkit-text-fill-color:
+    #f3f8ff !important;
+
+  caret-color:
+    #00b7ff !important;
+
+  -webkit-box-shadow:
+    0 0 0 1000px
+    #06142a
+    inset !important;
+
+  box-shadow:
+    0 0 0 1000px
+    #06142a
+    inset !important;
+
+  border-color:
+    rgba(
+      0,
+      157,
+      255,
+      0.45
+    ) !important;
 }
 
 
@@ -1460,17 +2388,21 @@
 @media (max-width: 900px) {
 
   .empresasPage {
-    padding: 90px 20px 30px;
+    padding:
+      90px 20px 30px;
   }
+
 
   .empresaForm {
     grid-template-columns: 1fr;
   }
 
+
   .empresaPreview,
   .empresaFormActions {
     grid-column: 1;
   }
+
 
   .empresasGrid {
     grid-template-columns: 1fr;
@@ -1485,45 +2417,59 @@
 @media (max-width: 650px) {
 
   .empresasPage {
+    min-height: 100vh;
+
     padding:
-      85px
-      12px
-      25px;
+      85px 12px 25px;
   }
+
 
   .empresasHeader {
     flex-direction: column;
+
     align-items: stretch;
 
-    padding: 19px;
+    padding: 20px;
+
+    border-radius: 17px;
   }
+
 
   .empresasHeader h1 {
     font-size: 25px;
   }
 
+
   .empresasHeaderButtons {
     width: 100%;
   }
+
 
   .empresasRefreshButton,
   .empresasAddButton {
     flex: 1;
   }
 
+
   .empresaFormCard,
   .empresasListCard {
-    padding: 18px;
+    padding: 19px;
+
+    border-radius: 17px;
   }
+
 
   .empresasListHeader > div {
     align-items: flex-start;
+
     flex-direction: column;
   }
+
 
   .empresaCard {
     flex-direction: column;
   }
+
 
   .empresaCardActions {
     display: grid;
@@ -1532,26 +2478,34 @@
       repeat(2, 1fr);
   }
 
+
   .empresaPreview {
     min-height: 220px;
   }
 
+
   .empresaFormActions {
     flex-direction: column-reverse;
   }
+
 
   .empresaCancelButton,
   .empresaSaveButton {
     width: 100%;
   }
 
+
   .empresaModalOverlay {
     padding: 10px;
   }
 
+
   .empresaModal {
     padding: 18px;
+
+    border-radius: 17px;
   }
+
 
   .empresaCnpjFormGrid {
     grid-template-columns: 1fr;
@@ -1569,19 +2523,24 @@
     flex-direction: column;
   }
 
+
   .empresasRefreshButton,
   .empresasAddButton {
     width: 100%;
   }
 
+
   .empresaCardActions {
     grid-template-columns: 1fr;
   }
 
+
   .empresaCnpjItem {
     align-items: flex-start;
+
     flex-direction: column;
   }
+
 
   .empresaCnpjButtons {
     width: 100%;
@@ -1589,9 +2548,11 @@
     justify-content: flex-end;
   }
 
+
   .empresaCnpjFormActions {
     flex-direction: column;
   }
+
 
   .empresaCnpjCancel,
   .empresaCnpjSave {

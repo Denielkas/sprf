@@ -16,57 +16,106 @@ import fundoPadrao from "../../assets/logo/hotel-fundo.jpg";
 import "./layout.css";
 
 
+/* =========================================================
+   NORMALIZAR URL
+========================================================= */
+
+function normalizarUrl(url) {
+  if (!url) {
+    return null;
+  }
+
+  const valor =
+    String(url).trim();
+
+  if (!valor) {
+    return null;
+  }
+
+  if (
+    valor.startsWith("http://") ||
+    valor.startsWith("https://") ||
+    valor.startsWith("data:") ||
+    valor.startsWith("blob:")
+  ) {
+    return valor;
+  }
+
+  if (valor.startsWith("/")) {
+    return valor;
+  }
+
+  return `/${valor}`;
+}
+
+
+/* =========================================================
+   DASHBOARD
+========================================================= */
+
 export default function DashboardLayout() {
-  const navigate = useNavigate();
+  const navigate =
+    useNavigate();
 
   const [open, setOpen] =
     useState(false);
 
 
-  /* =========================================================
+  /* =======================================================
      USUÁRIO LOGADO
-  ========================================================= */
+  ======================================================= */
 
-  const usuario = useMemo(() => {
-    try {
-      const salvo =
-        localStorage.getItem("usuario");
+  const usuario =
+    useMemo(() => {
+      try {
+        const salvo =
+          localStorage.getItem(
+            "usuario"
+          );
 
-      if (!salvo) {
+        if (!salvo) {
+          return null;
+        }
+
+        return JSON.parse(
+          salvo
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao carregar usuário:",
+          error
+        );
+
         return null;
       }
-
-      return JSON.parse(salvo);
-    } catch (error) {
-      console.error(
-        "Erro ao carregar usuário:",
-        error
-      );
-
-      return null;
-    }
-  }, []);
+    }, []);
 
 
-  /* =========================================================
-     TIPO DE USUÁRIO
-  ========================================================= */
+  /* =======================================================
+     ROLE
+  ======================================================= */
+
+  const role =
+    usuario?.role ||
+    localStorage.getItem("role") ||
+    "";
+
 
   const isSuperAdmin =
-    usuario?.role === "super_admin";
+    role === "super_admin";
+
 
   const isRH =
-    usuario?.role === "rh_empresa";
+    role === "rh_empresa";
+
 
   const isPonto =
-    usuario?.role === "ponto_empresa";
+    role === "ponto_empresa";
 
 
-  /* =========================================================
-     PROTEÇÃO EXTRA
-
-     ponto_empresa não deve acessar Dashboard
-  ========================================================= */
+  /* =======================================================
+     TERMINAL DE PONTO NÃO USA DASHBOARD
+  ======================================================= */
 
   useEffect(() => {
     if (isPonto) {
@@ -83,196 +132,277 @@ export default function DashboardLayout() {
   ]);
 
 
-  /* =========================================================
-     IDENTIDADE VISUAL
-  ========================================================= */
+  /* =======================================================
+     IDENTIDADE SALVA DA EMPRESA
+  ======================================================= */
 
-  const [
-    identidade,
-    setIdentidade,
-  ] = useState({
-    nome: "Hotel San Marinho",
+  const empresaSalva =
+    useMemo(() => {
+      try {
+        let salva =
+          localStorage.getItem(
+            "identidade_empresa"
+          );
 
-    logo: logoPadrao,
+        if (!salva) {
+          salva =
+            localStorage.getItem(
+              "empresa"
+            );
+        }
 
-    fundo: fundoPadrao,
+        if (!salva) {
+          return null;
+        }
 
-    corPrimaria: "#0d6efd",
-
-    corSecundaria: "#084298",
-  });
-
-
-  /* =========================================================
-     CARREGAR IDENTIDADE VISUAL
-  ========================================================= */
-
-  useEffect(() => {
-    try {
-      const salva =
-        localStorage.getItem(
-          "identidade_empresa"
+        return JSON.parse(
+          salva
+        );
+      } catch (error) {
+        console.error(
+          "Erro ao carregar identidade visual:",
+          error
         );
 
-      /*
-        Se não existir identidade salva,
-        mantém a identidade padrão.
-      */
+        return null;
+      }
+    }, []);
 
-      if (!salva) {
-        return;
+
+  /* =======================================================
+     ID DA EMPRESA
+  ======================================================= */
+
+  const empresaId =
+    empresaSalva?.id ||
+    empresaSalva?.empresa_id ||
+    usuario?.empresa_id ||
+    localStorage.getItem(
+      "empresa_id"
+    ) ||
+    null;
+
+
+  /* =======================================================
+     IDENTIDADE VISUAL
+  ======================================================= */
+
+  const identidade =
+    useMemo(() => {
+
+      /* ===================================================
+         SUPER ADMIN
+
+         Não usa identidade de hotel/empresa.
+      =================================================== */
+
+      if (isSuperAdmin) {
+        return {
+          id: null,
+
+          nome:
+            "Super Administrador",
+
+          logo:
+            null,
+
+          fundo:
+            null,
+
+          corPrimaria:
+            "#008fe3",
+
+          corSecundaria:
+            "#073786",
+        };
       }
 
-      const dados =
-        JSON.parse(salva);
+
+      /* ===================================================
+         EMPRESA / RH
+      =================================================== */
+
+      const nome =
+        empresaSalva?.nome_fantasia ||
+        empresaSalva?.nome ||
+        usuario?.empresa_nome ||
+        localStorage.getItem(
+          "empresa_nome"
+        ) ||
+        "Empresa";
 
 
-      /* =====================================================
-         DEBUG
+      /* ===================================================
+         LOGO
+      =================================================== */
 
-         Pode deixar por enquanto.
-         Assim conseguimos conferir no console
-         exatamente o que foi salvo.
-      ===================================================== */
+      let logo =
+        normalizarUrl(
+          empresaSalva?.logo_url
+        );
 
-      console.log(
-        "Identidade da empresa:",
-        dados
-      );
+      if (
+        !logo &&
+        empresaId
+      ) {
+        logo =
+          `/api/empresas/${empresaId}/logo`;
+      }
 
 
-      setIdentidade({
-        nome:
-          dados.nome ||
-          dados.nome_fantasia ||
-          usuario?.empresa_nome ||
-          "Hotel San Marinho",
+      /* ===================================================
+         FUNDO
+      =================================================== */
+
+      let fundo =
+        normalizarUrl(
+          empresaSalva?.dashboard_background_url ||
+          empresaSalva?.fundo_url
+        );
+
+      if (
+        !fundo &&
+        empresaId
+      ) {
+        fundo =
+          `/api/empresas/${empresaId}/fundo`;
+      }
+
+
+      /* ===================================================
+         RETORNO
+      =================================================== */
+
+      return {
+        id:
+          empresaId,
+
+        nome,
 
         logo:
-          dados.logo_url ||
-          dados.logo ||
+          logo ||
           logoPadrao,
 
         fundo:
-          dados.dashboard_background_url ||
-          dados.fundo_url ||
-          dados.fundo ||
+          fundo ||
           fundoPadrao,
 
         corPrimaria:
-          dados.cor_primaria ||
-          dados.corPrimaria ||
+          empresaSalva?.cor_primaria ||
           "#0d6efd",
 
         corSecundaria:
-          dados.cor_secundaria ||
-          dados.corSecundaria ||
+          empresaSalva?.cor_secundaria ||
           "#084298",
-      });
-    } catch (error) {
-      console.error(
-        "Erro ao carregar identidade visual:",
-        error
-      );
-    }
-  }, [
-    usuario,
-  ]);
+      };
+    }, [
+      isSuperAdmin,
+      empresaSalva,
+      empresaId,
+      usuario,
+    ]);
 
 
-  /* =========================================================
-     APLICAR IDENTIDADE GLOBALMENTE
-
-     IMPORTANTE:
-     Agora as cores ficam disponíveis para TODAS
-     as páginas do sistema.
-  ========================================================= */
+  /* =======================================================
+     APLICAR IDENTIDADE NO ROOT
+  ======================================================= */
 
   useEffect(() => {
     const root =
       document.documentElement;
 
 
-    const corPrimaria =
-      identidade.corPrimaria ||
-      "#0d6efd";
-
-
-    const corSecundaria =
-      identidade.corSecundaria ||
-      "#084298";
-
-
     /* =====================================================
-       VARIÁVEIS PRINCIPAIS
+       CORES
     ===================================================== */
 
     root.style.setProperty(
       "--empresa-cor-primaria",
-      corPrimaria
+      identidade.corPrimaria
     );
 
     root.style.setProperty(
       "--empresa-cor-secundaria",
-      corSecundaria
+      identidade.corSecundaria
     );
-
-
-    /* =====================================================
-       COMPATIBILIDADE COM CSS ANTIGO
-
-       Algumas páginas estão usando:
-       --cor-primaria
-       --cor-secundaria
-    ===================================================== */
 
     root.style.setProperty(
       "--cor-primaria",
-      corPrimaria
+      identidade.corPrimaria
     );
 
     root.style.setProperty(
       "--cor-secundaria",
-      corSecundaria
+      identidade.corSecundaria
     );
 
 
     /* =====================================================
        FUNDO
+
+       Apenas RH/empresa recebe imagem.
     ===================================================== */
 
-    if (identidade.fundo) {
+    if (
+      !isSuperAdmin &&
+      identidade.fundo
+    ) {
       root.style.setProperty(
         "--empresa-dashboard-background",
         `url("${identidade.fundo}")`
       );
+    } else {
+      root.style.removeProperty(
+        "--empresa-dashboard-background"
+      );
     }
 
 
-    /* =====================================================
-       DEBUG
-    ===================================================== */
-
-    console.log(
-      "Tema aplicado:",
-      {
-        corPrimaria,
-        corSecundaria,
-        fundo:
-          identidade.fundo,
-      }
-    );
-
+    return () => {
+      root.style.removeProperty(
+        "--empresa-dashboard-background"
+      );
+    };
   }, [
     identidade,
+    isSuperAdmin,
   ]);
 
 
-  /* =========================================================
-     LOGOUT
-  ========================================================= */
+  /* =======================================================
+     ESTILO DO TEMA
+  ======================================================= */
 
-  const logout = () => {
+  const estiloTema = {
+    "--empresa-cor-primaria":
+      identidade.corPrimaria,
+
+    "--empresa-cor-secundaria":
+      identidade.corSecundaria,
+
+    "--cor-primaria":
+      identidade.corPrimaria,
+
+    "--cor-secundaria":
+      identidade.corSecundaria,
+
+    ...(
+      !isSuperAdmin &&
+      identidade.fundo
+        ? {
+            "--empresa-dashboard-background":
+              `url("${identidade.fundo}")`,
+          }
+        : {}
+    ),
+  };
+
+
+  /* =======================================================
+     LOGOUT
+  ======================================================= */
+
+  function logout() {
     localStorage.removeItem(
       "token"
     );
@@ -297,9 +427,13 @@ export default function DashboardLayout() {
       "identidade_empresa"
     );
 
+    localStorage.removeItem(
+      "empresa"
+    );
+
 
     /* =====================================================
-       LIMPAR TEMA DA EMPRESA
+       LIMPAR TEMA
     ===================================================== */
 
     const root =
@@ -326,78 +460,85 @@ export default function DashboardLayout() {
     );
 
 
+    /* =====================================================
+       VOLTAR PARA LOGIN
+    ===================================================== */
+
     navigate(
       "/",
       {
         replace: true,
       }
     );
-  };
+  }
 
 
-  /* =========================================================
-     ABRIR / FECHAR MENU
-  ========================================================= */
+  /* =======================================================
+     MENU
+  ======================================================= */
 
-  const toggleMenu = () => {
+  function toggleMenu() {
     setOpen(
       (estadoAtual) =>
         !estadoAtual
     );
-  };
+  }
 
 
-  const closeOnClick = () => {
+  function closeOnClick() {
     setOpen(false);
-  };
+  }
 
 
-  /* =========================================================
-     VARIÁVEIS DO TEMA NO CONTAINER
+  /* =======================================================
+     ERRO NA LOGO
+  ======================================================= */
 
-     Mantemos também no container por segurança.
-  ========================================================= */
+  function erroLogo(event) {
+    event.currentTarget.onerror =
+      null;
 
-  const estiloTema = {
-    "--empresa-cor-primaria":
-      identidade.corPrimaria,
-
-    "--empresa-cor-secundaria":
-      identidade.corSecundaria,
-
-    "--cor-primaria":
-      identidade.corPrimaria,
-
-    "--cor-secundaria":
-      identidade.corSecundaria,
-
-    "--empresa-dashboard-background":
-      `url("${identidade.fundo}")`,
-  };
+    event.currentTarget.src =
+      logoPadrao;
+  }
 
 
-  /* =========================================================
+  /* =======================================================
      JSX
-  ========================================================= */
+  ======================================================= */
 
   return (
     <div
-      className={`dashContainer ${open
+      className={[
+        "dashContainer",
+
+        open
           ? "menu-open"
-          : ""
-        }`}
+          : "",
+
+        isSuperAdmin
+          ? "dashSuperAdmin"
+          : "dashEmpresa",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={estiloTema}
     >
 
-      {/* =====================================================
-          BOTÃO ABRIR / FECHAR MENU
-      ===================================================== */}
+      {/* ===================================================
+          BOTÃO MENU
+      =================================================== */}
 
       <button
         type="button"
         className="menuToggle"
         onClick={toggleMenu}
         aria-label={
+          open
+            ? "Fechar menu"
+            : "Abrir menu"
+        }
+        title={
           open
             ? "Fechar menu"
             : "Abrir menu"
@@ -409,59 +550,83 @@ export default function DashboardLayout() {
       </button>
 
 
-      {/* =====================================================
+      {/* ===================================================
           OVERLAY
-      ===================================================== */}
+      =================================================== */}
 
       {open && (
         <button
           type="button"
           className="dashOverlay"
-          onClick={closeOnClick}
+          onClick={
+            closeOnClick
+          }
           aria-label="Fechar menu"
         />
       )}
 
 
-      {/* =====================================================
+      {/* ===================================================
           SIDEBAR
-      ===================================================== */}
+      =================================================== */}
 
       <aside
-        className={`dashSidebar ${open
+        className={`dashSidebar ${
+          open
             ? "show"
             : ""
-          }`}
+        }`}
       >
 
-        {/* ===================================================
+        {/* =================================================
             CABEÇALHO
-        =================================================== */}
+        ================================================= */}
 
         <div className="sidebarHeader">
 
-          <img
-            src={identidade.logo}
-            className="sidebarLogo"
-            alt={identidade.nome}
-            onError={(e) => {
-              e.currentTarget.src =
-                logoPadrao;
-            }}
-          />
+          {/* ===============================================
+              LOGO SOMENTE PARA EMPRESA
+          =============================================== */}
 
+          {!isSuperAdmin && (
+            <img
+              src={
+                identidade.logo
+              }
+              className="sidebarLogo"
+              alt={
+                identidade.nome
+              }
+              onError={
+                erroLogo
+              }
+            />
+          )}
+
+
+          {/* ===============================================
+              EMPRESA
+          =============================================== */}
 
           <div className="sidebarEmpresa">
+
             {isSuperAdmin
               ? "Super Administrador"
-              : usuario?.empresa_nome ||
-              identidade.nome}
+              : identidade.nome}
+
           </div>
 
 
-          {/* =================================================
-              TIPO DE USUÁRIO
-          ================================================= */}
+          {/* ===============================================
+              PERFIL
+          =============================================== */}
+
+          {isSuperAdmin && (
+            <div className="sidebarTipoUsuario">
+              SUPER ADMIN
+            </div>
+          )}
+
 
           {isRH && (
             <div className="sidebarTipoUsuario">
@@ -470,9 +635,9 @@ export default function DashboardLayout() {
           )}
 
 
-          {/* =================================================
-              USERNAME
-          ================================================= */}
+          {/* ===============================================
+              USUÁRIO
+          =============================================== */}
 
           {usuario?.username && (
             <div className="sidebarUsuario">
@@ -483,9 +648,9 @@ export default function DashboardLayout() {
         </div>
 
 
-        {/* ===================================================
-    MENU SUPER ADMIN
-=================================================== */}
+        {/* =================================================
+            SUPER ADMIN
+        ================================================= */}
 
         {isSuperAdmin && (
           <nav className="dashMenu">
@@ -495,184 +660,242 @@ export default function DashboardLayout() {
             </div>
 
 
-            {/* ===============================================
-        EMPRESAS
-    =============================================== */}
+            {/* =============================================
+                EMPRESAS
+            ============================================= */}
 
             <NavLink
               to="/app/empresas"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Empresas
             </NavLink>
 
 
-            {/* ===============================================
-        ACESSOS DAS EMPRESAS
-    =============================================== */}
+            {/* =============================================
+                ACESSOS
+            ============================================= */}
 
             <NavLink
               to="/app/acessos"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
-              Acessos das Empresas
+              Acessos
             </NavLink>
 
 
-            {/* ===============================================
-        LOGS DO SISTEMA
-    =============================================== */}
+            {/* =============================================
+                LOGS
+            ============================================= */}
 
             <NavLink
               to="/app/logs"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
-              Logs do Sistema
+              Logs
             </NavLink>
 
           </nav>
         )}
 
-        {/* ===================================================
-            MENU RH
-        =================================================== */}
+
+        {/* =================================================
+            RH
+        ================================================= */}
 
         {isRH && (
           <nav className="dashMenu">
 
-            {/* ===============================================
+            {/* =============================================
                 FUNCIONÁRIOS
-            =============================================== */}
+            ============================================= */}
 
             <div className="menuSectionTitle">
               Funcionários
             </div>
 
 
+            {/* =============================================
+                CADASTRAR FUNCIONÁRIO
+            ============================================= */}
+
             <NavLink
               to="/app/registrar-funcionario"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Cadastrar Funcionário
             </NavLink>
 
+
+            {/* =============================================
+                VER FUNCIONÁRIOS
+            ============================================= */}
 
             <NavLink
               to="/app/funcionarios"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Ver Funcionários
             </NavLink>
 
 
-            {/* ===============================================
+            {/* =============================================
                 CONTROLE DE PONTO
-            =============================================== */}
+            ============================================= */}
 
             <div className="menuSectionTitle">
               Controle de Ponto
             </div>
 
 
+            {/* =============================================
+                RELATÓRIO
+            ============================================= */}
+
             <NavLink
               to="/app/relatorio"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Relatório
             </NavLink>
 
+
+            {/* =============================================
+                INSERIR PONTO MANUAL
+
+                ROTA CORRETA:
+                /app/manual
+            ============================================= */}
 
             <NavLink
               to="/app/manual"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Inserir Ponto Manual
             </NavLink>
 
+
+            {/* =============================================
+                ATESTADO
+            ============================================= */}
 
             <NavLink
               to="/app/atestado"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Anexar Atestado
             </NavLink>
 
+
+            {/* =============================================
+                BANCO DE HORAS
+
+                ROTA CORRETA:
+                /app/bancoHoras
+            ============================================= */}
 
             <NavLink
               to="/app/bancoHoras"
               className={({
                 isActive,
               }) =>
-                `dashLink ${isActive
-                  ? "active"
-                  : ""
+                `dashLink ${
+                  isActive
+                    ? "active"
+                    : ""
                 }`
               }
-              onClick={closeOnClick}
+              onClick={
+                closeOnClick
+              }
             >
               Banco de Horas
             </NavLink>
@@ -681,14 +904,16 @@ export default function DashboardLayout() {
         )}
 
 
-        {/* ===================================================
+        {/* =================================================
             SAIR
-        =================================================== */}
+        ================================================= */}
 
         <button
           type="button"
           className="dashLogout"
-          onClick={logout}
+          onClick={
+            logout
+          }
         >
           Sair
         </button>
@@ -696,12 +921,16 @@ export default function DashboardLayout() {
       </aside>
 
 
-      {/* =====================================================
+      {/* ===================================================
           CONTEÚDO
-      ===================================================== */}
+      =================================================== */}
 
       <main className="dashContent">
-        <Outlet />
+
+        <div className="dashContentInner">
+          <Outlet />
+        </div>
+
       </main>
 
     </div>

@@ -6,234 +6,178 @@ import {
 
 import { api } from "../../services/api";
 
+import "./logsSistema.css";
+
 
 export default function LogsSistema() {
   /* =========================================================
      ESTADOS
   ========================================================= */
 
-  const [logs, setLogs] =
-    useState([]);
+  const [logs, setLogs] = useState([]);
+  const [empresas, setEmpresas] = useState([]);
+  const [tipos, setTipos] = useState([]);
 
-  const [empresas, setEmpresas] =
-    useState([]);
+  const [carregando, setCarregando] = useState(false);
+  const [erro, setErro] = useState("");
 
-  const [tipos, setTipos] =
-    useState([]);
+  const [empresaId, setEmpresaId] = useState("");
+  const [tipo, setTipo] = useState("");
+  const [busca, setBusca] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
 
-  const [carregando, setCarregando] =
-    useState(false);
+  const [pagina, setPagina] = useState(1);
+  const [totalPaginas, setTotalPaginas] = useState(1);
+  const [total, setTotal] = useState(0);
 
-  const [erro, setErro] =
-    useState("");
-
-  const [empresaId, setEmpresaId] =
-    useState("");
-
-  const [tipo, setTipo] =
-    useState("");
-
-  const [busca, setBusca] =
-    useState("");
-
-  const [dataInicio, setDataInicio] =
-    useState("");
-
-  const [dataFim, setDataFim] =
-    useState("");
-
-  const [pagina, setPagina] =
-    useState(1);
-
-  const [totalPaginas, setTotalPaginas] =
-    useState(1);
-
-  const [total, setTotal] =
-    useState(0);
-
-  const [logSelecionado, setLogSelecionado] =
-    useState(null);
+  const [logSelecionado, setLogSelecionado] = useState(null);
 
 
   /* =========================================================
      CARREGAR EMPRESAS
   ========================================================= */
 
-  const carregarEmpresas =
-    useCallback(async () => {
-      try {
-        const response =
-          await api.get(
-            "/empresas"
-          );
+  const carregarEmpresas = useCallback(async () => {
+    try {
+      const response = await api.get("/empresas");
 
-        const data =
-          response.data;
+      const data = response.data;
 
-        if (
-          Array.isArray(data)
-        ) {
-          setEmpresas(data);
-          return;
-        }
-
-        if (
-          Array.isArray(
-            data?.empresas
-          )
-        ) {
-          setEmpresas(
-            data.empresas
-          );
-          return;
-        }
-
-        setEmpresas([]);
-      } catch (error) {
-        console.error(
-          "Erro ao carregar empresas:",
-          error
-        );
-
-        setEmpresas([]);
+      if (Array.isArray(data)) {
+        setEmpresas(data);
+        return;
       }
-    }, []);
+
+      if (Array.isArray(data?.empresas)) {
+        setEmpresas(data.empresas);
+        return;
+      }
+
+      setEmpresas([]);
+    } catch (error) {
+      console.error(
+        "Erro ao carregar empresas:",
+        error
+      );
+
+      setEmpresas([]);
+    }
+  }, []);
 
 
   /* =========================================================
      CARREGAR TIPOS
   ========================================================= */
 
-  const carregarTipos =
-    useCallback(async () => {
-      try {
-        const response =
-          await api.get(
-            "/logs/tipos"
-          );
+  const carregarTipos = useCallback(async () => {
+    try {
+      const response = await api.get("/logs/tipos");
 
-        setTipos(
-          Array.isArray(
-            response.data?.tipos
-          )
-            ? response.data.tipos
-            : []
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao carregar tipos de log:",
-          error
-        );
+      setTipos(
+        Array.isArray(response.data?.tipos)
+          ? response.data.tipos
+          : []
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao carregar tipos de log:",
+        error
+      );
 
-        setTipos([]);
-      }
-    }, []);
+      setTipos([]);
+    }
+  }, []);
 
 
   /* =========================================================
      CARREGAR LOGS
   ========================================================= */
 
-  const carregarLogs =
-    useCallback(async () => {
-      try {
-        setCarregando(true);
-        setErro("");
+  const carregarLogs = useCallback(async () => {
+    try {
+      setCarregando(true);
+      setErro("");
 
-        const params = {
-          pagina,
-          limite: 50,
-        };
+      const params = {
+        pagina,
+        limite: 50,
+      };
 
-        if (empresaId) {
-          params.empresa_id =
-            empresaId;
-        }
-
-        if (tipo) {
-          params.tipo =
-            tipo;
-        }
-
-        if (
-          busca &&
-          busca.trim()
-        ) {
-          params.busca =
-            busca.trim();
-        }
-
-        if (dataInicio) {
-          params.data_inicio =
-            dataInicio;
-        }
-
-        if (dataFim) {
-          params.data_fim =
-            dataFim;
-        }
-
-        const response =
-          await api.get(
-            "/logs",
-            {
-              params,
-            }
-          );
-
-        const data =
-          response.data;
-
-        setLogs(
-          Array.isArray(
-            data?.logs
-          )
-            ? data.logs
-            : []
-        );
-
-        setTotal(
-          Number(
-            data?.total || 0
-          )
-        );
-
-        setTotalPaginas(
-          Math.max(
-            1,
-            Number(
-              data?.total_paginas ||
-              1
-            )
-          )
-        );
-      } catch (error) {
-        console.error(
-          "Erro ao carregar logs:",
-          error
-        );
-
-        setLogs([]);
-
-        setTotal(0);
-
-        setTotalPaginas(1);
-
-        setErro(
-          error?.response?.data?.error ||
-          "Não foi possível carregar os logs."
-        );
-      } finally {
-        setCarregando(false);
+      if (empresaId) {
+        params.empresa_id = empresaId;
       }
-    }, [
-      pagina,
-      empresaId,
-      tipo,
-      busca,
-      dataInicio,
-      dataFim,
-    ]);
+
+      if (tipo) {
+        params.tipo = tipo;
+      }
+
+      if (busca && busca.trim()) {
+        params.busca = busca.trim();
+      }
+
+      if (dataInicio) {
+        params.data_inicio = dataInicio;
+      }
+
+      if (dataFim) {
+        params.data_fim = dataFim;
+      }
+
+      const response = await api.get(
+        "/logs",
+        {
+          params,
+        }
+      );
+
+      const data = response.data;
+
+      setLogs(
+        Array.isArray(data?.logs)
+          ? data.logs
+          : []
+      );
+
+      setTotal(
+        Number(
+          data?.total || 0
+        )
+      );
+
+      setTotalPaginas(
+        Math.max(
+          1,
+          Number(
+            data?.total_paginas || 1
+          )
+        )
+      );
+    } catch (error) {
+      console.error(
+        "Erro ao carregar logs:",
+        error
+      );
+
+      setLogs([]);
+      setTotal(0);
+      setTotalPaginas(1);
+
+      setErro(
+        error?.response?.data?.error ||
+        "Não foi possível carregar os logs."
+      );
+    } finally {
+      setCarregando(false);
+    }
+  }, [
+    pagina,
+    empresaId,
+    tipo,
+    busca,
+    dataInicio,
+    dataFim,
+  ]);
 
 
   /* =========================================================
@@ -257,7 +201,7 @@ export default function LogsSistema() {
 
 
   /* =========================================================
-     RESETAR PÁGINA AO ALTERAR FILTROS
+     ALTERAR EMPRESA
   ========================================================= */
 
   function alterarEmpresa(event) {
@@ -269,6 +213,10 @@ export default function LogsSistema() {
   }
 
 
+  /* =========================================================
+     ALTERAR TIPO
+  ========================================================= */
+
   function alterarTipo(event) {
     setTipo(
       event.target.value
@@ -278,6 +226,10 @@ export default function LogsSistema() {
   }
 
 
+  /* =========================================================
+     ALTERAR DATA INICIAL
+  ========================================================= */
+
   function alterarDataInicio(event) {
     setDataInicio(
       event.target.value
@@ -286,6 +238,10 @@ export default function LogsSistema() {
     setPagina(1);
   }
 
+
+  /* =========================================================
+     ALTERAR DATA FINAL
+  ========================================================= */
 
   function alterarDataFim(event) {
     setDataFim(
@@ -384,7 +340,7 @@ export default function LogsSistema() {
 
 
   /* =========================================================
-     PAGINAÇÃO
+     PÁGINA ANTERIOR
   ========================================================= */
 
   function paginaAnterior() {
@@ -396,11 +352,12 @@ export default function LogsSistema() {
   }
 
 
+  /* =========================================================
+     PRÓXIMA PÁGINA
+  ========================================================= */
+
   function proximaPagina() {
-    if (
-      pagina <
-      totalPaginas
-    ) {
+    if (pagina < totalPaginas) {
       setPagina(
         pagina + 1
       );
@@ -413,42 +370,27 @@ export default function LogsSistema() {
   ========================================================= */
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        width: "100%",
-      }}
-    >
+    <div className="logsPage">
+
       {/* =====================================================
           CABEÇALHO
       ===================================================== */}
 
-      <div
-        style={{
-          marginBottom: "24px",
-        }}
-      >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "28px",
-            fontWeight: "700",
-          }}
-        >
+      <header className="logsHeader">
+
+        <span className="logsTag">
+          Super Administrador
+        </span>
+
+        <h1>
           Logs do Sistema
         </h1>
 
-        <p
-          style={{
-            marginTop: "6px",
-            marginBottom: 0,
-            color: "#666",
-          }}
-        >
-          Acompanhe as ações realizadas
-          nas empresas e no sistema.
+        <p>
+          Acompanhe as ações realizadas nas empresas e no sistema.
         </p>
-      </div>
+
+      </header>
 
 
       {/* =====================================================
@@ -456,51 +398,27 @@ export default function LogsSistema() {
       ===================================================== */}
 
       <form
+        className="logsFiltros"
         onSubmit={pesquisar}
-        style={{
-          background: "#fff",
-          border: "1px solid #e5e7eb",
-          borderRadius: "12px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}
       >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "14px",
-          }}
-        >
-          {/* EMPRESA */}
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "600",
-              }}
-            >
+        <div className="logsFiltrosGrid">
+
+          {/* =================================================
+              EMPRESA
+          ================================================= */}
+
+          <div className="logsCampo">
+
+            <label>
               Empresa
             </label>
 
             <select
               value={empresaId}
-              onChange={
-                alterarEmpresa
-              }
-              style={{
-                width: "100%",
-                height: "42px",
-                padding: "0 10px",
-                border:
-                  "1px solid #d1d5db",
-                borderRadius: "8px",
-                background: "#fff",
-              }}
+              onChange={alterarEmpresa}
             >
+
               <option value="">
                 Todas as empresas
               </option>
@@ -508,50 +426,35 @@ export default function LogsSistema() {
               {empresas.map(
                 (empresa) => (
                   <option
-                    key={
-                      empresa.id
-                    }
-                    value={
-                      empresa.id
-                    }
+                    key={empresa.id}
+                    value={empresa.id}
                   >
                     {empresa.nome_fantasia ||
                       empresa.nome}
                   </option>
                 )
               )}
+
             </select>
+
           </div>
 
 
-          {/* TIPO */}
+          {/* =================================================
+              TIPO
+          ================================================= */}
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "600",
-              }}
-            >
+          <div className="logsCampo">
+
+            <label>
               Tipo
             </label>
 
             <select
               value={tipo}
-              onChange={
-                alterarTipo
-              }
-              style={{
-                width: "100%",
-                height: "42px",
-                padding: "0 10px",
-                border:
-                  "1px solid #d1d5db",
-                borderRadius: "8px",
-                background: "#fff",
-              }}
+              onChange={alterarTipo}
             >
+
               <option value="">
                 Todos os tipos
               </option>
@@ -568,162 +471,102 @@ export default function LogsSistema() {
                   </option>
                 )
               )}
+
             </select>
+
           </div>
 
 
-          {/* DATA INICIAL */}
+          {/* =================================================
+              DATA INICIAL
+          ================================================= */}
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "600",
-              }}
-            >
+          <div className="logsCampo">
+
+            <label>
               Data inicial
             </label>
 
             <input
               type="date"
-              value={
-                dataInicio
-              }
-              onChange={
-                alterarDataInicio
-              }
-              style={{
-                width: "100%",
-                height: "42px",
-                padding: "0 10px",
-                boxSizing:
-                  "border-box",
-                border:
-                  "1px solid #d1d5db",
-                borderRadius: "8px",
-              }}
+              value={dataInicio}
+              onChange={alterarDataInicio}
             />
+
           </div>
 
 
-          {/* DATA FINAL */}
+          {/* =================================================
+              DATA FINAL
+          ================================================= */}
 
-          <div>
-            <label
-              style={{
-                display: "block",
-                marginBottom: "6px",
-                fontWeight: "600",
-              }}
-            >
+          <div className="logsCampo">
+
+            <label>
               Data final
             </label>
 
             <input
               type="date"
               value={dataFim}
-              onChange={
-                alterarDataFim
-              }
-              style={{
-                width: "100%",
-                height: "42px",
-                padding: "0 10px",
-                boxSizing:
-                  "border-box",
-                border:
-                  "1px solid #d1d5db",
-                borderRadius: "8px",
-              }}
+              onChange={alterarDataFim}
             />
+
           </div>
+
         </div>
 
 
-        {/* BUSCA */}
+        {/* ===================================================
+            BUSCA
+        =================================================== */}
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginTop: "16px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div className="logsBuscaArea">
+
           <input
+            className="logsBuscaInput"
             type="text"
             value={busca}
-            onChange={(
-              event
-            ) =>
+            onChange={(event) =>
               setBusca(
                 event.target.value
               )
             }
             placeholder="Buscar por empresa, funcionário, usuário ou ação..."
-            style={{
-              flex: "1 1 300px",
-              height: "42px",
-              padding: "0 12px",
-              boxSizing:
-                "border-box",
-              border:
-                "1px solid #d1d5db",
-              borderRadius: "8px",
-            }}
           />
 
+
           <button
+            className="logsBtnPesquisar"
             type="submit"
-            style={{
-              minWidth: "110px",
-              height: "42px",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontWeight: "600",
-            }}
           >
             Pesquisar
           </button>
 
+
           <button
+            className="logsBtnLimpar"
             type="button"
-            onClick={
-              limparFiltros
-            }
-            style={{
-              minWidth: "110px",
-              height: "42px",
-              border:
-                "1px solid #d1d5db",
-              borderRadius: "8px",
-              background: "#fff",
-              cursor: "pointer",
-              fontWeight: "600",
-            }}
+            onClick={limparFiltros}
           >
             Limpar
           </button>
+
         </div>
+
       </form>
 
 
       {/* =====================================================
-          TOTAL
+          TOTAL DE REGISTROS
       ===================================================== */}
 
-      <div
-        style={{
-          marginBottom: "12px",
-          color: "#555",
-          fontSize: "14px",
-        }}
-      >
+      <div className="logsTotal">
+
         {total === 1
           ? "1 registro encontrado"
           : `${total} registros encontrados`}
+
       </div>
 
 
@@ -732,15 +575,7 @@ export default function LogsSistema() {
       ===================================================== */}
 
       {erro && (
-        <div
-          style={{
-            padding: "14px",
-            marginBottom: "16px",
-            borderRadius: "8px",
-            background: "#fee2e2",
-            color: "#991b1b",
-          }}
-        >
+        <div className="logsErro">
           {erro}
         </div>
       )}
@@ -750,219 +585,208 @@ export default function LogsSistema() {
           TABELA
       ===================================================== */}
 
-      <div
-        style={{
-          background: "#fff",
-          border:
-            "1px solid #e5e7eb",
-          borderRadius: "12px",
-          overflow: "hidden",
-        }}
-      >
-        <div
-          style={{
-            overflowX: "auto",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse:
-                "collapse",
-              minWidth: "1000px",
-            }}
-          >
+      <div className="logsTabelaCard">
+
+        <div className="logsTabelaScroll">
+
+          <table className="logsTabela">
+
             <thead>
-              <tr
-                style={{
-                  background:
-                    "#f9fafb",
-                }}
-              >
-                <th style={thStyle}>
+
+              <tr>
+
+                <th>
                   Data/Hora
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Empresa
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Usuário
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Funcionário
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Tipo
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Ação
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Descrição
                 </th>
 
-                <th style={thStyle}>
+                <th>
                   Detalhes
                 </th>
+
               </tr>
+
             </thead>
 
+
             <tbody>
+
+              {/* =================================================
+                  CARREGANDO
+              ================================================= */}
+
               {carregando ? (
+
                 <tr>
+
                   <td
                     colSpan="8"
-                    style={
-                      vazioStyle
-                    }
+                    className="logsVazio"
                   >
                     Carregando logs...
                   </td>
+
                 </tr>
-              ) : logs.length ===
-                0 ? (
+
+              ) : logs.length === 0 ? (
+
+                /* ===============================================
+                   SEM LOGS
+                =============================================== */
+
                 <tr>
+
                   <td
                     colSpan="8"
-                    style={
-                      vazioStyle
-                    }
+                    className="logsVazio"
                   >
                     Nenhum log encontrado.
                   </td>
+
                 </tr>
+
               ) : (
+
+                /* ===============================================
+                   LISTA DE LOGS
+                =============================================== */
+
                 logs.map(
                   (log) => (
-                    <tr
-                      key={log.id}
-                      style={{
-                        borderTop:
-                          "1px solid #eee",
-                      }}
-                    >
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
+
+                    <tr key={log.id}>
+
+                      {/* DATA */}
+
+                      <td>
                         {formatarData(
                           log.created_at
                         )}
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
+
+                      {/* EMPRESA */}
+
+                      <td>
                         {log.empresa_nome ||
                           "Sistema"}
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
+
+                      {/* USUÁRIO */}
+
+                      <td>
+
                         <div>
                           {log.username ||
                             "Sistema"}
                         </div>
 
-                        <small
-                          style={{
-                            color:
-                              "#777",
-                          }}
-                        >
+                        <small className="logsUsuarioRole">
                           {formatarRole(
                             log.role
                           )}
                         </small>
+
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
+
+                      {/* FUNCIONÁRIO */}
+
+                      <td>
                         {log.funcionario_nome ||
                           "-"}
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
-                        {formatarTipo(
-                          log.tipo
-                        )}
+
+                      {/* TIPO */}
+
+                      <td>
+
+                        <span className="logsTipo">
+                          {formatarTipo(
+                            log.tipo
+                          )}
+                        </span>
+
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
-                        {formatarTipo(
-                          log.acao
-                        )}
+
+                      {/* AÇÃO */}
+
+                      <td>
+
+                        <span className="logsAcao">
+                          {formatarTipo(
+                            log.acao
+                          )}
+                        </span>
+
                       </td>
 
-                      <td
-                        style={{
-                          ...tdStyle,
-                          maxWidth:
-                            "320px",
-                        }}
-                      >
+
+                      {/* DESCRIÇÃO */}
+
+                      <td className="logsDescricao">
                         {log.descricao ||
                           "-"}
                       </td>
 
-                      <td
-                        style={
-                          tdStyle
-                        }
-                      >
+
+                      {/* DETALHES */}
+
+                      <td>
+
                         <button
+                          className="logsBtnVer"
                           type="button"
                           onClick={() =>
                             setLogSelecionado(
                               log
                             )
                           }
-                          style={{
-                            border:
-                              "1px solid #d1d5db",
-                            background:
-                              "#fff",
-                            borderRadius:
-                              "7px",
-                            padding:
-                              "7px 10px",
-                            cursor:
-                              "pointer",
-                          }}
                         >
                           Ver
                         </button>
+
                       </td>
+
                     </tr>
+
                   )
                 )
+
               )}
+
             </tbody>
+
           </table>
+
         </div>
+
       </div>
 
 
@@ -970,87 +794,56 @@ export default function LogsSistema() {
           PAGINAÇÃO
       ===================================================== */}
 
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent:
-            "space-between",
-          gap: "15px",
-          marginTop: "18px",
-        }}
-      >
+      <div className="logsPaginacao">
+
+        {/* ANTERIOR */}
+
         <button
+          className="logsPaginaBtn"
           type="button"
-          onClick={
-            paginaAnterior
-          }
+          onClick={paginaAnterior}
           disabled={
             pagina <= 1 ||
             carregando
           }
-          style={{
-            padding:
-              "9px 16px",
-            border:
-              "1px solid #d1d5db",
-            borderRadius: "8px",
-            background: "#fff",
-            cursor:
-              pagina <= 1
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              pagina <= 1
-                ? 0.5
-                : 1,
-          }}
         >
           Anterior
         </button>
 
-        <span>
+
+        {/* INFORMAÇÃO */}
+
+        <span className="logsPaginacaoInfo">
+
           Página{" "}
+
           <strong>
             {pagina}
-          </strong>{" "}
-          de{" "}
+          </strong>
+
+          {" "}de{" "}
+
           <strong>
             {totalPaginas}
           </strong>
+
         </span>
 
+
+        {/* PRÓXIMA */}
+
         <button
+          className="logsPaginaBtn"
           type="button"
-          onClick={
-            proximaPagina
-          }
+          onClick={proximaPagina}
           disabled={
-            pagina >=
-              totalPaginas ||
+            pagina >= totalPaginas ||
             carregando
           }
-          style={{
-            padding:
-              "9px 16px",
-            border:
-              "1px solid #d1d5db",
-            borderRadius: "8px",
-            background: "#fff",
-            cursor:
-              pagina >=
-              totalPaginas
-                ? "not-allowed"
-                : "pointer",
-            opacity:
-              pagina >=
-              totalPaginas
-                ? 0.5
-                : 1,
-          }}
         >
           Próxima
         </button>
+
       </div>
 
 
@@ -1059,89 +852,68 @@ export default function LogsSistema() {
       ===================================================== */}
 
       {logSelecionado && (
+
         <div
+          className="logsModalOverlay"
           onClick={() =>
             setLogSelecionado(
               null
             )
           }
-          style={{
-            position: "fixed",
-            inset: 0,
-            background:
-              "rgba(0,0,0,.45)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent:
-              "center",
-            padding: "20px",
-            zIndex: 9999,
-          }}
         >
+
           <div
-            onClick={(
-              event
-            ) =>
+            className="logsModal"
+            onClick={(event) =>
               event.stopPropagation()
             }
-            style={{
-              width: "100%",
-              maxWidth: "700px",
-              maxHeight: "85vh",
-              overflowY: "auto",
-              background: "#fff",
-              borderRadius: "14px",
-              padding: "24px",
-              boxShadow:
-                "0 20px 60px rgba(0,0,0,.25)",
-            }}
           >
-            <div
-              style={{
-                display: "flex",
-                justifyContent:
-                  "space-between",
-                alignItems:
-                  "center",
-                gap: "15px",
-                marginBottom:
-                  "20px",
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                }}
-              >
+
+            {/* =================================================
+                CABEÇALHO MODAL
+            ================================================= */}
+
+            <div className="logsModalHeader">
+
+              <h2>
                 Detalhes do Log
               </h2>
 
+
               <button
+                className="logsModalClose"
                 type="button"
                 onClick={() =>
                   setLogSelecionado(
                     null
                   )
                 }
-                style={{
-                  border: "none",
-                  background:
-                    "transparent",
-                  fontSize: "24px",
-                  cursor:
-                    "pointer",
-                }}
+                aria-label="Fechar detalhes"
+                title="Fechar"
               >
                 ×
               </button>
+
             </div>
+
+
+            {/* =================================================
+                DATA / HORA
+            ================================================= */}
 
             <Detalhe
               titulo="Data/Hora"
-              valor={formatarData(
-                logSelecionado.created_at
-              )}
+              valor={
+                formatarData(
+                  logSelecionado.created_at
+                )
+              }
             />
+
+
+            {/* =================================================
+                EMPRESA
+            ================================================= */}
 
             <Detalhe
               titulo="Empresa"
@@ -1151,6 +923,11 @@ export default function LogsSistema() {
               }
             />
 
+
+            {/* =================================================
+                USUÁRIO
+            ================================================= */}
+
             <Detalhe
               titulo="Usuário"
               valor={
@@ -1159,12 +936,24 @@ export default function LogsSistema() {
               }
             />
 
+
+            {/* =================================================
+                PERFIL
+            ================================================= */}
+
             <Detalhe
               titulo="Perfil"
-              valor={formatarRole(
-                logSelecionado.role
-              )}
+              valor={
+                formatarRole(
+                  logSelecionado.role
+                )
+              }
             />
+
+
+            {/* =================================================
+                FUNCIONÁRIO
+            ================================================= */}
 
             <Detalhe
               titulo="Funcionário"
@@ -1174,19 +963,38 @@ export default function LogsSistema() {
               }
             />
 
+
+            {/* =================================================
+                TIPO
+            ================================================= */}
+
             <Detalhe
               titulo="Tipo"
-              valor={formatarTipo(
-                logSelecionado.tipo
-              )}
+              valor={
+                formatarTipo(
+                  logSelecionado.tipo
+                )
+              }
             />
+
+
+            {/* =================================================
+                AÇÃO
+            ================================================= */}
 
             <Detalhe
               titulo="Ação"
-              valor={formatarTipo(
-                logSelecionado.acao
-              )}
+              valor={
+                formatarTipo(
+                  logSelecionado.acao
+                )
+              }
             />
+
+
+            {/* =================================================
+                DESCRIÇÃO
+            ================================================= */}
 
             <Detalhe
               titulo="Descrição"
@@ -1196,6 +1004,11 @@ export default function LogsSistema() {
               }
             />
 
+
+            {/* =================================================
+                IP
+            ================================================= */}
+
             <Detalhe
               titulo="IP"
               valor={
@@ -1204,42 +1017,35 @@ export default function LogsSistema() {
               }
             />
 
+
+            {/* =================================================
+                NAVEGADOR / DISPOSITIVO
+            ================================================= */}
+
             {logSelecionado.user_agent && (
+
               <Detalhe
                 titulo="Navegador / Dispositivo"
                 valor={
                   logSelecionado.user_agent
                 }
               />
+
             )}
 
-            <div
-              style={{
-                marginTop: "18px",
-              }}
-            >
+
+            {/* =================================================
+                DADOS ADICIONAIS
+            ================================================= */}
+
+            <div className="logsDados">
+
               <strong>
                 Dados adicionais
               </strong>
 
-              <pre
-                style={{
-                  marginTop: "8px",
-                  background:
-                    "#f6f7f9",
-                  padding: "15px",
-                  borderRadius:
-                    "8px",
-                  overflowX:
-                    "auto",
-                  whiteSpace:
-                    "pre-wrap",
-                  wordBreak:
-                    "break-word",
-                  fontSize:
-                    "13px",
-                }}
-              >
+
+              <pre>
                 {JSON.stringify(
                   logSelecionado.dados ||
                     {},
@@ -1247,10 +1053,15 @@ export default function LogsSistema() {
                   2
                 )}
               </pre>
+
             </div>
+
           </div>
+
         </div>
+
       )}
+
     </div>
   );
 }
@@ -1265,51 +1076,19 @@ function Detalhe({
   valor,
 }) {
   return (
-    <div
-      style={{
-        padding:
-          "10px 0",
-        borderBottom:
-          "1px solid #eee",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "12px",
-          color: "#777",
-          marginBottom: "3px",
-        }}
-      >
+
+    <div className="logsDetalhe">
+
+      <div className="logsDetalheTitulo">
         {titulo}
       </div>
 
-      <div>
+
+      <div className="logsDetalheValor">
         {valor}
       </div>
+
     </div>
+
   );
 }
-
-
-/* =========================================================
-   ESTILOS
-========================================================= */
-
-const thStyle = {
-  textAlign: "left",
-  padding: "13px",
-  fontSize: "13px",
-  whiteSpace: "nowrap",
-};
-
-const tdStyle = {
-  padding: "13px",
-  fontSize: "14px",
-  verticalAlign: "top",
-};
-
-const vazioStyle = {
-  padding: "35px",
-  textAlign: "center",
-  color: "#777",
-};

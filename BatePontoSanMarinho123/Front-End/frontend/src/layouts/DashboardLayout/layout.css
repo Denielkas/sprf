@@ -1,11 +1,11 @@
 /* ==========================================================
-   VARIÁVEIS GLOBAIS
+   DASHBOARD LAYOUT
+   DEK + IDENTIDADE DINÂMICA DAS EMPRESAS
+========================================================== */
 
-   IMPORTANTE:
-   Essas cores são apenas FALLBACK.
 
-   O DashboardLayout.jsx substitui automaticamente
-   pelas cores salvas da empresa.
+/* ==========================================================
+   VARIÁVEIS
 ========================================================== */
 
 :root {
@@ -21,37 +21,31 @@
 
 
 /* ==========================================================
-   CONFIGURAÇÃO GERAL
+   RESET
 ========================================================== */
+
+* {
+  box-sizing: border-box;
+}
+
 
 html,
 body,
 #root {
-  margin: 0;
-  padding: 0;
-
   width: 100%;
-  height: 100%;
+  min-width: 100%;
 
-  min-height: 100%;
+  min-height: 100vh;
 
-  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 
-/* ==========================================================
-   CONTAINER
-========================================================== */
+body {
+  overflow-x: hidden;
 
-.dashContainer {
-  display: flex;
-
-  width: 100vw;
-  height: 100vh;
-
-  position: relative;
-
-  overflow: hidden;
+  background: #010713;
 
   font-family:
     system-ui,
@@ -64,19 +58,42 @@ body,
 
 
 /* ==========================================================
-   BOTÃO MENU
+   CONTAINER
+========================================================== */
+
+.dashContainer {
+  position: relative;
+
+  display: flex;
+
+  width: 100%;
+  min-height: 100vh;
+
+  margin: 0;
+  padding: 0;
+
+  overflow: hidden;
+
+  color: #ffffff;
+
+  background: #010713;
+}
+
+
+/* ==========================================================
+   BOTÃO DO MENU
 ========================================================== */
 
 .menuToggle {
   position: fixed;
 
-  top: 20px;
-  left: 20px;
+  top: 18px;
+  left: 28px;
 
   z-index: 10001;
 
-  width: 50px;
-  height: 50px;
+  width: 58px;
+  height: 58px;
 
   display: flex;
   align-items: center;
@@ -84,41 +101,88 @@ body,
 
   padding: 0;
 
-  border: none;
-  border-radius: 10px;
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.14);
+
+  border-radius: 14px;
+
+  outline: none;
 
   background:
-    var(
-      --empresa-cor-primaria,
-      #0d6efd
+    linear-gradient(
+      135deg,
+      var(
+        --empresa-cor-secundaria,
+        #073786
+      ),
+      var(
+        --empresa-cor-primaria,
+        #008fe3
+      )
     );
 
   color: #ffffff;
 
+  font-family: inherit;
+
+  font-size: 25px;
+  font-weight: 700;
+
+  line-height: 1;
+
   cursor: pointer;
 
-  font-size: 22px;
-
   box-shadow:
-    0 4px 14px
-    rgba(0, 0, 0, 0.4);
+    0 10px 30px
+    rgba(0, 0, 0, 0.30),
+
+    0 0 24px
+    rgba(0, 140, 255, 0.12),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.14);
 
   transition:
-    background 0.2s ease,
+    left 0.32s ease,
+    transform 0.2s ease,
     filter 0.2s ease,
-    transform 0.2s ease;
+    box-shadow 0.2s ease;
 }
 
 
 .menuToggle:hover {
-  background:
-    var(
-      --empresa-cor-secundaria,
-      #084298
-    );
-
   transform:
-    scale(1.04);
+    translateY(-2px);
+
+  filter:
+    brightness(1.10);
+
+  box-shadow:
+    0 14px 35px
+    rgba(0, 0, 0, 0.34),
+
+    0 0 28px
+    rgba(0, 140, 255, 0.18);
+}
+
+
+.menuToggle:active {
+  transform:
+    scale(0.97);
+}
+
+
+/* ==========================================================
+   BOTÃO QUANDO SIDEBAR ABERTA
+
+   FICA NO CANTO DIREITO DA SIDEBAR,
+   SEM COBRIR A LOGO.
+========================================================== */
+
+.dashContainer.menu-open
+.menuToggle {
+  left: 245px;
 }
 
 
@@ -133,10 +197,22 @@ body,
 
   z-index: 9000;
 
+  width: 100%;
+  height: 100%;
+
+  margin: 0;
+  padding: 0;
+
   border: none;
 
   background:
-    rgba(0, 0, 0, 0.58);
+    rgba(0, 0, 0, 0.62);
+
+  -webkit-backdrop-filter:
+    blur(3px);
+
+  backdrop-filter:
+    blur(3px);
 
   cursor: pointer;
 }
@@ -147,44 +223,92 @@ body,
 ========================================================== */
 
 .dashSidebar {
-  width: 260px;
+  position: fixed;
 
-  box-sizing: border-box;
+  top: 0;
+  left: -340px;
 
-  background:
-    rgba(20, 20, 20, 0.98);
+  z-index: 10000;
 
-  color: #ffffff;
-
-  padding: 22px;
+  width: 315px;
+  height: 100vh;
 
   display: flex;
   flex-direction: column;
 
-  gap: 14px;
+  padding:
+    24px 20px 22px;
 
-  position: fixed;
-
-  top: 0;
-  left: -310px;
-
-  height: 100vh;
-
-  transition:
-    left 0.35s ease;
-
-  z-index: 10000;
-
+  overflow-x: hidden;
   overflow-y: auto;
 
+  border-right:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
+  background:
+    linear-gradient(
+      180deg,
+      #010713 0%,
+      #020c1c 42%,
+      #010713 100%
+    );
+
   box-shadow:
-    8px 0 25px
-    rgba(0, 0, 0, 0.25);
+    15px 0 45px
+    rgba(0, 0, 0, 0.48);
+
+  transition:
+    left 0.32s
+    cubic-bezier(
+      0.4,
+      0,
+      0.2,
+      1
+    );
 }
 
 
 /* ==========================================================
-   MENU ABERTO
+   LINHA TEMÁTICA SIDEBAR
+========================================================== */
+
+.dashSidebar::before {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 3px;
+  height: 100%;
+
+  background:
+    linear-gradient(
+      180deg,
+      var(
+        --empresa-cor-primaria,
+        #008fe3
+      ),
+      var(
+        --empresa-cor-secundaria,
+        #073786
+      ),
+      transparent 92%
+    );
+
+  box-shadow:
+    0 0 14px
+    var(
+      --empresa-cor-primaria,
+      #008fe3
+    );
+}
+
+
+/* ==========================================================
+   SIDEBAR ABERTA
 ========================================================== */
 
 .dashSidebar.show {
@@ -193,7 +317,34 @@ body,
 
 
 /* ==========================================================
-   CABEÇALHO SIDEBAR
+   SCROLL SIDEBAR
+========================================================== */
+
+.dashSidebar::-webkit-scrollbar {
+  width: 5px;
+}
+
+
+.dashSidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+.dashSidebar::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #008fe3
+    );
+
+  opacity: 0.3;
+}
+
+
+/* ==========================================================
+   HEADER SIDEBAR
 ========================================================== */
 
 .sidebarHeader {
@@ -205,14 +356,16 @@ body,
   align-items: center;
   justify-content: center;
 
+  margin-bottom: 15px;
+
   padding:
-    8px 0 18px;
+    5px 10px 22px;
 
   border-bottom:
     1px solid
-    rgba(255, 255, 255, 0.12);
+    rgba(130, 160, 195, 0.12);
 
-  margin-bottom: 4px;
+  text-align: center;
 }
 
 
@@ -221,37 +374,92 @@ body,
 ========================================================== */
 
 .sidebarLogo {
-  width: 130px;
+  display: block;
 
-  max-height: 100px;
+  width: 145px;
+  height: 90px;
+
+  max-width: 100%;
+
+  margin:
+    0 0 13px;
 
   object-fit: contain;
 
-  filter:
-    brightness(1.1);
+  user-select: none;
 
-  margin-bottom: 12px;
+  filter:
+    drop-shadow(
+      0 6px 12px
+      rgba(0, 0, 0, 0.22)
+    );
 }
 
 
 /* ==========================================================
-   EMPRESA
+   NOME EMPRESA
 ========================================================== */
 
 .sidebarEmpresa {
   width: 100%;
 
-  text-align: center;
+  color: #f5f9ff;
 
-  color: #ffffff;
-
-  font-size: 15px;
-
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 800;
 
   line-height: 1.3;
 
+  text-align: center;
+
   word-break: break-word;
+}
+
+
+/* ==========================================================
+   PERFIL
+========================================================== */
+
+.sidebarTipoUsuario {
+  display: inline-flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin-top: 10px;
+
+  padding:
+    6px 13px;
+
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.14);
+
+  border-radius: 30px;
+
+  background:
+    linear-gradient(
+      135deg,
+      var(
+        --empresa-cor-secundaria,
+        #073786
+      ),
+      var(
+        --empresa-cor-primaria,
+        #008fe3
+      )
+    );
+
+  color: #ffffff;
+
+  font-size: 11px;
+  font-weight: 800;
+
+  letter-spacing: 0.5px;
+
+  box-shadow:
+    0 7px 18px
+    rgba(0, 0, 0, 0.20);
 }
 
 
@@ -260,12 +468,12 @@ body,
 ========================================================== */
 
 .sidebarUsuario {
-  margin-top: 4px;
+  margin-top: 9px;
 
-  color:
-    rgba(255, 255, 255, 0.65);
+  color: #7389a4;
 
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 600;
 
   text-align: center;
 }
@@ -276,31 +484,32 @@ body,
 ========================================================== */
 
 .dashMenu {
+  width: 100%;
+
   display: flex;
   flex-direction: column;
 
-  gap: 8px;
+  gap: 5px;
 }
 
 
 /* ==========================================================
-   TÍTULO DA SEÇÃO
+   SEÇÕES
 ========================================================== */
 
 .menuSectionTitle {
   margin:
-    10px 8px 2px;
+    16px 10px 8px;
 
   color:
-    rgba(255, 255, 255, 0.5);
+    #71859f;
 
-  font-size: 11px;
-
+  font-size: 10px;
   font-weight: 800;
 
   text-transform: uppercase;
 
-  letter-spacing: 1px;
+  letter-spacing: 1.05px;
 }
 
 
@@ -309,95 +518,180 @@ body,
 ========================================================== */
 
 .dashLink {
-  color: #ffffff;
+  position: relative;
+
+  width: 100%;
+  min-height: 50px;
+
+  display: flex;
+
+  align-items: center;
+
+  padding:
+    0 16px;
+
+  border:
+    1px solid transparent;
+
+  border-radius: 11px;
+
+  color: #9db1c8;
 
   text-decoration: none;
 
-  padding: 12px;
-
-  border-radius: 7px;
-
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 650;
 
   transition:
+    color 0.2s ease,
     background 0.2s ease,
-    transform 0.2s ease;
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 
 .dashLink:hover {
-  background:
-    rgba(255, 255, 255, 0.1);
-
   transform:
-    translateX(3px);
+    translateX(2px);
+
+  color: #ffffff;
+
+  border-color:
+    rgba(255, 255, 255, 0.06);
+
+  background:
+    rgba(255, 255, 255, 0.045);
 }
 
 
 /* ==========================================================
    LINK ATIVO
+
+   USA AS CORES DA EMPRESA
 ========================================================== */
 
 .dashLink.active {
+  color: #ffffff !important;
+
+  font-weight: 750;
+
+  border-color:
+    rgba(255, 255, 255, 0.14);
+
   background:
-    var(
-      --empresa-cor-primaria,
-      #0d6efd
+    linear-gradient(
+      105deg,
+      var(
+        --empresa-cor-secundaria,
+        #073786
+      ) 0%,
+      var(
+        --empresa-cor-primaria,
+        #008fe3
+      ) 100%
     );
 
-  color:
-    #ffffff !important;
-
-  font-weight: 600;
-
   box-shadow:
-    0 3px 10px
-    rgba(0, 0, 0, 0.2);
+    0 8px 22px
+    rgba(0, 0, 0, 0.25),
+
+    inset 0 1px 0
+    rgba(255, 255, 255, 0.11);
 }
 
 
 /* ==========================================================
-   BOTÃO SAIR
+   BARRINHA DO LINK ATIVO
+========================================================== */
+
+.dashLink.active::before {
+  content: "";
+
+  position: absolute;
+
+  left: 0;
+
+  top: 11px;
+  bottom: 11px;
+
+  width: 4px;
+
+  border-radius:
+    0 5px 5px 0;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 0 10px
+    rgba(255, 255, 255, 0.60);
+}
+
+
+/* ==========================================================
+   SAIR
 ========================================================== */
 
 .dashLogout {
-  margin-top: auto;
+  width:
+    calc(100% - 10px);
 
-  margin-bottom: 25px;
-
-  background:
-    #dc3545;
-
-  border: none;
-
-  padding: 14px;
-
-  border-radius: 8px;
-
-  color: #ffffff;
-
-  font-size: 17px;
-
-  font-weight: 600;
-
-  cursor: pointer;
-
-  width: 90%;
+  min-height: 50px;
 
   align-self: center;
 
+  margin:
+    auto 0 2px;
+
+  padding:
+    0 18px;
+
+  border:
+    1px solid
+    rgba(239, 68, 68, 0.28);
+
+  border-radius: 11px;
+
+  background:
+    rgba(239, 68, 68, 0.06);
+
+  color: #ff6868;
+
+  font-family: inherit;
+
+  font-size: 14px;
+  font-weight: 750;
+
+  cursor: pointer;
+
   transition:
-    filter 0.2s ease,
-    transform 0.2s ease;
+    transform 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 
 .dashLogout:hover {
-  filter:
-    brightness(1.15);
-
   transform:
     translateY(-1px);
+
+  color: #ffffff;
+
+  border-color:
+    rgba(239, 68, 68, 0.60);
+
+  background:
+    linear-gradient(
+      135deg,
+      #b91c1c,
+      #dc2626
+    );
+
+  box-shadow:
+    0 9px 22px
+    rgba(220, 38, 38, 0.20);
 }
 
 
@@ -406,83 +700,316 @@ body,
 ========================================================== */
 
 .dashContent {
+  position: relative;
+
   flex: 1;
 
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  min-width: 0;
 
-  box-sizing: border-box;
+  min-height: 100vh;
 
-  padding: 28px;
+  margin: 0;
+  padding: 0;
 
+  overflow-x: hidden;
   overflow-y: auto;
 
-  background-image:
-    linear-gradient(
-      rgba(0, 0, 0, 0.05),
-      rgba(0, 0, 0, 0.05)
-    ),
-    var(
-      --empresa-dashboard-background,
-      url("../../assets/logo/hotel-fundo.jpg")
-    );
-
-  background-size:
-    cover;
-
-  background-position:
-    center;
-
-  background-repeat:
-    no-repeat;
-
-  background-attachment:
-    fixed;
+  background-color:
+    #010713;
 
   z-index: 1;
 }
 
 
 /* ==========================================================
-   IDENTIFICAÇÃO DO TIPO DE USUÁRIO
+   CONTEÚDO INTERNO
+   Espaçamento para não encostar no topo
 ========================================================== */
 
-.sidebarTipoUsuario {
-  margin-top: 8px;
+.dashContentInner {
+  position: relative;
+
+  z-index: 3;
+
+  width: 100%;
+  min-height: 100vh;
 
   padding:
-    4px 10px;
+    32px 36px 45px;
 
-  border-radius:
-    20px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================
+   SUPER ADMIN
+
+   NÃO USA IMAGEM.
+
+   SOMENTE IDENTIDADE DEK.
+========================================================== */
+
+.dashSuperAdmin
+.dashContent {
+  background-image: none;
 
   background:
+    radial-gradient(
+      circle at 78% 20%,
+      rgba(0, 142, 255, 0.18) 0%,
+      rgba(0, 91, 210, 0.07) 30%,
+      transparent 57%
+    ),
+    radial-gradient(
+      circle at 12% 82%,
+      rgba(0, 106, 255, 0.10) 0%,
+      transparent 42%
+    ),
+    linear-gradient(
+      125deg,
+      #010307 0%,
+      #020813 27%,
+      #041329 53%,
+      #06265a 78%,
+      #073b80 100%
+    );
+}
+
+
+/* ==========================================================
+   SUPER ADMIN - SEM OVERLAY DE FOTO
+========================================================== */
+
+.dashSuperAdmin
+.dashContent::before {
+  display: none;
+
+  content: none;
+}
+
+
+/* ==========================================================
+   EMPRESA / RH
+
+   USA A FOTO CADASTRADA DA EMPRESA.
+========================================================== */
+
+.dashEmpresa
+.dashContent {
+  background-color:
+    #020813;
+
+  background-image:
+    var(
+      --empresa-dashboard-background
+    );
+
+  background-position:
+    center center;
+
+  background-repeat:
+    no-repeat;
+
+  background-size:
+    cover;
+
+  background-attachment:
+    fixed;
+}
+
+
+/* ==========================================================
+   CAMADA ESCURA SOBRE A FOTO DA EMPRESA
+
+   A FOTO CONTINUA VISÍVEL,
+   MAS OS FORMULÁRIOS FICAM LEGÍVEIS.
+========================================================== */
+
+.dashEmpresa
+.dashContent::before {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 1;
+
+  min-height: 100%;
+
+  pointer-events: none;
+
+  background:
+    linear-gradient(
+      120deg,
+      rgba(0, 5, 14, 0.80) 0%,
+      rgba(1, 10, 24, 0.68) 38%,
+      rgba(3, 20, 45, 0.56) 68%,
+      rgba(3, 31, 70, 0.50) 100%
+    );
+}
+
+
+/* ==========================================================
+   LEVE COR DA EMPRESA SOBRE O FUNDO
+========================================================== */
+
+.dashEmpresa
+.dashContent::after {
+  content: "";
+
+  position: absolute;
+
+  inset: 0;
+
+  z-index: 2;
+
+  min-height: 100%;
+
+  pointer-events: none;
+
+  opacity: 0.12;
+
+  background:
+    linear-gradient(
+      125deg,
+      transparent 20%,
+      var(
+        --empresa-cor-secundaria,
+        #084298
+      ) 72%,
+      var(
+        --empresa-cor-primaria,
+        #0d6efd
+      ) 100%
+    );
+}
+
+
+/* ==========================================================
+   SUPER ADMIN SIDEBAR
+========================================================== */
+
+.dashSuperAdmin
+.dashSidebar {
+  background:
+    linear-gradient(
+      180deg,
+      #010713 0%,
+      #031127 50%,
+      #010713 100%
+    );
+}
+
+
+/* ==========================================================
+   EMPRESA SIDEBAR
+
+   Continua escura para não ficar exagerada,
+   mas os detalhes usam as cores da empresa.
+========================================================== */
+
+.dashEmpresa
+.dashSidebar {
+  background:
+    linear-gradient(
+      180deg,
+      #010713 0%,
+      #020c1b 52%,
+      #010713 100%
+    );
+}
+
+
+/* ==========================================================
+   FORMULÁRIOS / CARDS DAS TELAS DE EMPRESA
+
+   ESSA PARTE AJUDA A INTEGRAR AS TELAS ANTIGAS
+   COM A NOVA IDENTIDADE.
+========================================================== */
+
+.dashEmpresa
+.dashContentInner
+button[type="submit"] {
+  transition:
+    transform 0.2s ease,
+    filter 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+
+/* ==========================================================
+   BOTÕES PRINCIPAIS
+
+   Usa cor da empresa quando a tela não definiu
+   uma regra mais específica.
+========================================================== */
+
+.dashEmpresa
+.dashContentInner
+button[type="submit"]:not(.dashLogout) {
+  border-color:
+    transparent;
+}
+
+
+/* ==========================================================
+   INPUT FOCUS GENÉRICO
+
+   Aplica identidade visual da empresa.
+========================================================== */
+
+.dashEmpresa
+.dashContentInner
+input:focus,
+.dashEmpresa
+.dashContentInner
+select:focus,
+.dashEmpresa
+.dashContentInner
+textarea:focus {
+  border-color:
     var(
       --empresa-cor-primaria,
       #0d6efd
     );
 
-  color:
-    #ffffff;
+  outline: none;
 
-  font-size:
-    11px;
-
-  font-weight:
-    800;
-
-  text-transform:
-    uppercase;
-
-  letter-spacing:
-    0.8px;
+  box-shadow:
+    0 0 0 3px
+    rgba(255, 255, 255, 0.035);
 }
 
 
 /* ==========================================================
-   CLASSES GLOBAIS AUXILIARES
+   SCROLL DO CONTEÚDO
+========================================================== */
 
-   Podem ser utilizadas pelas outras páginas.
+.dashContent::-webkit-scrollbar {
+  width: 8px;
+}
+
+
+.dashContent::-webkit-scrollbar-track {
+  background:
+    #020813;
+}
+
+
+.dashContent::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+
+  background:
+    var(
+      --empresa-cor-primaria,
+      #008fe3
+    );
+}
+
+
+/* ==========================================================
+   CLASSES AUXILIARES
 ========================================================== */
 
 .corPrimaria {
@@ -531,76 +1058,172 @@ body,
 
 
 /* ==========================================================
-   MOBILE
+   NOTEBOOK
 ========================================================== */
 
-@media (max-width: 768px) {
-
-  .menuToggle {
-    top: 14px;
-    left: 14px;
-
-    width: 46px;
-    height: 46px;
-
-    font-size: 20px;
-  }
-
+@media (
+  max-width: 1100px
+) {
 
   .dashSidebar {
-    width:
-      min(
-        280px,
-        85vw
-      );
-
-    left:
-      -100%;
+    width: 305px;
   }
 
 
-  .dashSidebar.show {
-    left:
-      0;
-  }
-
-
-  .dashContent {
-    padding:
-      75px 15px 20px;
-
-    background-attachment:
-      scroll;
+  .dashContainer.menu-open
+  .menuToggle {
+    left: 237px;
   }
 }
 
 
 /* ==========================================================
-   TELAS MUITO PEQUENAS
+   TABLET / MOBILE
 ========================================================== */
 
-@media (max-width: 380px) {
+@media (
+  max-width: 768px
+) {
+
+  .menuToggle {
+    top: 14px;
+    left: 14px;
+
+    width: 49px;
+    height: 49px;
+
+    border-radius: 12px;
+
+    font-size: 21px;
+  }
+
+
+  /* ========================================================
+     SIDEBAR
+  ======================================================== */
 
   .dashSidebar {
     width:
-      88vw;
+      min(
+        300px,
+        88vw
+      );
+
+    left: -100%;
 
     padding:
-      18px;
+      18px 16px 20px;
+  }
+
+
+  .dashSidebar.show {
+    left: 0;
+  }
+
+
+  /* ========================================================
+     BOTÃO MENU ABERTO
+  ======================================================== */
+
+  .dashContainer.menu-open
+  .menuToggle {
+    left:
+      calc(
+        min(
+          300px,
+          88vw
+        ) - 62px
+      );
+  }
+
+
+  /* ========================================================
+     LOGO
+  ======================================================== */
+
+  .sidebarLogo {
+    width: 125px;
+    height: 80px;
+  }
+
+
+  /* ========================================================
+     CONTEÚDO
+  ======================================================== */
+
+  .dashContent,
+  .dashContentInner {
+    min-height:
+      100dvh;
+  }
+
+
+  .dashEmpresa
+  .dashContent {
+    background-attachment:
+      scroll;
+  }
+
+
+  /* ========================================================
+     LINKS
+  ======================================================== */
+
+  .dashLink {
+    min-height: 48px;
+
+    padding:
+      0 14px;
+
+    font-size: 14px;
+  }
+
+
+  .dashLogout {
+    min-height: 49px;
+  }
+}
+
+
+/* ==========================================================
+   CELULAR PEQUENO
+========================================================== */
+
+@media (
+  max-width: 380px
+) {
+
+  .dashSidebar {
+    width: 90vw;
+
+    padding:
+      17px 14px;
+  }
+
+
+  .dashContainer.menu-open
+  .menuToggle {
+    left:
+      calc(
+        90vw - 60px
+      );
   }
 
 
   .sidebarLogo {
-    width:
-      110px;
+    width: 110px;
+    height: 72px;
+  }
+
+
+  .sidebarEmpresa {
+    font-size: 15px;
   }
 
 
   .dashLink {
-    font-size:
-      15px;
+    min-height: 46px;
 
-    padding:
-      11px;
+    font-size: 13px;
   }
 }
