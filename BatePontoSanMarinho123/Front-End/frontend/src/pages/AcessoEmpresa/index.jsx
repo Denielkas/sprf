@@ -4,16 +4,17 @@ import { useNavigate } from "react-router-dom";
 import {
   FaEye,
   FaEyeSlash,
-  FaBuilding,
   FaUserShield,
+  FaInstagram,
+  FaWhatsapp,
 } from "react-icons/fa";
 
 import { api } from "../../services/api";
 
-import logoPadrao from "../../assets/logo/Hotel-Sam-Marinho.png";
-import fundoPadrao from "../../assets/logo/hotel-fundo.jpg";
+import logoPadrao from "../../assets/logo/logotipo2.png";
 
 import "./acessoEmpresa.css";
+
 
 /* =========================================================
    NORMALIZAR URL
@@ -46,6 +47,7 @@ function normalizarUrl(url) {
   return `/${valor}`;
 }
 
+
 /* =========================================================
    COMPONENTE
 ========================================================= */
@@ -53,24 +55,79 @@ function normalizarUrl(url) {
 export default function AcessoEmpresa() {
   const navigate = useNavigate();
 
+
   /* =========================================================
-     FORMULÁRIO
+     LEMBRAR LOGIN
   ========================================================= */
 
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [
+    lembrarUsuario,
+    setLembrarUsuario,
+  ] = useState(() => {
+    return (
+      localStorage.getItem("lembrar_login") === "true"
+    );
+  });
 
-  const [showPassword, setShowPassword] = useState(false);
+
+  /* =========================================================
+     USUÁRIO
+  ========================================================= */
+
+  const [
+    username,
+    setUsername,
+  ] = useState(() => {
+    const lembrar =
+      localStorage.getItem("lembrar_login") === "true";
+
+    if (!lembrar) {
+      return "";
+    }
+
+    return (
+      localStorage.getItem("ultimo_usuario") || ""
+    );
+  });
+
+
+  /* =========================================================
+     SENHA
+  ========================================================= */
+
+  const [
+    password,
+    setPassword,
+  ] = useState("");
+
+
+  const [
+    showPassword,
+    setShowPassword,
+  ] = useState(false);
+
 
   /* =========================================================
      ESTADOS
   ========================================================= */
 
-  const [loading, setLoading] = useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [msg, setMsg] = useState("");
 
-  const [erro, setErro] = useState(false);
+  const [
+    msg,
+    setMsg,
+  ] = useState("");
+
+
+  const [
+    erro,
+    setErro,
+  ] = useState(false);
+
 
   /* =========================================================
      LIMPAR SESSÃO ANTERIOR
@@ -87,10 +144,57 @@ export default function AcessoEmpresa() {
 
     localStorage.removeItem("empresa_nome");
 
+    localStorage.removeItem("identidade_empresa");
+  }
+
+
+  /* =========================================================
+     SALVAR / REMOVER USUÁRIO LEMBRADO
+  ========================================================= */
+
+  function salvarUsuarioLembrado(usuario) {
+    if (lembrarUsuario) {
+      localStorage.setItem(
+        "lembrar_login",
+        "true"
+      );
+
+      localStorage.setItem(
+        "ultimo_usuario",
+        usuario.trim()
+      );
+
+      return;
+    }
+
     localStorage.removeItem(
-      "identidade_empresa"
+      "lembrar_login"
+    );
+
+    localStorage.removeItem(
+      "ultimo_usuario"
     );
   }
+
+
+  /* =========================================================
+     ALTERAR LEMBRAR USUÁRIO
+  ========================================================= */
+
+  function alterarLembrarUsuario(marcado) {
+    setLembrarUsuario(marcado);
+
+    if (!marcado) {
+      localStorage.removeItem(
+        "lembrar_login"
+      );
+
+      localStorage.removeItem(
+        "ultimo_usuario"
+      );
+    }
+  }
+
 
   /* =========================================================
      SALVAR IDENTIDADE DA EMPRESA
@@ -100,6 +204,7 @@ export default function AcessoEmpresa() {
     empresa,
     usuario
   ) {
+
     /* =======================================================
        ID
     ======================================================= */
@@ -108,11 +213,13 @@ export default function AcessoEmpresa() {
       empresa?.id ||
       usuario?.empresa_id;
 
+
     if (!empresaId) {
       throw new Error(
         "ID da empresa não encontrado."
       );
     }
+
 
     /* =======================================================
        NOME
@@ -125,12 +232,9 @@ export default function AcessoEmpresa() {
       usuario?.empresa_nome ||
       "Empresa";
 
+
     /* =======================================================
        LOGO
-
-       O backend do login deve retornar:
-
-       /api/empresas/ID/logo
     ======================================================= */
 
     let logoUrl =
@@ -138,10 +242,6 @@ export default function AcessoEmpresa() {
         empresa?.logo_url
       );
 
-    /*
-      Caso o backend tenha retornado o nome do arquivo,
-      mas não tenha retornado logo_url, montamos a rota.
-    */
 
     if (
       !logoUrl &&
@@ -150,6 +250,7 @@ export default function AcessoEmpresa() {
       logoUrl =
         `/api/empresas/${empresaId}/logo`;
     }
+
 
     /* =======================================================
        FUNDO
@@ -161,6 +262,7 @@ export default function AcessoEmpresa() {
         empresa?.dashboard_background_url
       );
 
+
     if (
       !fundoUrl &&
       empresa?.fundo_arquivo
@@ -169,15 +271,13 @@ export default function AcessoEmpresa() {
         `/api/empresas/${empresaId}/fundo`;
     }
 
+
     /* =======================================================
        IDENTIDADE
     ======================================================= */
 
     const identidade = {
-      id:
-        Number(
-          empresaId
-        ),
+      id: Number(empresaId),
 
       nome,
 
@@ -216,16 +316,16 @@ export default function AcessoEmpresa() {
         fundoUrl,
     };
 
+
     /* =======================================================
        SALVAR ID
     ======================================================= */
 
     localStorage.setItem(
       "empresa_id",
-      String(
-        empresaId
-      )
+      String(empresaId)
     );
+
 
     /* =======================================================
        SALVAR NOME
@@ -236,16 +336,16 @@ export default function AcessoEmpresa() {
       nome
     );
 
+
     /* =======================================================
-       SALVAR IDENTIDADE COMPLETA
+       SALVAR IDENTIDADE
     ======================================================= */
 
     localStorage.setItem(
       "identidade_empresa",
-      JSON.stringify(
-        identidade
-      )
+      JSON.stringify(identidade)
     );
+
 
     /* =======================================================
        DEBUG
@@ -284,8 +384,10 @@ export default function AcessoEmpresa() {
       "=========================================="
     );
 
+
     return identidade;
   }
+
 
   /* =========================================================
      LOGIN
@@ -294,9 +396,11 @@ export default function AcessoEmpresa() {
   async function onSubmit(e) {
     e.preventDefault();
 
+
     if (loading) {
       return;
     }
+
 
     /* =======================================================
        VALIDAR
@@ -315,6 +419,7 @@ export default function AcessoEmpresa() {
       return;
     }
 
+
     setLoading(true);
 
     setErro(false);
@@ -323,7 +428,9 @@ export default function AcessoEmpresa() {
       "Identificando acesso..."
     );
 
+
     try {
+
       /* =====================================================
          FAZER LOGIN
       ===================================================== */
@@ -339,11 +446,13 @@ export default function AcessoEmpresa() {
           }
         );
 
+
       const data =
         resposta.data;
 
+
       /* =====================================================
-         DEBUG DA RESPOSTA
+         DEBUG
       ===================================================== */
 
       console.log(
@@ -354,9 +463,7 @@ export default function AcessoEmpresa() {
         "🔐 RESPOSTA COMPLETA DO LOGIN:"
       );
 
-      console.log(
-        data
-      );
+      console.log(data);
 
       console.log(
         "👤 USUÁRIO:"
@@ -378,36 +485,40 @@ export default function AcessoEmpresa() {
         "=========================================="
       );
 
+
       /* =====================================================
          VALIDAR RESPOSTA
       ===================================================== */
 
-      if (
-        !data?.token
-      ) {
+      if (!data?.token) {
         throw new Error(
           "Token não recebido pelo servidor."
         );
       }
 
-      if (
-        !data?.usuario
-      ) {
+
+      if (!data?.usuario) {
         throw new Error(
           "Dados do usuário não recebidos."
         );
       }
 
+
+      /* =====================================================
+         SALVAR USUÁRIO LEMBRADO
+      ===================================================== */
+
+      salvarUsuarioLembrado(
+        username
+      );
+
+
       /* =====================================================
          LIMPAR SESSÃO ANTIGA
-
-         Isso é muito importante em multiempresa.
-
-         Se entrar Empresa A e depois Empresa B,
-         não podemos deixar logo/fundo da Empresa A.
       ===================================================== */
 
       limparSessaoAnterior();
+
 
       /* =====================================================
          TOKEN
@@ -417,6 +528,7 @@ export default function AcessoEmpresa() {
         "token",
         data.token
       );
+
 
       /* =====================================================
          USUÁRIO
@@ -429,6 +541,7 @@ export default function AcessoEmpresa() {
         )
       );
 
+
       /* =====================================================
          ROLE
       ===================================================== */
@@ -438,6 +551,7 @@ export default function AcessoEmpresa() {
         data.usuario.role
       );
 
+
       /* =====================================================
          SUPER ADMIN
       ===================================================== */
@@ -446,11 +560,6 @@ export default function AcessoEmpresa() {
         data.usuario.role ===
         "super_admin"
       ) {
-        /*
-          Super Admin não pertence
-          a nenhuma empresa.
-        */
-
         localStorage.removeItem(
           "empresa_id"
         );
@@ -463,9 +572,11 @@ export default function AcessoEmpresa() {
           "identidade_empresa"
         );
 
+
         setMsg(
           "Acesso administrativo realizado."
         );
+
 
         navigate(
           data.redirect ||
@@ -475,8 +586,10 @@ export default function AcessoEmpresa() {
           }
         );
 
+
         return;
       }
+
 
       /* =====================================================
          VALIDAR EMPRESA
@@ -486,22 +599,16 @@ export default function AcessoEmpresa() {
         data?.empresa?.id ||
         data?.usuario?.empresa_id;
 
+
       if (!empresaId) {
         throw new Error(
           "Este usuário não possui empresa vinculada."
         );
       }
 
+
       /* =====================================================
          MONTAR EMPRESA
-
-         IMPORTANTE:
-
-         NÃO fazemos mais:
-
-         GET /empresas/:id
-
-         O próprio login já deve trazer os dados da empresa.
       ===================================================== */
 
       const empresa = {
@@ -517,15 +624,9 @@ export default function AcessoEmpresa() {
           "Empresa",
       };
 
+
       /* =====================================================
          SALVAR IDENTIDADE
-
-         É aqui que ficam:
-
-         logo_url
-         fundo_url
-         cores
-         empresa_id
       ===================================================== */
 
       const identidade =
@@ -534,8 +635,9 @@ export default function AcessoEmpresa() {
           data.usuario
         );
 
+
       /* =====================================================
-         CONFERIR O QUE FOI SALVO
+         CONFERIR
       ===================================================== */
 
       console.log(
@@ -550,6 +652,7 @@ export default function AcessoEmpresa() {
         )
       );
 
+
       /* =====================================================
          RH
       ===================================================== */
@@ -562,6 +665,7 @@ export default function AcessoEmpresa() {
           "Acesso RH realizado."
         );
 
+
         navigate(
           data.redirect ||
           "/app/registrar-funcionario",
@@ -570,8 +674,10 @@ export default function AcessoEmpresa() {
           }
         );
 
+
         return;
       }
+
 
       /* =====================================================
          TERMINAL DE PONTO
@@ -585,6 +691,7 @@ export default function AcessoEmpresa() {
           "Terminal de ponto identificado."
         );
 
+
         navigate(
           data.redirect ||
           "/ponto",
@@ -593,8 +700,10 @@ export default function AcessoEmpresa() {
           }
         );
 
+
         return;
       }
+
 
       /* =====================================================
          ROLE ANTIGA
@@ -609,6 +718,7 @@ export default function AcessoEmpresa() {
         );
       }
 
+
       /* =====================================================
          ROLE INVÁLIDA
       ===================================================== */
@@ -618,16 +728,15 @@ export default function AcessoEmpresa() {
       );
 
     } catch (err) {
+
       console.error(
         "Erro no acesso:",
         err
       );
 
-      /* =====================================================
-         SE LOGIN FALHAR, LIMPAR TUDO
-      ===================================================== */
 
       limparSessaoAnterior();
+
 
       const mensagem =
         err.response
@@ -636,81 +745,80 @@ export default function AcessoEmpresa() {
         err.message ||
         "Não foi possível realizar o acesso.";
 
+
       setErro(true);
 
-      setMsg(
-        mensagem
-      );
+      setMsg(mensagem);
 
     } finally {
+
       setLoading(false);
+
     }
   }
+
 
   /* =========================================================
      JSX
   ========================================================= */
 
   return (
-    <div
-      className="acessoEmpresaScreen"
+    <div className="acessoEmpresaScreen">
 
-      style={{
-        backgroundImage: `
-          linear-gradient(
-            rgba(0, 0, 0, 0.62),
-            rgba(0, 0, 0, 0.72)
-          ),
-          url("${fundoPadrao}")
-        `,
-      }}
-    >
+
+      {/* =====================================================
+          EFEITOS DECORATIVOS
+      ===================================================== */}
+
+      <div
+        className="
+          acessoEmpresaGlow
+          acessoEmpresaGlow1
+        "
+      />
+
+      <div
+        className="
+          acessoEmpresaGlow
+          acessoEmpresaGlow2
+        "
+      />
+
+
+      {/* =====================================================
+          CARD
+      ===================================================== */}
 
       <div className="acessoEmpresaCard">
 
+
         {/* =================================================
-            LOGO PADRÃO DO SISTEMA
-
-            Aqui ainda é a tela de LOGIN.
-
-            Portanto mostramos a logo padrão.
-
-            A logo da EMPRESA aparecerá depois que
-            o usuário ponto_empresa entrar.
+            LOGO
         ================================================= */}
 
         <div className="acessoEmpresaLogoArea">
 
           <img
             src={logoPadrao}
-
-            alt="Sistema de Ponto"
-
+            alt="DEK Engenharia de Software"
             className="acessoEmpresaLogo"
           />
 
         </div>
 
+
         {/* =================================================
-            CABEÇALHO
+            TEXTO
         ================================================= */}
 
         <div className="acessoEmpresaHeader">
 
-          <div className="acessoEmpresaIcon">
-            <FaBuilding />
-          </div>
-
-          <h1>
-            Sistema de Ponto
-          </h1>
-
           <p>
-            Informe seu usuário e senha
-            para acessar o sistema.
+            Acesse sua conta para continuar
           </p>
 
         </div>
+
 
         {/* =================================================
             FORMULÁRIO
@@ -718,28 +826,23 @@ export default function AcessoEmpresa() {
 
         <form
           className="acessoEmpresaForm"
-
-          onSubmit={
-            onSubmit
-          }
+          onSubmit={onSubmit}
+          autoComplete="off"
         >
+
 
           {/* =================================================
               USUÁRIO
           ================================================= */}
 
-          <div className="acessoEmpresaGroup">
-
-            <label>
-              Usuário
-            </label>
+          <div className="acessoFloatingGroup">
 
             <input
+              id="acesso-usuario"
               type="text"
+              name="usuario_sistema"
 
-              value={
-                username
-              }
+              value={username}
 
               onChange={(e) =>
                 setUsername(
@@ -747,107 +850,154 @@ export default function AcessoEmpresa() {
                 )
               }
 
-              placeholder="Digite seu usuário"
+              placeholder=" "
 
-              autoComplete="username"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck="false"
 
               required
 
-              disabled={
-                loading
-              }
+              disabled={loading}
             />
 
+
+            <label
+              htmlFor="acesso-usuario"
+            >
+              Usuário
+            </label>
+
           </div>
+
 
           {/* =================================================
               SENHA
           ================================================= */}
 
-          <div className="acessoEmpresaGroup">
+          <div
+            className="
+              acessoFloatingGroup
+              acessoSenhaWrapper
+            "
+          >
 
-            <label>
+            <input
+              id="acesso-senha"
+
+              type={
+                showPassword
+                  ? "text"
+                  : "password"
+              }
+
+              name="senha_sistema"
+
+              value={password}
+
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+
+              placeholder=" "
+
+              autoComplete="new-password"
+
+              required
+
+              disabled={loading}
+            />
+
+
+            <label
+              htmlFor="acesso-senha"
+            >
               Senha
             </label>
 
-            <div className="acessoSenhaWrapper">
 
-              <input
-                type={
-                  showPassword
-                    ? "text"
-                    : "password"
-                }
+            <button
+              type="button"
 
-                value={
-                  password
-                }
+              className="acessoEyeButton"
 
-                onChange={(e) =>
-                  setPassword(
-                    e.target.value
-                  )
-                }
+              onClick={() =>
+                setShowPassword(
+                  (valor) => !valor
+                )
+              }
 
-                placeholder="Digite sua senha"
+              aria-label={
+                showPassword
+                  ? "Ocultar senha"
+                  : "Mostrar senha"
+              }
 
-                autoComplete="current-password"
+              tabIndex="-1"
+            >
 
-                required
+              {showPassword ? (
+                <FaEyeSlash />
+              ) : (
+                <FaEye />
+              )}
 
-                disabled={
-                  loading
-                }
-              />
-
-              <button
-                type="button"
-
-                className="acessoEyeButton"
-
-                onClick={() =>
-                  setShowPassword(
-                    (valor) =>
-                      !valor
-                  )
-                }
-
-                aria-label={
-                  showPassword
-                    ? "Ocultar senha"
-                    : "Mostrar senha"
-                }
-              >
-
-                {showPassword ? (
-                  <FaEyeSlash />
-                ) : (
-                  <FaEye />
-                )}
-
-              </button>
-
-            </div>
+            </button>
 
           </div>
 
+
           {/* =================================================
-              BOTÃO ENTRAR
+              LEMBRAR USUÁRIO
+          ================================================= */}
+
+          <label className="acessoLembrar">
+
+            <input
+              type="checkbox"
+
+              checked={lembrarUsuario}
+
+              onChange={(e) =>
+                alterarLembrarUsuario(
+                  e.target.checked
+                )
+              }
+            />
+
+
+            <span
+              className="acessoLembrarCheck"
+            />
+
+
+            <span className="acessoLembrarTexto">
+              Lembrar meu usuário neste dispositivo
+            </span>
+
+          </label>
+
+
+          {/* =================================================
+              BOTÃO
           ================================================= */}
 
           <button
             type="submit"
-
             className="acessoEmpresaButton"
-
-            disabled={
-              loading
-            }
+            disabled={loading}
           >
-            {loading
-              ? "Entrando..."
-              : "Entrar"}
+
+            <span>
+              {loading
+                ? "Entrando..."
+                : "Entrar"}
+            </span>
+
           </button>
+
 
           {/* =================================================
               MENSAGEM
@@ -855,11 +1005,10 @@ export default function AcessoEmpresa() {
 
           {msg && (
             <div
-              className={`acessoEmpresaMsg ${
-                erro
+              className={`acessoEmpresaMsg ${erro
                   ? "acessoEmpresaMsgErro"
                   : ""
-              }`}
+                }`}
             >
               {msg}
             </div>
@@ -867,21 +1016,84 @@ export default function AcessoEmpresa() {
 
         </form>
 
+
         {/* =================================================
-            RODAPÉ
+            ACESSO SEGURO
+            CONTINUA DENTRO DO CARD
         ================================================= */}
 
         <div className="acessoEmpresaFooter">
 
-          <FaUserShield />
+          <div className="acessoEmpresaSeguranca">
 
-          <span>
-            Acesso seguro ao sistema
-          </span>
+            <FaUserShield />
+
+            <span>
+              Acesso seguro ao sistema
+            </span>
+
+          </div>
 
         </div>
 
       </div>
+
+
+      {/* =====================================================
+    RODAPÉ PROFISSIONAL DA PÁGINA
+===================================================== */}
+
+      <footer className="acessoRodapePagina">
+
+        <div className="acessoRodapeConteudo">
+
+          {/* MARCA */}
+
+          <div className="acessoRodapeMarca">
+            <span className="acessoRodapeCopyright">
+              © 2026
+            </span>
+
+            <span className="acessoRodapeSeparador" />
+
+            <span className="acessoRodapeNome">
+              DEK Engenharia de Software
+            </span>
+          </div>
+
+
+          {/* REDES SOCIAIS */}
+
+          <div className="acessoRodapeRedes">
+
+            <a
+              href="https://www.instagram.com/dek_sistemas/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="acessoRodapeSocial"
+              aria-label="Instagram da DEK"
+              title="Instagram"
+            >
+              <FaInstagram />
+            </a>
+
+
+            <a
+              href="https://wa.me/5542984084929"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="acessoRodapeSocial"
+              aria-label="WhatsApp da DEK"
+              title="WhatsApp"
+            >
+              <FaWhatsapp />
+            </a>
+
+          </div>
+
+        </div>
+
+      </footer>
 
     </div>
   );
