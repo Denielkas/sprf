@@ -12,6 +12,12 @@ from app.database import (
     garantir_tabela_face,
 )
 
+from app.offline.face_cache import (
+    substituir_faces_empresa,
+    carregar_faces_locais,
+    info_cache_empresa,
+)
+
 import numpy as np
 import os
 import threading
@@ -48,16 +54,14 @@ CACHE_SECONDS = int(
 
 
 # ==========================================================
-# CACHE DOS EMBEDDINGS
+# CACHE DOS EMBEDDINGS EM MEMÓRIA
 #
 # Cada empresa possui seu próprio cache.
 #
-# Exemplo:
+# Esse cache é somente para desempenho.
 #
-# _cache[1] -> rostos da empresa 1
-# _cache[6] -> rostos da empresa 6
-#
-# Nunca misturar rostos entre empresas.
+# O SQLite é o cache persistente para funcionamento
+# sem internet.
 # ==========================================================
 
 _cache = {}
@@ -66,7 +70,96 @@ _cache_lock = threading.Lock()
 
 
 # ==========================================================
-# LIMPAR CACHE
+# VALIDAR EMPRESA
+# ==========================================================
+
+def validar_empresa_id(
+    empresa_id
+):
+
+    if empresa_id is None:
+
+        raise ValueError(
+            "empresa_id é obrigatório."
+        )
+
+
+    try:
+
+        empresa_id = int(
+            empresa_id
+        )
+
+    except Exception:
+
+        raise ValueError(
+            "empresa_id inválido."
+        )
+
+
+    if empresa_id <= 0:
+
+        raise ValueError(
+            "empresa_id inválido."
+        )
+
+
+    return empresa_id
+
+
+# ==========================================================
+# CRIAR CACHE VAZIO
+# ==========================================================
+
+def criar_cache_vazio(
+    empresa_id,
+    fonte="nenhuma"
+):
+
+    return {
+
+        "embeddings":
+            np.empty(
+                (
+                    0,
+                    128
+                ),
+                dtype=np.float64
+            ),
+
+        "foto_ids":
+            np.asarray(
+                [],
+                dtype=np.int64
+            ),
+
+        "funcionario_ids":
+            np.asarray(
+                [],
+                dtype=np.int64
+            ),
+
+        "nomes":
+            [],
+
+        "empresa_ids":
+            [],
+
+        "empresa_id":
+            int(
+                empresa_id
+            ),
+
+        "fonte":
+            fonte,
+
+        "carregado_em":
+            time.time(),
+    }
+
+
+# ==========================================================
+# LIMPAR CACHE EM MEMÓRIA
 # ==========================================================
 
 def limpar_cache_faces(
@@ -82,7 +175,7 @@ def limpar_cache_faces(
             _cache = {}
 
             print(
-                "♻️ Cache facial totalmente limpo."
+                "♻️ Cache facial em memória totalmente limpo."
             )
 
             return
@@ -110,24 +203,13 @@ def limpar_cache_faces(
         )
 
         print(
-            "♻️ Cache facial limpo para empresa:",
+            "♻️ Cache facial em memória limpo para empresa:",
             chave
         )
 
 
 # ==========================================================
-# DIAGNÓSTICO DOS ROSTOS
-#
-# Serve para mostrar no terminal:
-#
-# - foto
-# - funcionário
-# - empresa
-# - funcionário ativo/inativo
-# - empresa ativa/inativa
-# - tamanho do embedding
-#
-# Isso NÃO altera o reconhecimento.
+# DIAGNÓSTICO DOS ROSTOS DO POSTGRESQL
 # ==========================================================
 
 def diagnosticar_faces(
@@ -331,48 +413,535 @@ def diagnosticar_faces(
 
 
 # ==========================================================
-# CARREGAR EMBEDDINGS
+# MONTAR MATRIZ/CACHE
+#
+# Essa função recebe uma lista padronizada:
+#
+# {
+#   foto_id,
+#   funcionario_id,
+#   embedding,
+#   nome,
+#   empresa_id
+# }
+#
+# Pode vir:
+# - PostgreSQL
+# - SQLite
+#
+# O restante do reconhecimento não precisa saber
+# de onde os dados vieram.
 # ==========================================================
 
-def carregar_embeddings(
-    empresa_id
+def montar_cache_embeddings(
+    empresa_id,
+    registros,
+    fonte
 ):
 
-    conn = None
-    cur = None
+    empresa_id = validar_empresa_id(
+        empresa_id
+    )
 
-    try:
+
+    embeddings = []
+
+    foto_ids = []
+
+    funcionario_ids = []
+
+    nomes = []
+
+    empresa_ids = []
+
+
+    # ======================================================
+    # PREPARAR EMBEDDINGS
+    # ======================================================
+
+    for registro in registros:
+
+        foto_id = registro.get(
+            "foto_id"
+        )
+
+        funcionario_id = registro.get(
+            "funcionario_id"
+        )
+
+        embedding = registro.get(
+            "embedding"
+        )
+
+        nome = registro.get(
+            "nome"
+        )
+
+        funcionario_empresa_id = registro.get(
+            "empresa_id"
+        )
+
 
         # ==================================================
-        # VALIDAR EMPRESA
+        # CAMPOS OBRIGATÓRIOS
         # ==================================================
 
-        if empresa_id is None:
+        if funcionario_id is None:
 
-            raise ValueError(
-                "empresa_id é obrigatório para o reconhecimento facial."
+            print(
+                "⚠️ Registro facial sem funcionario_id ignorado."
             )
 
+            continue
+
+
+        if funcionario_empresa_id is None:
+
+            print(
+                "⚠️ Registro facial sem empresa_id ignorado."
+            )
+
+            continue
+
+
+        # ==================================================
+        # PROTEÇÃO DE EMPRESA
+        # ==================================================
 
         try:
 
-            empresa_id = int(
-                empresa_id
+            funcionario_empresa_id = int(
+                funcionario_empresa_id
             )
 
         except Exception:
 
-            raise ValueError(
-                "empresa_id inválido."
+            print(
+                "⚠️ empresa_id inválido no registro facial."
             )
 
+            continue
 
-        if empresa_id <= 0:
 
-            raise ValueError(
-                "empresa_id inválido."
+        if (
+            funcionario_empresa_id
+            !=
+            empresa_id
+        ):
+
+            print(
+                "⛔ Rosto ignorado por pertencer a outra empresa."
             )
 
+            print(
+                "Funcionário:",
+                funcionario_id
+            )
+
+            print(
+                "Empresa funcionário:",
+                funcionario_empresa_id
+            )
+
+            print(
+                "Empresa terminal:",
+                empresa_id
+            )
+
+            continue
+
+
+        # ==================================================
+        # EMBEDDING
+        # ==================================================
+
+        if embedding is None:
+
+            print(
+                "⚠️ Embedding vazio ignorado:",
+                foto_id
+            )
+
+            continue
+
+
+        try:
+
+            tamanho_embedding = len(
+                embedding
+            )
+
+        except Exception:
+
+            tamanho_embedding = 0
+
+
+        if tamanho_embedding != 128:
+
+            print(
+                "⚠️ Embedding inválido ignorado."
+            )
+
+            print(
+                "Foto:",
+                foto_id
+            )
+
+            print(
+                "Funcionário:",
+                funcionario_id
+            )
+
+            print(
+                "Tamanho:",
+                tamanho_embedding
+            )
+
+            continue
+
+
+        # ==================================================
+        # NUMPY
+        # ==================================================
+
+        try:
+
+            embedding_np = np.asarray(
+                embedding,
+                dtype=np.float64
+            )
+
+        except Exception as error:
+
+            print(
+                "⚠️ Erro convertendo embedding:",
+                foto_id,
+                repr(
+                    error
+                )
+            )
+
+            continue
+
+
+        if embedding_np.shape != (128,):
+
+            print(
+                "⚠️ Formato de embedding inválido:",
+                foto_id,
+                embedding_np.shape
+            )
+
+            continue
+
+
+        # ==================================================
+        # FOTO ID
+        #
+        # SQLite também possui seu próprio ID.
+        # ==================================================
+
+        try:
+
+            foto_id = int(
+                foto_id
+            )
+
+        except Exception:
+
+            foto_id = 0
+
+
+        # ==================================================
+        # FUNCIONÁRIO ID
+        # ==================================================
+
+        try:
+
+            funcionario_id = int(
+                funcionario_id
+            )
+
+        except Exception:
+
+            print(
+                "⚠️ funcionario_id inválido:",
+                funcionario_id
+            )
+
+            continue
+
+
+        # ==================================================
+        # ADICIONAR
+        # ==================================================
+
+        embeddings.append(
+            embedding_np
+        )
+
+        foto_ids.append(
+            foto_id
+        )
+
+        funcionario_ids.append(
+            funcionario_id
+        )
+
+        nomes.append(
+            str(
+                nome or
+                "Funcionário"
+            )
+        )
+
+        empresa_ids.append(
+            funcionario_empresa_id
+        )
+
+
+        print(
+            "✅ Rosto carregado:",
+            {
+                "foto_id":
+                    foto_id,
+
+                "funcionario_id":
+                    funcionario_id,
+
+                "nome":
+                    str(
+                        nome or
+                        "Funcionário"
+                    ),
+
+                "empresa_id":
+                    funcionario_empresa_id,
+
+                "fonte":
+                    fonte,
+            }
+        )
+
+
+    # ======================================================
+    # MATRIZ
+    # ======================================================
+
+    if embeddings:
+
+        matriz = np.vstack(
+            embeddings
+        ).astype(
+            np.float64
+        )
+
+    else:
+
+        matriz = np.empty(
+            (
+                0,
+                128
+            ),
+            dtype=np.float64
+        )
+
+
+    # ======================================================
+    # RESULTADO
+    # ======================================================
+
+    resultado = {
+
+        "embeddings":
+            matriz,
+
+        "foto_ids":
+            np.asarray(
+                foto_ids,
+                dtype=np.int64
+            ),
+
+        "funcionario_ids":
+            np.asarray(
+                funcionario_ids,
+                dtype=np.int64
+            ),
+
+        "nomes":
+            nomes,
+
+        "empresa_ids":
+            empresa_ids,
+
+        "empresa_id":
+            empresa_id,
+
+        "fonte":
+            fonte,
+
+        "carregado_em":
+            time.time(),
+    }
+
+
+    print(
+        ""
+    )
+
+    print(
+        "=========================================="
+    )
+
+    print(
+        "⚡ CACHE FACIAL CARREGADO"
+    )
+
+    print(
+        "🏢 EMPRESA:",
+        empresa_id
+    )
+
+    print(
+        "📦 FONTE:",
+        fonte
+    )
+
+    print(
+        "👤 EMBEDDINGS VÁLIDOS:",
+        matriz.shape[0]
+    )
+
+    print(
+        "🧠 FORMATO DA MATRIZ:",
+        matriz.shape
+    )
+
+    print(
+        "=========================================="
+    )
+
+    print(
+        ""
+    )
+
+
+    return resultado
+
+
+# ==========================================================
+# CARREGAR DO SQLITE
+# ==========================================================
+
+def carregar_embeddings_sqlite(
+    empresa_id
+):
+
+    empresa_id = validar_empresa_id(
+        empresa_id
+    )
+
+
+    print(
+        ""
+    )
+
+    print(
+        "=========================================="
+    )
+
+    print(
+        "📴 CARREGANDO ROSTOS DO CACHE LOCAL"
+    )
+
+    print(
+        "🏢 Empresa:",
+        empresa_id
+    )
+
+    print(
+        "=========================================="
+    )
+
+
+    faces = carregar_faces_locais(
+        empresa_id
+    )
+
+
+    print(
+        "📸 Faces encontradas no SQLite:",
+        len(
+            faces
+        )
+    )
+
+
+    registros = []
+
+
+    for face in faces:
+
+        registros.append(
+            {
+                "foto_id":
+                    face.get(
+                        "id"
+                    ),
+
+                "funcionario_id":
+                    face.get(
+                        "funcionario_id"
+                    ),
+
+                "embedding":
+                    face.get(
+                        "embedding"
+                    ),
+
+                "nome":
+                    face.get(
+                        "nome"
+                    ),
+
+                "empresa_id":
+                    face.get(
+                        "empresa_id"
+                    ),
+            }
+        )
+
+
+    return montar_cache_embeddings(
+        empresa_id,
+        registros,
+        "cache_local"
+    )
+
+
+# ==========================================================
+# CARREGAR DO POSTGRESQL
+#
+# Quando der certo:
+# 1. busca dados oficiais;
+# 2. monta cache;
+# 3. atualiza SQLite.
+# ==========================================================
+
+def carregar_embeddings_postgresql(
+    empresa_id
+):
+
+    empresa_id = validar_empresa_id(
+        empresa_id
+    )
+
+
+    conn = None
+    cur = None
+
+
+    try:
 
         # ==================================================
         # GARANTIR ESTRUTURA
@@ -382,7 +951,7 @@ def carregar_embeddings(
 
 
         # ==================================================
-        # BANCO
+        # CONECTAR
         # ==================================================
 
         conn = get_db()
@@ -392,9 +961,6 @@ def carregar_embeddings(
 
         # ==================================================
         # DIAGNÓSTICO
-        #
-        # Mostra TODOS os rostos existentes para podermos
-        # verificar a qual empresa pertencem.
         # ==================================================
 
         diagnosticar_faces(
@@ -404,11 +970,7 @@ def carregar_embeddings(
 
 
         # ==================================================
-        # BUSCAR SOMENTE ROSTOS DA EMPRESA ATUAL
-        #
-        # ESTA É A PROTEÇÃO PRINCIPAL.
-        #
-        # Empresa X nunca carrega funcionário da Empresa Y.
+        # BUSCAR SOMENTE EMPRESA ATUAL
         # ==================================================
 
         cur.execute(
@@ -447,7 +1009,7 @@ def carregar_embeddings(
         )
 
         print(
-            "📋 RESULTADO DO FILTRO DA EMPRESA"
+            "📋 RESULTADO DO POSTGRESQL"
         )
 
         print(
@@ -456,7 +1018,7 @@ def carregar_embeddings(
         )
 
         print(
-            "📸 Registros retornados pela consulta:",
+            "📸 Registros:",
             len(
                 rows
             )
@@ -467,20 +1029,8 @@ def carregar_embeddings(
         )
 
 
-        embeddings = []
+        registros = []
 
-        foto_ids = []
-
-        funcionario_ids = []
-
-        nomes = []
-
-        empresa_ids = []
-
-
-        # ==================================================
-        # PREPARAR EMBEDDINGS
-        # ==================================================
 
         for (
             foto_id,
@@ -490,279 +1040,127 @@ def carregar_embeddings(
             funcionario_empresa_id
         ) in rows:
 
-            # ==================================================
-            # EMBEDDING VAZIO
-            # ==================================================
-
-            if embedding is None:
-
-                print(
-                    "⚠️ Foto ignorada porque embedding está vazio:",
-                    foto_id
-                )
-
-                continue
-
-
-            # ==================================================
-            # VALIDAR TAMANHO
-            # ==================================================
-
-            try:
-
-                tamanho_embedding = len(
-                    embedding
-                )
-
-            except Exception:
-
-                tamanho_embedding = 0
-
-
-            if tamanho_embedding != 128:
-
-                print(
-                    "⚠️ Embedding inválido ignorado."
-                )
-
-                print(
-                    "Foto:",
-                    foto_id
-                )
-
-                print(
-                    "Funcionário:",
-                    funcionario_id
-                )
-
-                print(
-                    "Tamanho:",
-                    tamanho_embedding
-                )
-
-                continue
-
-
-            # ==================================================
-            # SEGUNDA PROTEÇÃO DE EMPRESA
-            # ==================================================
-
-            if (
-                int(
-                    funcionario_empresa_id
-                )
-                !=
-                empresa_id
-            ):
-
-                print(
-                    "⛔ Rosto ignorado por pertencer a outra empresa."
-                )
-
-                print(
-                    "Funcionário:",
-                    funcionario_id
-                )
-
-                print(
-                    "Empresa do funcionário:",
-                    funcionario_empresa_id
-                )
-
-                print(
-                    "Empresa do terminal:",
-                    empresa_id
-                )
-
-                continue
-
-
-            # ==================================================
-            # CONVERTER EMBEDDING
-            # ==================================================
-
-            try:
-
-                embedding_np = np.asarray(
-                    embedding,
-                    dtype=np.float64
-                )
-
-            except Exception as error:
-
-                print(
-                    "⚠️ Erro convertendo embedding da foto:",
-                    foto_id,
-                    repr(
-                        error
-                    )
-                )
-
-                continue
-
-
-            if embedding_np.shape != (128,):
-
-                print(
-                    "⚠️ Formato de embedding inválido:",
-                    foto_id,
-                    embedding_np.shape
-                )
-
-                continue
-
-
-            # ==================================================
-            # ADICIONAR
-            # ==================================================
-
-            embeddings.append(
-                embedding_np
-            )
-
-            foto_ids.append(
-                int(
-                    foto_id
-                )
-            )
-
-            funcionario_ids.append(
-                int(
-                    funcionario_id
-                )
-            )
-
-            nomes.append(
-                str(
-                    nome
-                )
-            )
-
-            empresa_ids.append(
-                int(
-                    funcionario_empresa_id
-                )
-            )
-
-
-            print(
-                "✅ Rosto carregado:",
+            registros.append(
                 {
                     "foto_id":
-                        int(
-                            foto_id
-                        ),
+                        foto_id,
 
                     "funcionario_id":
-                        int(
-                            funcionario_id
-                        ),
+                        funcionario_id,
+
+                    "embedding":
+                        embedding,
 
                     "nome":
-                        str(
-                            nome
-                        ),
+                        nome,
 
                     "empresa_id":
-                        int(
-                            funcionario_empresa_id
-                        ),
+                        funcionario_empresa_id,
                 }
             )
 
 
         # ==================================================
-        # MATRIZ
+        # MONTAR CACHE
         # ==================================================
 
-        if embeddings:
+        resultado = montar_cache_embeddings(
+            empresa_id,
+            registros,
+            "postgresql"
+        )
 
-            matriz = np.vstack(
-                embeddings
-            ).astype(
-                np.float64
+
+        # ==================================================
+        # ATUALIZAR SQLITE
+        #
+        # Somente substituímos o cache local depois que
+        # a consulta PostgreSQL terminou corretamente.
+        #
+        # Se PostgreSQL estiver fora do ar, nunca apagamos
+        # o cache local antigo.
+        # ==================================================
+
+        faces_para_salvar = []
+
+
+        for indice in range(
+            resultado[
+                "embeddings"
+            ].shape[0]
+        ):
+
+            faces_para_salvar.append(
+                {
+                    "funcionario_id":
+                        int(
+                            resultado[
+                                "funcionario_ids"
+                            ][
+                                indice
+                            ]
+                        ),
+
+                    "nome":
+                        resultado[
+                            "nomes"
+                        ][
+                            indice
+                        ],
+
+                    "embedding":
+                        resultado[
+                            "embeddings"
+                        ][
+                            indice
+                        ].tolist(),
+                }
             )
 
-        else:
 
-            matriz = np.empty(
-                (
-                    0,
-                    128
-                ),
-                dtype=np.float64
-            )
+        try:
 
-
-        # ==================================================
-        # RESULTADO DO CACHE
-        # ==================================================
-
-        resultado = {
-
-            "embeddings":
-                matriz,
-
-            "foto_ids":
-                np.asarray(
-                    foto_ids,
-                    dtype=np.int64
-                ),
-
-            "funcionario_ids":
-                np.asarray(
-                    funcionario_ids,
-                    dtype=np.int64
-                ),
-
-            "nomes":
-                nomes,
-
-            "empresa_ids":
-                empresa_ids,
-
-            "empresa_id":
+            total_salvo = substituir_faces_empresa(
                 empresa_id,
-
-            "carregado_em":
-                time.time(),
-        }
+                faces_para_salvar
+            )
 
 
-        print(
-            ""
-        )
+            print(
+                "=========================================="
+            )
 
-        print(
-            "=========================================="
-        )
+            print(
+                "💾 CACHE SQLITE ATUALIZADO"
+            )
 
-        print(
-            "⚡ CACHE FACIAL CARREGADO"
-        )
+            print(
+                "🏢 Empresa:",
+                empresa_id
+            )
 
-        print(
-            "🏢 EMPRESA:",
-            empresa_id
-        )
+            print(
+                "📸 Faces:",
+                total_salvo
+            )
 
-        print(
-            "👤 EMBEDDINGS VÁLIDOS:",
-            matriz.shape[0]
-        )
+            print(
+                "=========================================="
+            )
 
-        print(
-            "🧠 FORMATO DA MATRIZ:",
-            matriz.shape
-        )
 
-        print(
-            "=========================================="
-        )
+        except Exception as error_sqlite:
 
-        print(
-            ""
-        )
+            print(
+                "⚠️ PostgreSQL funcionou, mas houve erro "
+                "ao atualizar o cache SQLite:"
+            )
+
+            print(
+                repr(
+                    error_sqlite
+                )
+            )
 
 
         return resultado
@@ -791,6 +1189,180 @@ def carregar_embeddings(
 
                 pass
 
+            # ==========================================================
+# CARREGAR EMBEDDINGS
+#
+# Estratégia:
+#
+# 1. tenta PostgreSQL;
+# 2. se funcionar, atualiza SQLite;
+# 3. se PostgreSQL falhar, usa SQLite.
+# ==========================================================
+
+def carregar_embeddings(
+    empresa_id
+):
+
+    empresa_id = validar_empresa_id(
+        empresa_id
+    )
+
+
+    # ======================================================
+    # TENTAR POSTGRESQL
+    # ======================================================
+
+    try:
+
+        print(
+            ""
+        )
+
+        print(
+            "=========================================="
+        )
+
+        print(
+            "🌐 TENTANDO CARREGAR ROSTOS DO POSTGRESQL"
+        )
+
+        print(
+            "🏢 Empresa:",
+            empresa_id
+        )
+
+        print(
+            "=========================================="
+        )
+
+
+        return carregar_embeddings_postgresql(
+            empresa_id
+        )
+
+
+    except Exception as error_postgres:
+
+        print(
+            ""
+        )
+
+        print(
+            "=========================================="
+        )
+
+        print(
+            "⚠️ POSTGRESQL INDISPONÍVEL"
+        )
+
+        print(
+            repr(
+                error_postgres
+            )
+        )
+
+        print(
+            "📴 Tentando cache facial local..."
+        )
+
+        print(
+            "=========================================="
+        )
+
+
+    # ======================================================
+    # FALLBACK SQLITE
+    # ======================================================
+
+    try:
+
+        cache_local = carregar_embeddings_sqlite(
+                empresa_id
+            )
+
+
+        if (
+            cache_local[
+                "embeddings"
+            ].shape[0]
+            >
+            0
+        ):
+
+            print(
+                ""
+            )
+
+            print(
+                "=========================================="
+            )
+
+            print(
+                "✅ RECONHECIMENTO OFFLINE DISPONÍVEL"
+            )
+
+            print(
+                "🏢 Empresa:",
+                empresa_id
+            )
+
+            print(
+                "📸 Embeddings:",
+                cache_local[
+                    "embeddings"
+                ].shape[0]
+            )
+
+            print(
+                "=========================================="
+            )
+
+            print(
+                ""
+            )
+
+
+            return cache_local
+
+
+        print(
+            "⚠️ Cache SQLite está vazio para esta empresa."
+        )
+
+
+        return cache_local
+
+
+    except Exception as error_local:
+
+        print(
+            ""
+        )
+
+        print(
+            "=========================================="
+        )
+
+        print(
+            "❌ ERRO AO CARREGAR CACHE LOCAL"
+        )
+
+        print(
+            repr(
+                error_local
+            )
+        )
+
+        print(
+            "=========================================="
+        )
+
+
+        return criar_cache_vazio(
+            empresa_id,
+            "cache_local"
+        )
+
 
 # ==========================================================
 # OBTER CACHE
@@ -800,42 +1372,16 @@ def obter_embeddings(
     empresa_id
 ):
 
-    # ======================================================
-    # EMPRESA OBRIGATÓRIA
-    # ======================================================
-
-    if empresa_id is None:
-
-        raise ValueError(
-            "empresa_id é obrigatório para carregar os rostos."
-        )
-
-
-    try:
-
-        chave = int(
-            empresa_id
-        )
-
-    except Exception:
-
-        raise ValueError(
-            "empresa_id inválido."
-        )
-
-
-    if chave <= 0:
-
-        raise ValueError(
-            "empresa_id inválido."
-        )
+    chave = validar_empresa_id(
+        empresa_id
+    )
 
 
     agora = time.time()
 
 
     # ======================================================
-    # CACHE SEPARADO POR EMPRESA
+    # CACHE EM MEMÓRIA
     # ======================================================
 
     with _cache_lock:
@@ -860,32 +1406,41 @@ def obter_embeddings(
         ):
 
             print(
-                "⚡ Usando cache facial da empresa:",
+                "⚡ Usando cache facial em memória."
+            )
+
+            print(
+                "🏢 Empresa:",
                 chave
             )
 
             print(
-                "👤 Embeddings no cache:",
+                "📦 Fonte original:",
+                cache_existente.get(
+                    "fonte",
+                    "desconhecida"
+                )
+            )
+
+            print(
+                "👤 Embeddings:",
                 cache_existente[
                     "embeddings"
                 ].shape[0]
             )
 
+
             return cache_existente
 
 
     # ======================================================
-    # CARREGAR SOMENTE ESTA EMPRESA
+    # CACHE EXPIRADO / NÃO EXISTE
     # ======================================================
 
     novo_cache = carregar_embeddings(
         chave
     )
 
-
-    # ======================================================
-    # SALVAR CACHE DA EMPRESA
-    # ======================================================
 
     with _cache_lock:
 
@@ -929,27 +1484,16 @@ def recognize(
 
 
         # ==================================================
-        # EMPRESA OBRIGATÓRIA
+        # EMPRESA
         # ==================================================
 
         try:
 
-            empresa_id = int(
+            empresa_id = validar_empresa_id(
                 data.empresa_id
             )
 
         except Exception:
-
-            return {
-                "matched":
-                    False,
-
-                "error":
-                    "invalid_empresa_id",
-            }
-
-
-        if empresa_id <= 0:
 
             return {
                 "matched":
@@ -1031,6 +1575,7 @@ def recognize(
                 "⚠️ Nenhum rosto encontrado no frame."
             )
 
+
             return {
                 "matched":
                     False,
@@ -1053,6 +1598,7 @@ def recognize(
                 emb.shape
             )
 
+
             return {
                 "matched":
                     False,
@@ -1063,7 +1609,7 @@ def recognize(
 
 
         # ==================================================
-        # OBTER EMBEDDINGS CADASTRADOS
+        # OBTER EMBEDDINGS
         # ==================================================
 
         inicio = time.perf_counter()
@@ -1086,8 +1632,20 @@ def recognize(
         ]
 
 
+        fonte = dados.get(
+            "fonte",
+            "desconhecida"
+        )
+
+
+        print(
+            "📦 Fonte dos rostos:",
+            fonte
+        )
+
+
         # ==================================================
-        # NENHUM CADASTRO PARA ESTA EMPRESA
+        # NENHUM ROSTO
         # ==================================================
 
         if embeddings.shape[0] == 0:
@@ -1101,7 +1659,7 @@ def recognize(
             )
 
             print(
-                "⚠️ NENHUM ROSTO DISPONÍVEL PARA A EMPRESA"
+                "⚠️ NENHUM ROSTO DISPONÍVEL"
             )
 
             print(
@@ -1110,15 +1668,12 @@ def recognize(
             )
 
             print(
-                "O diagnóstico acima mostra o motivo."
+                "Fonte:",
+                fonte
             )
 
             print(
                 "=========================================="
-            )
-
-            print(
-                ""
             )
 
 
@@ -1131,6 +1686,9 @@ def recognize(
 
                 "empresa_id":
                     empresa_id,
+
+                "fonte":
+                    fonte,
             }
 
 
@@ -1343,10 +1901,6 @@ def recognize(
 
         if not candidatos:
 
-            print(
-                "⚠️ Nenhum candidato válido após proteção de empresa."
-            )
-
             return {
                 "matched":
                     False,
@@ -1356,6 +1910,9 @@ def recognize(
 
                 "empresa_id":
                     empresa_id,
+
+                "fonte":
+                    fonte,
             }
 
 
@@ -1369,7 +1926,7 @@ def recognize(
 
 
         # ==================================================
-        # SEGUNDO CANDIDATO
+        # SEGUNDO
         # ==================================================
 
         segundo = (
@@ -1418,7 +1975,7 @@ def recognize(
 
 
         # ==================================================
-        # TEMPO TOTAL
+        # TEMPO
         # ==================================================
 
         tempo_total = (
@@ -1447,6 +2004,11 @@ def recognize(
         print(
             "🏢 Empresa terminal:",
             empresa_id
+        )
+
+        print(
+            "📦 Fonte:",
+            fonte
         )
 
         print(
@@ -1579,10 +2141,7 @@ def recognize(
 
 
         # ==================================================
-        # PROTEÇÃO FINAL DE EMPRESA
-        #
-        # Mesmo que exista algum erro anterior,
-        # nunca devolver funcionário de outra empresa.
+        # PROTEÇÃO FINAL DA EMPRESA
         # ==================================================
 
         if (
@@ -1608,18 +2167,6 @@ def recognize(
             )
 
             print(
-                "Empresa terminal:",
-                empresa_id
-            )
-
-            print(
-                "Empresa funcionário:",
-                melhor[
-                    "empresa_id"
-                ]
-            )
-
-            print(
                 "=========================================="
             )
 
@@ -1633,6 +2180,9 @@ def recognize(
 
                 "empresa_id":
                     empresa_id,
+
+                "fonte":
+                    fonte,
             }
 
 
@@ -1647,7 +2197,7 @@ def recognize(
         ):
 
             print(
-                "❌ Rosto encontrado, mas distância acima da tolerância."
+                "❌ Distância acima da tolerância."
             )
 
 
@@ -1669,6 +2219,9 @@ def recognize(
 
                 "reason":
                     "distance_above_tolerance",
+
+                "fonte":
+                    fonte,
             }
 
 
@@ -1708,6 +2261,9 @@ def recognize(
 
                 "reason":
                     "ambiguous_match",
+
+                "fonte":
+                    fonte,
             }
 
 
@@ -1739,6 +2295,11 @@ def recognize(
             melhor[
                 "empresa_id"
             ]
+        )
+
+        print(
+            "Fonte:",
+            fonte
         )
 
         print(
@@ -1783,6 +2344,9 @@ def recognize(
                 melhor[
                     "total_embeddings"
                 ],
+
+            "fonte":
+                fonte,
 
             "processing_ms":
                 round(

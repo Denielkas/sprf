@@ -160,8 +160,13 @@ async function garantirTabelaFuncionarios() {
 
 /* =========================================
    GARANTE TABELA PONTOS
+   + SUPORTE PARA BATIDAS OFFLINE
 ========================================= */
 async function garantirTabelaPontos() {
+  /* =====================================
+     CRIAR TABELA CASO NÃO EXISTA
+  ===================================== */
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS pontos (
       id BIGSERIAL PRIMARY KEY,
@@ -178,6 +183,18 @@ async function garantirTabelaPontos() {
 
       marcado_em TIMESTAMP DEFAULT NOW(),
 
+      offline_uuid UUID,
+
+      origem VARCHAR(30)
+        NOT NULL DEFAULT 'online',
+
+      marcado_offline BOOLEAN
+        NOT NULL DEFAULT FALSE,
+
+      horario_dispositivo TIMESTAMP,
+
+      sincronizado_em TIMESTAMP,
+
       CHECK (
         tipo IN (
           'entrada',
@@ -190,12 +207,98 @@ async function garantirTabelaPontos() {
     );
   `);
 
+
+  /* =====================================
+     EMPRESA
+  ===================================== */
+
   await pool.query(`
     ALTER TABLE pontos
     ADD COLUMN IF NOT EXISTS empresa_id
     BIGINT REFERENCES empresas(id)
     ON DELETE RESTRICT
   `);
+
+
+  /* =====================================
+     UUID DA BATIDA OFFLINE
+
+     Este UUID é criado no terminal.
+
+     Ele impede que a mesma batida seja
+     sincronizada duas vezes.
+  ===================================== */
+
+  await pool.query(`
+    ALTER TABLE pontos
+    ADD COLUMN IF NOT EXISTS offline_uuid
+    UUID
+  `);
+
+
+  /* =====================================
+     ORIGEM
+
+     Exemplos:
+     online
+     offline
+     manual
+     automatico
+  ===================================== */
+
+  await pool.query(`
+    ALTER TABLE pontos
+    ADD COLUMN IF NOT EXISTS origem
+    VARCHAR(30)
+    NOT NULL DEFAULT 'online'
+  `);
+
+
+  /* =====================================
+     IDENTIFICA SE FOI MARCADO SEM INTERNET
+  ===================================== */
+
+  await pool.query(`
+    ALTER TABLE pontos
+    ADD COLUMN IF NOT EXISTS marcado_offline
+    BOOLEAN
+    NOT NULL DEFAULT FALSE
+  `);
+
+
+  /* =====================================
+     HORÁRIO ORIGINAL DO DISPOSITIVO
+
+     Exemplo:
+
+     funcionário bateu 08:00 sem internet
+     internet voltou 09:30
+
+     horario_dispositivo = 08:00
+     sincronizado_em     = 09:30
+  ===================================== */
+
+  await pool.query(`
+    ALTER TABLE pontos
+    ADD COLUMN IF NOT EXISTS horario_dispositivo
+    TIMESTAMP
+  `);
+
+
+  /* =====================================
+     MOMENTO EM QUE CHEGOU AO SERVIDOR
+  ===================================== */
+
+  await pool.query(`
+    ALTER TABLE pontos
+    ADD COLUMN IF NOT EXISTS sincronizado_em
+    TIMESTAMP
+  `);
+
+
+  /* =====================================
+     ÍNDICES JÁ EXISTENTES
+  ===================================== */
 
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
@@ -212,7 +315,27 @@ async function garantirTabelaPontos() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_pontos_empresa_funcionario
-    ON pontos(empresa_id, funcionario_id)
+    ON pontos(
+      empresa_id,
+      funcionario_id
+    )
+  `);
+
+
+  /* =====================================
+     PROTEÇÃO CONTRA DUPLICIDADE OFFLINE
+
+     Duas sincronizações com o mesmo UUID
+     não poderão criar dois pontos.
+  ===================================== */
+
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS
+    idx_pontos_offline_uuid
+
+    ON pontos(offline_uuid)
+
+    WHERE offline_uuid IS NOT NULL
   `);
 }
 
@@ -4883,6 +5006,971 @@ exports.lancarHorarioPadraoMes =
   };
 
   /* =========================================================
+   SINCRONIZAR BATIDAS FEITAS OFFLINE
+
+   POST /api/ponto/sincronizar-offline
+
+   SEGURANÇA:
+   - empresa vem do JWT
+   - funcionário precisa pertencer à empresa
+   - UUID impede duplicação
+========================================================= */
+exports.sincronizarOffline =
+  async (req, res) => {
+    const client =
+      await pool.connect();
+
+    try {
+      await garantirTabelas();
+
+      /* =====================================
+         EMPRESA DO TERMINAL
+
+         NUNCA usar empresa_id do body como
+         fonte de autorização.
+      ===================================== */
+
+      const empresaId =
+        Number(
+          req.user?.empresa_id
+        );
+
+      if (
+        !Number.isInteger(
+          empresaId
+        ) ||
+        empresaId <= 0
+      ) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Empresa do terminal não identificada.",
+          });
+      }
+
+
+      /* =====================================
+         EMPRESA PRECISA ESTAR ATIVA
+      ===================================== */
+
+      const empresa =
+        await buscarEmpresaAtiva(
+          empresaId
+        );
+
+      if (!empresa) {
+        return res
+          .status(403)
+          .json({
+            error:
+              "Empresa não encontrada ou desativada.",
+          });
+      }
+
+
+      /* =====================================
+         RECEBER FILA
+      ===================================== */
+
+      const pontos =
+  Array.isArray(
+    req.body?.pontos
+  )
+    ? [...req.body.pontos].sort(
+        (a, b) => {
+          const dataA =
+            new Date(
+              a?.horario_dispositivo
+            ).getTime();
+
+          const dataB =
+            new Date(
+              b?.horario_dispositivo
+            ).getTime();
+
+          if (
+            Number.isNaN(dataA) ||
+            Number.isNaN(dataB)
+          ) {
+            return 0;
+          }
+
+          return dataA - dataB;
+        }
+      )
+    : [];
+
+
+      if (!pontos.length) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Nenhuma batida offline enviada.",
+          });
+      }
+
+
+      /*
+        Proteção contra uma requisição
+        exageradamente grande.
+      */
+
+      if (pontos.length > 100) {
+        return res
+          .status(400)
+          .json({
+            error:
+              "Envie no máximo 100 batidas por sincronização.",
+          });
+      }
+
+
+      const tiposPermitidos =
+        new Set([
+          "entrada",
+          "intervalo_inicio",
+          "intervalo_fim",
+          "saida",
+        ]);
+
+
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+
+      const resultados = [];
+
+
+      /* =====================================
+         PROCESSAR CADA BATIDA
+
+         Usamos uma transação individual por
+         batida para uma inválida não impedir
+         as demais.
+      ===================================== */
+
+      for (const item of pontos) {
+        const offlineUuid =
+          String(
+            item?.offline_uuid ||
+            ""
+          ).trim();
+
+
+        const funcionarioId =
+          Number(
+            item?.funcionario_id
+          );
+
+
+        const tipo =
+          String(
+            item?.tipo ||
+            ""
+          )
+            .trim()
+            .toLowerCase();
+
+
+        const horarioDispositivo =
+          String(
+            item?.horario_dispositivo ||
+            ""
+          ).trim();
+
+
+        /* ===================================
+           VALIDAR UUID
+        =================================== */
+
+        if (
+          !uuidRegex.test(
+            offlineUuid
+          )
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid ||
+              null,
+
+            status:
+              "rejeitado",
+
+            error:
+              "UUID offline inválido.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           VALIDAR FUNCIONÁRIO
+        =================================== */
+
+        if (
+          !Number.isInteger(
+            funcionarioId
+          ) ||
+          funcionarioId <= 0
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Funcionário inválido.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           VALIDAR TIPO
+        =================================== */
+
+        if (
+          !tiposPermitidos.has(
+            tipo
+          )
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Tipo de batida inválido.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           VALIDAR DATA/HORA
+        =================================== */
+
+        if (!horarioDispositivo) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Horário do dispositivo não informado.",
+          });
+
+          continue;
+        }
+
+
+        const dataHora =
+          new Date(
+            horarioDispositivo
+          );
+
+
+        if (
+          Number.isNaN(
+            dataHora.getTime()
+          )
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Horário do dispositivo inválido.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           NÃO ACEITAR HORÁRIO MUITO À FRENTE
+
+           Permitimos até 5 minutos para
+           pequenas diferenças de relógio.
+        =================================== */
+
+        const cincoMinutos =
+          5 * 60 * 1000;
+
+
+        if (
+          dataHora.getTime() >
+          Date.now() +
+          cincoMinutos
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Horário da batida está no futuro.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           VERIFICAR DUPLICIDADE
+        =================================== */
+
+        const duplicado =
+          await client.query(
+            `
+            SELECT
+              id,
+              tipo,
+              marcado_em
+
+            FROM pontos
+
+            WHERE offline_uuid = $1
+
+            LIMIT 1
+            `,
+            [
+              offlineUuid,
+            ]
+          );
+
+
+        if (
+          duplicado.rows.length
+        ) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "ja_sincronizado",
+
+            ponto_id:
+              duplicado.rows[0].id,
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           FUNCIONÁRIO DA EMPRESA
+
+           Isso impede enviar ID de funcionário
+           pertencente a outra empresa.
+        =================================== */
+
+        const funcionario =
+          await buscarFuncionarioDaEmpresa(
+            funcionarioId,
+            empresaId
+          );
+
+
+        if (!funcionario) {
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "rejeitado",
+
+            error:
+              "Funcionário não encontrado nesta empresa.",
+          });
+
+          continue;
+        }
+
+
+        /* ===================================
+           CONVERTER PARA HORÁRIO DE
+           SÃO PAULO
+
+           Precisamos salvar a hora em que
+           realmente ocorreu a batida, e não
+           o horário em que sincronizou.
+        =================================== */
+
+        const horarioSP =
+          new Date(
+            dataHora.toLocaleString(
+              "en-US",
+              {
+                timeZone:
+                  "America/Sao_Paulo",
+              }
+            )
+          );
+
+
+        const ano =
+          horarioSP.getFullYear();
+
+
+        const mes =
+          String(
+            horarioSP.getMonth() + 1
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        const dia =
+          String(
+            horarioSP.getDate()
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        const hora =
+          String(
+            horarioSP.getHours()
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        const minuto =
+          String(
+            horarioSP.getMinutes()
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        const segundo =
+          String(
+            horarioSP.getSeconds()
+          ).padStart(
+            2,
+            "0"
+          );
+
+
+        const marcadoEm =
+          `${ano}-${mes}-${dia} ` +
+          `${hora}:${minuto}:${segundo}`;
+
+
+        /* ===================================
+           TRANSAÇÃO DA BATIDA
+        =================================== */
+
+        try {
+          await client.query(
+            "BEGIN"
+          );
+
+
+          /* =================================
+             BLOQUEIO POR FUNCIONÁRIO
+
+             Evita duas sincronizações
+             simultâneas bagunçarem a ordem.
+          ================================= */
+
+          await client.query(
+            `
+            SELECT id
+
+            FROM funcionarios
+
+            WHERE id = $1
+              AND empresa_id = $2
+
+            FOR UPDATE
+            `,
+            [
+              funcionarioId,
+              empresaId,
+            ]
+          );
+
+
+          /* =================================
+             VERIFICAR NOVAMENTE UUID
+             DENTRO DA TRANSAÇÃO
+          ================================= */
+
+          const uuidDentroTransacao =
+            await client.query(
+              `
+              SELECT id
+
+              FROM pontos
+
+              WHERE offline_uuid = $1
+
+              LIMIT 1
+              `,
+              [
+                offlineUuid,
+              ]
+            );
+
+
+          if (
+            uuidDentroTransacao
+              .rows.length
+          ) {
+            await client.query(
+              "ROLLBACK"
+            );
+
+            resultados.push({
+              offline_uuid:
+                offlineUuid,
+
+              status:
+                "ja_sincronizado",
+
+              ponto_id:
+                uuidDentroTransacao
+                  .rows[0].id,
+            });
+
+            continue;
+          }
+
+
+          /* =================================
+             DESCOBRIR ÚLTIMA BATIDA ANTES
+             DESTA BATIDA OFFLINE
+
+             IMPORTANTE:
+
+             Não usamos simplesmente o estado
+             atual do banco.
+
+             Se o funcionário ficou horas
+             offline, podem chegar:
+
+             08:00 entrada
+             12:00 intervalo
+             13:00 retorno
+             17:00 saída
+
+             Elas serão processadas em ordem
+             pelo frontend posteriormente.
+          ================================= */
+
+          const ultimaAntes =
+            await client.query(
+              `
+              SELECT
+                id,
+                tipo,
+                marcado_em
+
+              FROM pontos
+
+              WHERE funcionario_id = $1
+                AND empresa_id = $2
+                AND marcado_em <
+                    $3::timestamp
+                AND marcado_em >=
+                    (
+                      $3::timestamp -
+                      INTERVAL '36 hours'
+                    )
+
+              ORDER BY
+                marcado_em DESC,
+                id DESC
+
+              LIMIT 1
+              `,
+              [
+                funcionarioId,
+                empresaId,
+                marcadoEm,
+              ]
+            );
+
+
+          const ultimaBatida =
+            ultimaAntes.rows[0]
+              ?.tipo ||
+            null;
+
+
+          const permissoes =
+            getPermissoesPorUltimaBatida(
+              ultimaBatida
+            );
+
+
+          if (!permissoes[tipo]) {
+            await client.query(
+              "ROLLBACK"
+            );
+
+            resultados.push({
+              offline_uuid:
+                offlineUuid,
+
+              status:
+                "rejeitado",
+
+              error:
+                "Sequência de batida inválida.",
+
+              tipo_solicitado:
+                tipo,
+
+              ultima_batida:
+                ultimaBatida,
+
+              permissoes,
+            });
+
+            continue;
+          }
+
+
+          /* =================================
+             INSERIR PONTO OFFLINE
+          ================================= */
+
+          const insert =
+            await client.query(
+              `
+              INSERT INTO pontos (
+                empresa_id,
+                funcionario_id,
+                tipo,
+                marcado_em,
+
+                offline_uuid,
+                origem,
+                marcado_offline,
+                horario_dispositivo,
+                sincronizado_em
+              )
+
+              VALUES (
+                $1,
+                $2,
+                $3,
+                $4::timestamp,
+
+                $5::uuid,
+                'offline',
+                TRUE,
+                $4::timestamp,
+                NOW()
+              )
+
+              RETURNING
+                id,
+                empresa_id,
+                funcionario_id,
+                tipo,
+                marcado_em,
+                offline_uuid,
+                origem,
+                marcado_offline,
+                horario_dispositivo,
+                sincronizado_em
+              `,
+              [
+                empresaId,
+                funcionarioId,
+                tipo,
+                marcadoEm,
+                offlineUuid,
+              ]
+            );
+
+
+          const ponto =
+            insert.rows[0];
+
+
+          await client.query(
+            "COMMIT"
+          );
+
+
+          /* =================================
+             LOG
+
+             Depois do COMMIT.
+          ================================= */
+
+          try {
+            const nomesBatidas = {
+              entrada:
+                "Entrada",
+
+              intervalo_inicio:
+                "Início do intervalo",
+
+              intervalo_fim:
+                "Retorno do intervalo",
+
+              saida:
+                "Saída",
+            };
+
+
+            await registrarLog({
+              req,
+
+              empresa_id:
+                empresaId,
+
+              funcionario_id:
+                funcionario.id,
+
+              tipo:
+                "PONTO",
+
+              acao:
+                `PONTO_OFFLINE_${tipo.toUpperCase()}`,
+
+              descricao:
+                `${funcionario.nome} teve ${nomesBatidas[tipo]} offline sincronizada.`,
+
+              dados: {
+                ponto_id:
+                  ponto.id,
+
+                offline_uuid:
+                  offlineUuid,
+
+                funcionario_id:
+                  funcionario.id,
+
+                funcionario_nome:
+                  funcionario.nome,
+
+                tipo:
+                  ponto.tipo,
+
+                marcado_em:
+                  ponto.marcado_em,
+
+                horario_dispositivo:
+                  ponto.horario_dispositivo,
+
+                sincronizado_em:
+                  ponto.sincronizado_em,
+
+                origem:
+                  "terminal_offline",
+              },
+            });
+
+          } catch (logError) {
+            /*
+              O ponto já foi salvo.
+
+              Um problema no log não deve
+              transformar uma sincronização
+              concluída em erro.
+            */
+
+            console.error(
+              "Erro ao registrar log da sincronização offline:",
+              logError
+            );
+          }
+
+
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "sincronizado",
+
+            ponto_id:
+              ponto.id,
+
+            funcionario_id:
+              funcionario.id,
+
+            funcionario_nome:
+              funcionario.nome,
+
+            tipo:
+              ponto.tipo,
+
+            marcado_em:
+              ponto.marcado_em,
+
+            sincronizado_em:
+              ponto.sincronizado_em,
+          });
+
+        } catch (erroBatida) {
+          /* =================================
+             ROLLBACK DA BATIDA
+          ================================= */
+
+          try {
+            await client.query(
+              "ROLLBACK"
+            );
+          } catch (_) {
+            // nada
+          }
+
+
+          /*
+            23505 =
+            violação de UNIQUE.
+
+            Neste caso provavelmente outro
+            processo acabou de sincronizar
+            o mesmo UUID.
+          */
+
+          if (
+            erroBatida?.code ===
+            "23505"
+          ) {
+            resultados.push({
+              offline_uuid:
+                offlineUuid,
+
+              status:
+                "ja_sincronizado",
+            });
+
+            continue;
+          }
+
+
+          console.error(
+            "Erro em uma batida offline:",
+            erroBatida
+          );
+
+
+          resultados.push({
+            offline_uuid:
+              offlineUuid,
+
+            status:
+              "erro",
+
+            error:
+              "Não foi possível sincronizar esta batida.",
+          });
+        }
+      }
+
+
+      /* =====================================
+         CONTADORES
+      ===================================== */
+
+      const sincronizados =
+        resultados.filter(
+          (item) =>
+            item.status ===
+            "sincronizado"
+        ).length;
+
+
+      const jaSincronizados =
+        resultados.filter(
+          (item) =>
+            item.status ===
+            "ja_sincronizado"
+        ).length;
+
+
+      const rejeitados =
+        resultados.filter(
+          (item) =>
+            item.status ===
+            "rejeitado"
+        ).length;
+
+
+      const erros =
+        resultados.filter(
+          (item) =>
+            item.status ===
+            "erro"
+        ).length;
+
+
+      /* =====================================
+         RESPOSTA
+      ===================================== */
+
+      return res.json({
+        ok: true,
+
+        empresa_id:
+          empresaId,
+
+        recebidos:
+          pontos.length,
+
+        sincronizados,
+
+        ja_sincronizados:
+          jaSincronizados,
+
+        rejeitados,
+
+        erros,
+
+        resultados,
+      });
+
+    } catch (err) {
+      console.error(
+        "Erro geral na sincronização offline:",
+        err
+      );
+
+
+      return res
+        .status(500)
+        .json({
+          error:
+            "Erro ao sincronizar batidas offline.",
+        });
+
+    } finally {
+      client.release();
+    }
+  };
+
+  /* =========================================================
    BUSCAR FUNCIONÁRIO POR CPF
    + PONTOS DA JORNADA DE HOJE
 ========================================================= */
@@ -5388,3 +6476,4 @@ exports.buscarPorCPF =
         });
     }
   };
+

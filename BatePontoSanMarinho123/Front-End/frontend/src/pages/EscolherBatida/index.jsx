@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useState,
@@ -16,9 +17,23 @@ import {
   FaSignOutAlt,
   FaCheckCircle,
   FaExclamationCircle,
+  FaWifi,
 } from "react-icons/fa";
 
 import { api } from "../../services/api";
+
+import {
+  salvarPontoOffline,
+  salvarEstadoFuncionario,
+  buscarEstadoFuncionario,
+  calcularPermissoesLocais,
+  atualizarEstadoAposBatidaOffline,
+  contarPontosPendentes,
+} from "../../services/offlinePonto";
+
+import {
+  sincronizarPontosOffline,
+} from "../../services/sincronizacaoOffline";
 
 import fundoPadrao from "../../assets/logo/hotel.jpg";
 
@@ -28,12 +43,8 @@ import "./EscolherBatida.css";
 /* =========================================================
    PERMISSÕES INICIAIS
 
-   IMPORTANTE:
-   Enquanto o backend ainda não respondeu,
+   Enquanto não sabemos o estado da jornada,
    nenhum botão fica liberado.
-
-   Isso evita o usuário clicar em Entrada
-   antes de o status real ser carregado.
 ========================================================= */
 
 const permissoesIniciais = {
@@ -41,6 +52,25 @@ const permissoesIniciais = {
   intervalo_inicio: false,
   intervalo_fim: false,
   saida: false,
+};
+
+
+/* =========================================================
+   NOMES DAS BATIDAS
+========================================================= */
+
+const nomesBatidas = {
+  entrada:
+    "Entrada",
+
+  intervalo_inicio:
+    "Início do intervalo",
+
+  intervalo_fim:
+    "Retorno do intervalo",
+
+  saida:
+    "Saída",
 };
 
 
@@ -81,19 +111,6 @@ function normalizarUrlImagem(url) {
 
 /* =========================================================
    NORMALIZAR PERMISSÕES VINDAS DO BACKEND
-
-   O BACKEND É A FONTE OFICIAL DO ESTADO DA JORNADA.
-
-   Exemplo:
-
-   permissoes: {
-     entrada: false,
-     intervalo_inicio: false,
-     intervalo_fim: true,
-     saida: false
-   }
-
-   Nesse caso SOMENTE Retorno fica liberado.
 ========================================================= */
 
 function normalizarPermissoes(data) {
@@ -124,7 +141,7 @@ function normalizarPermissoes(data) {
     };
 
     console.log(
-      "🔓 PERMISSÕES DEFINIDAS PELO BACKEND:",
+      "🔓 PERMISSÕES DEFINIDAS:",
       resultado
     );
 
@@ -132,14 +149,8 @@ function normalizarPermissoes(data) {
   }
 
   console.warn(
-    "⚠️ Backend não retornou o objeto permissoes."
+    "⚠️ Não foi recebido objeto de permissões."
   );
-
-  /*
-    Por segurança, se o backend não informou
-    o estado da jornada, não liberamos nenhum
-    botão automaticamente.
-  */
 
   return {
     ...permissoesIniciais,
@@ -171,10 +182,13 @@ export default function EscolherBatida() {
   /* =======================================================
      EMPRESA
 
-     Mantido para identidade visual.
+     Para operações ONLINE, a empresa oficial
+     continua sendo a empresa do JWT no backend.
 
-     Para bater ponto, a empresa oficial é
-     determinada pelo JWT no backend.
+     Aqui usamos empresa_id para:
+     - identidade visual;
+     - separar armazenamento offline;
+     - impedir mistura local entre empresas.
   ======================================================= */
 
   const empresaId =
@@ -288,11 +302,13 @@ export default function EscolherBatida() {
   ] =
     useState(true);
 
+
   const [
     registrando,
     setRegistrando,
   ] =
     useState(false);
+
 
   const [
     permissoes,
@@ -301,6 +317,33 @@ export default function EscolherBatida() {
     useState(
       permissoesIniciais
     );
+
+
+  /* =======================================================
+     ESTADOS OFFLINE
+  ======================================================= */
+
+  const [
+    online,
+    setOnline,
+  ] =
+    useState(
+      navigator.onLine
+    );
+
+
+  const [
+    pontosPendentes,
+    setPontosPendentes,
+  ] =
+    useState(0);
+
+
+  const [
+    modoOfflinePreparado,
+    setModoOfflinePreparado,
+  ] =
+    useState(false);
 
 
   /* =======================================================
@@ -313,17 +356,20 @@ export default function EscolherBatida() {
   ] =
     useState(false);
 
+
   const [
     modalTitulo,
     setModalTitulo,
   ] =
     useState("");
 
+
   const [
     modalTexto,
     setModalTexto,
   ] =
     useState("");
+
 
   const [
     modalErro,
@@ -371,6 +417,297 @@ export default function EscolherBatida() {
 
 
   /* =======================================================
+     CONTAR PONTOS OFFLINE PENDENTES
+  ======================================================= */
+
+  const atualizarContadorPendentes =
+    useCallback(
+      async () => {
+        try {
+          const quantidade =
+            await contarPontosPendentes();
+
+          setPontosPendentes(
+            quantidade
+          );
+
+        } catch (error) {
+          console.error(
+            "❌ Erro ao contar pontos offline:",
+            error
+          );
+        }
+      },
+      []
+    );
+
+
+  /* =======================================================
+     SALVAR ESTADO OFICIAL NO BANCO LOCAL
+
+     Sempre que conseguimos consultar o servidor,
+     guardamos as permissões atuais.
+
+     Assim, se a internet cair depois,
+     sabemos exatamente em qual estado a jornada
+     estava.
+  ======================================================= */
+
+  const salvarEstadoOficialLocal =
+    useCallback(
+      async (
+        novasPermissoes,
+        ultimaBatida = null
+      ) => {
+        if (
+          !empresaId ||
+          !funcionario?.id
+        ) {
+          return;
+        }
+
+        try {
+          await salvarEstadoFuncionario({
+            empresa_id:
+              empresaId,
+
+            funcionario_id:
+              Number(
+                funcionario.id
+              ),
+
+            ultima_batida:
+              ultimaBatida,
+
+            permissoes:
+              novasPermissoes,
+          });
+
+          setModoOfflinePreparado(
+            true
+          );
+
+          console.log(
+            "💾 Estado da jornada salvo localmente."
+          );
+
+        } catch (error) {
+          console.error(
+            "❌ Erro ao salvar estado local:",
+            error
+          );
+        }
+      },
+      [
+        empresaId,
+        funcionario?.id,
+      ]
+    );
+
+
+  /* =======================================================
+     CARREGAR ESTADO OFFLINE
+  ======================================================= */
+
+  const carregarEstadoOffline =
+    useCallback(
+      async () => {
+        if (
+          !empresaId ||
+          !funcionario?.id
+        ) {
+          return false;
+        }
+
+        try {
+          console.log(
+            "=========================================="
+          );
+
+          console.log(
+            "📴 CARREGANDO ESTADO OFFLINE"
+          );
+
+          console.log({
+            empresa_id:
+              empresaId,
+
+            funcionario_id:
+              funcionario.id,
+          });
+
+          console.log(
+            "=========================================="
+          );
+
+
+          const estado =
+            await buscarEstadoFuncionario(
+              empresaId,
+              Number(
+                funcionario.id
+              )
+            );
+
+
+          if (!estado) {
+            console.warn(
+              "⚠️ Funcionário ainda não possui estado offline salvo."
+            );
+
+            setModoOfflinePreparado(
+              false
+            );
+
+            setPermissoes({
+              ...permissoesIniciais,
+            });
+
+            return false;
+          }
+
+
+          const permissoesOffline =
+            estado.permissoes ||
+            calcularPermissoesLocais(
+              estado.ultima_batida
+            );
+
+
+          console.log(
+            "🔓 PERMISSÕES OFFLINE:",
+            permissoesOffline
+          );
+
+
+          setPermissoes(
+            permissoesOffline
+          );
+
+          setModoOfflinePreparado(
+            true
+          );
+
+
+          return true;
+
+        } catch (error) {
+          console.error(
+            "❌ Erro ao carregar estado offline:",
+            error
+          );
+
+          setPermissoes({
+            ...permissoesIniciais,
+          });
+
+          setModoOfflinePreparado(
+            false
+          );
+
+          return false;
+        }
+      },
+      [
+        empresaId,
+        funcionario?.id,
+      ]
+    );
+
+
+  /* =======================================================
+     SINCRONIZAR FILA OFFLINE
+  ======================================================= */
+
+  const tentarSincronizar =
+    useCallback(
+      async (
+        mostrarMensagem = false
+      ) => {
+        if (
+          !navigator.onLine
+        ) {
+          setOnline(
+            false
+          );
+
+          return {
+            ok: false,
+            motivo:
+              "offline",
+          };
+        }
+
+
+        try {
+          console.log(
+            "=========================================="
+          );
+
+          console.log(
+            "🔄 VERIFICANDO PONTOS OFFLINE"
+          );
+
+          console.log(
+            "=========================================="
+          );
+
+
+          const resultado =
+            await sincronizarPontosOffline();
+
+
+          await atualizarContadorPendentes();
+
+
+          if (
+            resultado?.ok
+          ) {
+            setOnline(
+              true
+            );
+
+
+            if (
+              mostrarMensagem &&
+              Number(
+                resultado?.sincronizados ||
+                0
+              ) > 0
+            ) {
+              abrirModal(
+                "Sincronização concluída",
+
+                `${resultado.sincronizados} ponto(s) offline sincronizado(s) com sucesso.`,
+
+                false
+              );
+            }
+          }
+
+
+          return resultado;
+
+        } catch (error) {
+          console.error(
+            "❌ Erro na sincronização automática:",
+            error
+          );
+
+          return {
+            ok: false,
+            motivo:
+              "erro",
+          };
+        }
+      },
+      [
+        atualizarContadorPendentes,
+      ]
+    );
+
+
+  /* =======================================================
      SEM FUNCIONÁRIO
   ======================================================= */
 
@@ -394,13 +731,18 @@ export default function EscolherBatida() {
   /* =======================================================
      CARREGAR STATUS DAS BATIDAS
 
-     O BACKEND DETERMINA QUAIS BOTÕES
-     ESTÃO LIBERADOS.
+     ONLINE:
+     backend determina o estado oficial.
+
+     OFFLINE:
+     IndexedDB determina o estado conhecido
+     pelo terminal.
   ======================================================= */
 
   useEffect(() => {
     let ativo =
       true;
+
 
     async function carregarStatus() {
       if (
@@ -415,21 +757,77 @@ export default function EscolherBatida() {
         return;
       }
 
+
       try {
         if (ativo) {
           setLoadingStatus(
             true
           );
 
-          /*
-            Enquanto consulta o backend,
-            bloqueamos todos os botões.
-          */
-
           setPermissoes({
             ...permissoesIniciais,
           });
         }
+
+
+        await atualizarContadorPendentes();
+
+
+        /* =================================================
+           SEM INTERNET
+        ================================================= */
+
+        if (
+          !navigator.onLine
+        ) {
+          console.log(
+            "📴 Navegador está offline."
+          );
+
+          setOnline(
+            false
+          );
+
+
+          const conseguiu =
+            await carregarEstadoOffline();
+
+
+          if (
+            !conseguiu &&
+            ativo
+          ) {
+            abrirModal(
+              "Terminal offline",
+
+              "Este funcionário ainda não possui um estado de jornada salvo neste terminal. Conecte à internet pelo menos uma vez antes de usar o ponto offline.",
+
+              true
+            );
+          }
+
+
+          return;
+        }
+
+
+        /* =================================================
+           ONLINE
+
+           Antes de consultar o estado atual,
+           tentamos enviar pontos que ficaram
+           pendentes.
+        ================================================= */
+
+        setOnline(
+          true
+        );
+
+
+        await tentarSincronizar(
+          false
+        );
+
 
         console.log(
           "=========================================="
@@ -451,17 +849,6 @@ export default function EscolherBatida() {
           "=========================================="
         );
 
-
-        /*
-          NÃO precisamos mais enviar empresa_id
-          na query.
-
-          O backend usa:
-
-          req.user.empresa_id
-
-          vindo do JWT.
-        */
 
         const { data } =
           await api.get(
@@ -491,40 +878,55 @@ export default function EscolherBatida() {
         );
 
 
-        /* =================================================
-           IMPORTANTE
-
-           NÃO recalculamos mais pelas batidas.
-
-           Usamos exatamente as permissões
-           retornadas pelo ponto.controller.js.
-        ================================================= */
-
         const novasPermissoes =
           normalizarPermissoes(
             data
           );
 
 
-        console.log(
-          "=========================================="
-        );
-
-        console.log(
-          "🔓 PERMISSÕES FINAIS NO FRONTEND:"
-        );
-
-        console.log(
-          novasPermissoes
-        );
-
-        console.log(
-          "=========================================="
-        );
-
-
         setPermissoes(
           novasPermissoes
+        );
+
+
+        /*
+          Precisamos guardar qual foi a última
+          batida para conseguir recalcular as
+          permissões posteriormente.
+
+          O controller pode retornar ultima_batida.
+          Caso não retorne, tentamos obter pelo
+          próximo tipo ou pelas batidas retornadas.
+        */
+
+        let ultimaBatida =
+          data?.ultima_batida ||
+          null;
+
+
+        if (
+          !ultimaBatida &&
+          Array.isArray(
+            data?.batidas
+          ) &&
+          data.batidas.length
+        ) {
+          ultimaBatida =
+            data.batidas[
+              data.batidas.length - 1
+            ]?.tipo ||
+            null;
+        }
+
+
+        await salvarEstadoOficialLocal(
+          novasPermissoes,
+          ultimaBatida
+        );
+
+
+        setOnline(
+          true
         );
 
       } catch (error) {
@@ -538,29 +940,93 @@ export default function EscolherBatida() {
           error?.response?.data
         );
 
+
         if (!ativo) {
           return;
         }
 
+
         /*
-          Em caso de erro, não podemos assumir
-          que Entrada está liberada.
+          IMPORTANTE:
+
+          Se houve uma resposta HTTP do backend,
+          significa que o servidor está acessível.
+
+          Exemplo:
+          401
+          403
+          404
+          500
+
+          Isso NÃO deve ativar modo offline.
         */
 
-        setPermissoes({
-          ...permissoesIniciais,
-        });
+        if (
+          error?.response
+        ) {
+          setOnline(
+            true
+          );
 
-        abrirModal(
-          "Atenção",
+          setPermissoes({
+            ...permissoesIniciais,
+          });
 
-          error?.response?.data?.error ||
-          error?.response?.data?.erro ||
-          error?.response?.data?.message ||
-          "Não foi possível verificar o status das batidas.",
 
-          true
+          abrirModal(
+            "Atenção",
+
+            error?.response?.data?.error ||
+            error?.response?.data?.erro ||
+            error?.response?.data?.message ||
+            "Não foi possível verificar o status das batidas.",
+
+            true
+          );
+
+          return;
+        }
+
+
+        /*
+          Não houve resposta do servidor.
+
+          Pode ser:
+          - internet caiu;
+          - backend inacessível;
+          - rede local caiu.
+
+          Neste caso podemos usar o estado local.
+        */
+
+        console.warn(
+          "📴 Servidor não respondeu. Tentando modo offline."
         );
+
+
+        setOnline(
+          false
+        );
+
+
+        const conseguiu =
+          await carregarEstadoOffline();
+
+
+        if (!conseguiu) {
+          setPermissoes({
+            ...permissoesIniciais,
+          });
+
+
+          abrirModal(
+            "Terminal offline",
+
+            "Não foi possível acessar o servidor e este funcionário ainda não está preparado para registrar ponto offline neste terminal.",
+
+            true
+          );
+        }
 
       } finally {
         if (ativo) {
@@ -583,26 +1049,331 @@ export default function EscolherBatida() {
   }, [
     funcionario?.id,
     empresaId,
+    atualizarContadorPendentes,
+    carregarEstadoOffline,
+    salvarEstadoOficialLocal,
+    tentarSincronizar,
   ]);
 
 
   /* =======================================================
-     NOMES DAS BATIDAS
+     DETECTAR INTERNET CAINDO / VOLTANDO
   ======================================================= */
 
-  const nomesBatidas = {
-    entrada:
-      "Entrada",
+  useEffect(() => {
+    async function ficouOffline() {
+      console.log(
+        "=========================================="
+      );
 
-    intervalo_inicio:
-      "Início do intervalo",
+      console.log(
+        "📴 INTERNET DESCONECTADA"
+      );
 
-    intervalo_fim:
-      "Retorno do intervalo",
+      console.log(
+        "=========================================="
+      );
 
-    saida:
-      "Saída",
-  };
+
+      setOnline(
+        false
+      );
+
+
+      await carregarEstadoOffline();
+
+
+      await atualizarContadorPendentes();
+    }
+
+
+    async function ficouOnline() {
+      console.log(
+        "=========================================="
+      );
+
+      console.log(
+        "🌐 INTERNET RESTABELECIDA"
+      );
+
+      console.log(
+        "=========================================="
+      );
+
+
+      /*
+        Primeiro marcamos como conectado.
+        A API posteriormente confirma se o
+        servidor realmente está acessível.
+      */
+
+      setOnline(
+        true
+      );
+
+
+      const resultado =
+        await tentarSincronizar(
+          false
+        );
+
+
+      await atualizarContadorPendentes();
+
+
+      if (
+        resultado?.ok &&
+        Number(
+          resultado?.sincronizados ||
+          0
+        ) > 0
+      ) {
+        abrirModal(
+          "Pontos sincronizados!",
+
+          `${resultado.sincronizados} ponto(s) registrado(s) offline foram enviados ao servidor.`,
+
+          false
+        );
+      }
+
+
+      /*
+        Após sincronizar, buscamos novamente
+        o estado oficial do funcionário atual.
+      */
+
+      if (
+        resultado?.ok &&
+        funcionario?.id
+      ) {
+        try {
+          const { data } =
+            await api.get(
+              `/ponto/status-batidas/${funcionario.id}`
+            );
+
+
+          const novasPermissoes =
+            normalizarPermissoes(
+              data
+            );
+
+
+          setPermissoes(
+            novasPermissoes
+          );
+
+
+          let ultimaBatida =
+            data?.ultima_batida ||
+            null;
+
+
+          if (
+            !ultimaBatida &&
+            Array.isArray(
+              data?.batidas
+            ) &&
+            data.batidas.length
+          ) {
+            ultimaBatida =
+              data.batidas[
+                data.batidas.length - 1
+              ]?.tipo ||
+              null;
+          }
+
+
+          await salvarEstadoOficialLocal(
+            novasPermissoes,
+            ultimaBatida
+          );
+
+        } catch (error) {
+          console.error(
+            "Erro ao atualizar status após sincronização:",
+            error
+          );
+        }
+      }
+    }
+
+
+    window.addEventListener(
+      "offline",
+      ficouOffline
+    );
+
+
+    window.addEventListener(
+      "online",
+      ficouOnline
+    );
+
+
+    return () => {
+      window.removeEventListener(
+        "offline",
+        ficouOffline
+      );
+
+      window.removeEventListener(
+        "online",
+        ficouOnline
+      );
+    };
+
+  }, [
+    funcionario?.id,
+    carregarEstadoOffline,
+    atualizarContadorPendentes,
+    tentarSincronizar,
+    salvarEstadoOficialLocal,
+  ]);
+
+
+  /* =======================================================
+     BATER PONTO OFFLINE
+  ======================================================= */
+
+  async function baterPontoOffline(
+    tipo
+  ) {
+    if (
+      !empresaId
+    ) {
+      throw new Error(
+        "Empresa não identificada para o modo offline."
+      );
+    }
+
+
+    if (
+      !funcionario?.id
+    ) {
+      throw new Error(
+        "Funcionário não identificado."
+      );
+    }
+
+
+    if (
+      !modoOfflinePreparado
+    ) {
+      throw new Error(
+        "Este funcionário ainda não está preparado para registrar ponto offline neste terminal."
+      );
+    }
+
+
+    if (
+      permissoes[tipo] !== true
+    ) {
+      throw new Error(
+        "Esta batida não está liberada neste momento."
+      );
+    }
+
+
+    console.log(
+      "=========================================="
+    );
+
+    console.log(
+      "📴 SALVANDO BATIDA OFFLINE"
+    );
+
+    console.log({
+      empresa_id:
+        empresaId,
+
+      funcionario_id:
+        funcionario.id,
+
+      funcionario_nome:
+        funcionario.nome,
+
+      tipo,
+    });
+
+    console.log(
+      "=========================================="
+    );
+
+
+    /* =====================================================
+       SALVAR PONTO NA FILA LOCAL
+    ===================================================== */
+
+    const ponto =
+      await salvarPontoOffline({
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          Number(
+            funcionario.id
+          ),
+
+        funcionario_nome:
+          funcionario.nome ||
+          "Funcionário",
+
+        tipo,
+      });
+
+
+    console.log(
+      "💾 PONTO SALVO NO INDEXEDDB:",
+      ponto
+    );
+
+
+    /* =====================================================
+       ATUALIZAR ESTADO DA JORNADA LOCAL
+
+       Exemplo:
+
+       entrada
+         ↓
+       intervalo e saída liberados
+    ===================================================== */
+
+    const novoEstado =
+      await atualizarEstadoAposBatidaOffline({
+        empresa_id:
+          empresaId,
+
+        funcionario_id:
+          Number(
+            funcionario.id
+          ),
+
+        tipo,
+      });
+
+
+    if (
+      novoEstado?.permissoes
+    ) {
+      setPermissoes(
+        novoEstado.permissoes
+      );
+    } else {
+      setPermissoes(
+        calcularPermissoesLocais(
+          tipo
+        )
+      );
+    }
+
+
+    await atualizarContadorPendentes();
+
+
+    return ponto;
+  }
 
 
   /* =======================================================
@@ -626,17 +1397,13 @@ export default function EscolherBatida() {
 
     /* =====================================================
        VERIFICAR PERMISSÃO LOCAL
-
-       Isso é apenas proteção visual.
-
-       O backend continuará validando novamente.
     ===================================================== */
 
     if (
       permissoes[tipo] !== true
     ) {
       console.warn(
-        "⚠️ Batida bloqueada no frontend:",
+        "⚠️ Batida bloqueada:",
         {
           tipo,
           permissoes,
@@ -670,15 +1437,57 @@ export default function EscolherBatida() {
       );
 
 
-      /*
-        IMPORTANTE:
+      /* ===================================================
+         NAVEGADOR JÁ SABE QUE ESTÁ OFFLINE
+      =================================================== */
 
-        Não enviamos mais empresa_id.
+      if (
+        !navigator.onLine
+      ) {
+        setOnline(
+          false
+        );
 
-        O backend pega a empresa do JWT:
 
-        req.user.empresa_id
-      */
+        await baterPontoOffline(
+          tipo
+        );
+
+
+        abrirModal(
+          "Ponto salvo offline!",
+
+          `${nomesBatidas[tipo]} registrada neste dispositivo. O ponto será enviado automaticamente quando a internet voltar.`,
+
+          false
+        );
+
+
+        /*
+          Mantemos o mesmo comportamento
+          da tela original.
+        */
+
+        setTimeout(
+          () => {
+            navigate(
+              "/ponto",
+              {
+                replace: true,
+              }
+            );
+          },
+          1400
+        );
+
+
+        return;
+      }
+
+
+      /* ===================================================
+         TENTAR REGISTRAR ONLINE
+      =================================================== */
 
       const payload = {
         funcionario_id:
@@ -696,7 +1505,7 @@ export default function EscolherBatida() {
       );
 
       console.log(
-        "📤 REGISTRANDO PONTO:"
+        "📤 REGISTRANDO PONTO ONLINE:"
       );
 
       console.log(
@@ -716,75 +1525,330 @@ export default function EscolherBatida() {
       );
 
 
-      const { data } =
-        await api.post(
-          "/ponto/bater",
-          payload
-        );
-
-
-      console.log(
-        "=========================================="
-      );
-
-      console.log(
-        "✅ PONTO REGISTRADO:"
-      );
-
-      console.log(
-        data
-      );
-
-      console.log(
-        "=========================================="
-      );
-
-
-      /*
-        Atualiza imediatamente as permissões
-        com a resposta do POST.
-
-        Mesmo que depois a tela volte para
-        /ponto, isso evita estado antigo.
-      */
-
-      if (
-        data?.permissoes
-      ) {
-        setPermissoes(
-          normalizarPermissoes(
-            data
-          )
-        );
-      }
-
-
-      abrirModal(
-        "Ponto registrado!",
-
-        data?.message ||
-        data?.mensagem ||
-        `${nomesBatidas[tipo]} registrado com sucesso.`,
-
-        false
-      );
-
-
-      /* ===================================================
-         VOLTAR PARA TELA INICIAL
-      =================================================== */
-
-      setTimeout(
-        () => {
-          navigate(
-            "/ponto",
-            {
-              replace: true,
-            }
+      try {
+        const { data } =
+          await api.post(
+            "/ponto/bater",
+            payload
           );
-        },
-        1400
-      );
+
+
+        console.log(
+          "=========================================="
+        );
+
+        console.log(
+          "✅ PONTO REGISTRADO ONLINE:"
+        );
+
+        console.log(
+          data
+        );
+
+        console.log(
+          "=========================================="
+        );
+
+
+        setOnline(
+          true
+        );
+
+
+        /* =================================================
+           ATUALIZAR PERMISSÕES
+        ================================================= */
+
+        let novasPermissoes =
+          null;
+
+
+        if (
+          data?.permissoes
+        ) {
+          novasPermissoes =
+            normalizarPermissoes(
+              data
+            );
+
+
+          setPermissoes(
+            novasPermissoes
+          );
+        }
+
+
+        /*
+          Se por algum motivo o backend não
+          devolver permissoes, calculamos apenas
+          para o backup local.
+
+          A próxima consulta ao servidor continuará
+          sendo a fonte oficial.
+        */
+
+        if (!novasPermissoes) {
+          novasPermissoes =
+            calcularPermissoesLocais(
+              tipo
+            );
+        }
+
+
+        /* =================================================
+           SALVAR ESTADO PARA FUTURO USO OFFLINE
+        ================================================= */
+
+        await salvarEstadoOficialLocal(
+          novasPermissoes,
+          tipo
+        );
+
+
+        abrirModal(
+          "Ponto registrado!",
+
+          data?.message ||
+          data?.mensagem ||
+          `${nomesBatidas[tipo]} registrado com sucesso.`,
+
+          false
+        );
+
+
+        /* =================================================
+           VOLTAR PARA TELA INICIAL
+        ================================================= */
+
+        setTimeout(
+          () => {
+            navigate(
+              "/ponto",
+              {
+                replace: true,
+              }
+            );
+          },
+          1400
+        );
+
+
+        return;
+
+      } catch (errorOnline) {
+        console.error(
+          "=========================================="
+        );
+
+        console.error(
+          "❌ ERRO NA TENTATIVA ONLINE:"
+        );
+
+        console.error(
+          errorOnline
+        );
+
+        console.error(
+          "=========================================="
+        );
+
+
+        /* =================================================
+           SERVIDOR RESPONDEU
+
+           Se recebemos status HTTP, não é uma simples
+           queda de internet.
+
+           Pode ser:
+           400
+           401
+           403
+           500 etc.
+
+           NÃO devemos transformar uma rejeição do
+           servidor em ponto offline.
+        ================================================= */
+
+        if (
+          errorOnline?.response
+        ) {
+          setOnline(
+            true
+          );
+
+
+          if (
+            errorOnline
+              ?.response
+              ?.data
+              ?.permissoes
+          ) {
+            setPermissoes(
+              normalizarPermissoes(
+                errorOnline.response.data
+              )
+            );
+          }
+
+
+          throw errorOnline;
+        }
+
+
+        /* =================================================
+           SERVIDOR NÃO RESPONDEU
+
+           Neste caso podemos cair para o modo offline.
+        ================================================= */
+
+        console.warn(
+          "📴 Servidor não respondeu."
+        );
+
+        console.warn(
+          "💾 Tentando registrar localmente..."
+        );
+
+
+        setOnline(
+          false
+        );
+
+
+        /*
+          Antes de salvar, verificamos se existe
+          estado local válido.
+        */
+
+        const estadoExiste =
+          await carregarEstadoOffline();
+
+
+        if (!estadoExiste) {
+          throw new Error(
+            "Servidor indisponível e este funcionário ainda não possui estado offline salvo neste terminal."
+          );
+        }
+
+
+        /*
+          IMPORTANTE:
+
+          carregarEstadoOffline atualizou o state
+          do React, mas setState é assíncrono.
+
+          Portanto precisamos consultar diretamente
+          o IndexedDB para validar a permissão.
+        */
+
+        const estadoAtual =
+          await buscarEstadoFuncionario(
+            empresaId,
+            Number(
+              funcionario.id
+            )
+          );
+
+
+        const permissoesAtuais =
+          estadoAtual?.permissoes ||
+          calcularPermissoesLocais(
+            estadoAtual?.ultima_batida
+          );
+
+
+        if (
+          permissoesAtuais?.[tipo] !==
+          true
+        ) {
+          throw new Error(
+            "Esta batida não está liberada no estado offline atual."
+          );
+        }
+
+
+        /* =================================================
+           SALVAR OFFLINE
+
+           Aqui fazemos diretamente para evitar depender
+           do state do React que pode ainda estar sendo
+           atualizado.
+        ================================================= */
+
+        const ponto =
+          await salvarPontoOffline({
+            empresa_id:
+              empresaId,
+
+            funcionario_id:
+              Number(
+                funcionario.id
+              ),
+
+            funcionario_nome:
+              funcionario.nome ||
+              "Funcionário",
+
+            tipo,
+          });
+
+
+        console.log(
+          "💾 Ponto salvo após falha da rede:",
+          ponto
+        );
+
+
+        const novoEstado =
+          await atualizarEstadoAposBatidaOffline({
+            empresa_id:
+              empresaId,
+
+            funcionario_id:
+              Number(
+                funcionario.id
+              ),
+
+            tipo,
+          });
+
+
+        if (
+          novoEstado?.permissoes
+        ) {
+          setPermissoes(
+            novoEstado.permissoes
+          );
+        }
+
+
+        await atualizarContadorPendentes();
+
+
+        abrirModal(
+          "Ponto salvo offline!",
+
+          `${nomesBatidas[tipo]} registrada neste dispositivo. O ponto será sincronizado quando o servidor voltar a responder.`,
+
+          false
+        );
+
+
+        setTimeout(
+          () => {
+            navigate(
+              "/ponto",
+              {
+                replace: true,
+              }
+            );
+          },
+          1400
+        );
+
+
+        return;
+      }
 
     } catch (error) {
       console.error(
@@ -809,16 +1873,6 @@ export default function EscolherBatida() {
       );
 
 
-      /*
-        Se o backend recusou porque o estado
-        mudou, atualizamos as permissões com
-        o que ele devolveu.
-
-        Exemplo:
-        outro clique/requisição registrou
-        uma batida antes deste POST.
-      */
-
       if (
         error?.response?.data?.permissoes
       ) {
@@ -836,6 +1890,7 @@ export default function EscolherBatida() {
         error?.response?.data?.error ||
         error?.response?.data?.erro ||
         error?.response?.data?.message ||
+        error?.message ||
         "Erro ao registrar ponto.",
 
         true
@@ -891,6 +1946,104 @@ export default function EscolherBatida() {
       >
 
         {/* =================================================
+            STATUS DA CONEXÃO
+
+            Mantido inline para não exigir alteração
+            imediata no CSS.
+        ================================================= */}
+
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            marginBottom: "14px",
+          }}
+        >
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "7px",
+              padding:
+                "7px 13px",
+              borderRadius:
+                "999px",
+              fontSize:
+                "13px",
+              fontWeight:
+                "700",
+
+              background:
+                online
+                  ? "rgba(30, 150, 80, 0.15)"
+                  : "rgba(220, 60, 60, 0.18)",
+
+              color:
+                online
+                  ? "#1f8f50"
+                  : "#c73535",
+
+              border:
+                online
+                  ? "1px solid rgba(30, 150, 80, 0.25)"
+                  : "1px solid rgba(220, 60, 60, 0.30)",
+            }}
+          >
+            <FaWifi />
+
+            {
+              online
+                ? "Online"
+                : "Sem internet"
+            }
+          </div>
+        </div>
+
+
+        {/* =================================================
+            PONTOS PENDENTES
+        ================================================= */}
+
+        {
+          pontosPendentes > 0 &&
+          (
+            <div
+              style={{
+                width: "100%",
+                boxSizing:
+                  "border-box",
+                marginBottom:
+                  "14px",
+                padding:
+                  "10px 14px",
+                borderRadius:
+                  "10px",
+                textAlign:
+                  "center",
+                fontSize:
+                  "13px",
+                fontWeight:
+                  "700",
+                background:
+                  "rgba(255, 193, 7, 0.15)",
+                border:
+                  "1px solid rgba(255, 193, 7, 0.30)",
+                color:
+                  "#8a6500",
+              }}
+            >
+              {
+                pontosPendentes === 1
+                  ? "1 ponto aguardando sincronização"
+                  : `${pontosPendentes} pontos aguardando sincronização`
+              }
+            </div>
+          )
+        }
+
+
+        {/* =================================================
             CABEÇALHO
         ================================================= */}
 
@@ -916,7 +2069,11 @@ export default function EscolherBatida() {
             {
               loadingStatus
                 ? "Verificando batidas disponíveis..."
-                : "Qual ponto deseja registrar?"
+                : online
+                  ? "Qual ponto deseja registrar?"
+                  : modoOfflinePreparado
+                    ? "Modo offline: escolha o ponto que deseja registrar."
+                    : "Modo offline indisponível para este funcionário."
             }
           </p>
 
@@ -972,9 +2129,6 @@ export default function EscolherBatida() {
 
           {/* ===============================================
               INTERVALO
-
-              Envia:
-              intervalo_inicio
           =============================================== */}
 
           <button
@@ -1014,11 +2168,6 @@ export default function EscolherBatida() {
 
           {/* ===============================================
               RETORNO
-
-              IMPORTANTE:
-
-              Retorno SEMPRE envia:
-              intervalo_fim
           =============================================== */}
 
           <button

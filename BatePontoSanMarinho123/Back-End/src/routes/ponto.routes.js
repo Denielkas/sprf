@@ -84,6 +84,18 @@ router.post(
   pontoController.bater
 );
 
+/* =========================================================
+   SINCRONIZAR BATIDAS OFFLINE
+
+   POST /api/ponto/sincronizar-offline
+========================================================= */
+
+router.post(
+  "/sincronizar-offline",
+  auth,
+  somentePonto,
+  pontoController.sincronizarOffline
+);
 
 /* =========================================================
    BUSCAR FUNCIONÁRIO PELO CPF

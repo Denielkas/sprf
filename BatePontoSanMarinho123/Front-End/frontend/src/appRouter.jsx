@@ -5,7 +5,15 @@ import {
   Navigate,
 } from "react-router-dom";
 
+import {
+  useEffect,
+} from "react";
+
 import AcessoEmpresa from "./pages/AcessoEmpresa";
+
+import {
+  sincronizarPontosOffline,
+} from "./services/sincronizacaoOffline";
 
 /* =========================================================
    PONTO
@@ -48,6 +56,229 @@ import LogsSistema from "./pages/LogsSistema";
 ========================================================= */
 
 import DashboardLayout from "./layouts/DashboardLayout";
+
+/* =========================================================
+   SINCRONIZAÇÃO OFFLINE GLOBAL
+
+   Esse componente fica ativo enquanto o sistema estiver
+   aberto.
+
+   Ele tenta sincronizar:
+
+   1. Quando o sistema é carregado
+   2. Quando a internet volta
+   3. A cada 30 segundos enquanto estiver online
+
+   Dessa forma, não é necessário entrar novamente na tela
+   "Escolher Batida" para enviar os pontos pendentes.
+========================================================= */
+
+function SincronizadorOfflineGlobal() {
+  useEffect(() => {
+    let ativo =
+      true;
+
+    /* =====================================================
+       EXECUTAR SINCRONIZAÇÃO
+    ===================================================== */
+
+    async function tentarSincronizar() {
+      if (!ativo) {
+        return;
+      }
+
+      /*
+        navigator.onLine é apenas uma indicação.
+
+        A confirmação real de conexão continua sendo feita
+        pela requisição ao backend dentro de
+        sincronizarPontosOffline().
+      */
+
+      if (!navigator.onLine) {
+        return;
+      }
+
+      /*
+        Só tentamos sincronizar se existir uma sessão.
+
+        A rota do backend utiliza o JWT para identificar
+        e autorizar a empresa do terminal.
+      */
+
+      const token =
+        localStorage.getItem(
+          "token"
+        );
+
+      const usuario =
+        getUsuario();
+
+      if (
+        !token ||
+        !usuario
+      ) {
+        return;
+      }
+
+      /*
+        A fila de pontos offline pertence ao terminal
+        de ponto.
+
+        Portanto, somente o login ponto_empresa deve
+        tentar enviar essas batidas automaticamente.
+      */
+
+      if (
+        usuario.role !==
+        "ponto_empresa"
+      ) {
+        return;
+      }
+
+      try {
+        const resultado =
+          await sincronizarPontosOffline();
+
+        if (!ativo) {
+          return;
+        }
+
+        if (
+          resultado?.ok &&
+          Number(
+            resultado?.sincronizados ||
+            0
+          ) > 0
+        ) {
+          console.log(
+            "✅ Pontos offline sincronizados:",
+            resultado
+          );
+        }
+      } catch (error) {
+        /*
+          Não interrompemos o sistema se a sincronização
+          falhar.
+
+          As batidas continuam no IndexedDB e uma nova
+          tentativa acontecerá depois.
+        */
+
+        console.warn(
+          "⚠️ Sincronização automática não concluída:",
+          error
+        );
+      }
+    }
+
+    /* =====================================================
+       INTERNET VOLTOU
+    ===================================================== */
+
+    function aoVoltarInternet() {
+      console.log(
+        "🌐 Internet detectada. Tentando sincronizar pontos..."
+      );
+
+      tentarSincronizar();
+    }
+
+    /* =====================================================
+       INTERNET CAIU
+    ===================================================== */
+
+    function aoFicarOffline() {
+      console.log(
+        "📴 Terminal sem internet. Pontos permanecerão locais."
+      );
+    }
+
+    /* =====================================================
+       TENTATIVA AO INICIAR O SISTEMA
+
+       Pequeno atraso para permitir que localStorage,
+       aplicação e demais componentes terminem de iniciar.
+    ===================================================== */
+
+    const timeoutInicial =
+      window.setTimeout(
+        () => {
+          tentarSincronizar();
+        },
+        1500
+      );
+
+    /* =====================================================
+       EVENTOS DO NAVEGADOR
+    ===================================================== */
+
+    window.addEventListener(
+      "online",
+      aoVoltarInternet
+    );
+
+    window.addEventListener(
+      "offline",
+      aoFicarOffline
+    );
+
+    /* =====================================================
+       VERIFICAÇÃO PERIÓDICA
+
+       Serve como segurança caso o evento "online" não seja
+       disparado corretamente pelo sistema operacional ou
+       navegador.
+
+       O próprio sincronizacaoOffline.js impede duas
+       sincronizações simultâneas.
+    ===================================================== */
+
+    const intervalo =
+      window.setInterval(
+        () => {
+          tentarSincronizar();
+        },
+        30000
+      );
+
+    /* =====================================================
+       LIMPEZA
+    ===================================================== */
+
+    return () => {
+      ativo =
+        false;
+
+      window.clearTimeout(
+        timeoutInicial
+      );
+
+      window.clearInterval(
+        intervalo
+      );
+
+      window.removeEventListener(
+        "online",
+        aoVoltarInternet
+      );
+
+      window.removeEventListener(
+        "offline",
+        aoFicarOffline
+      );
+    };
+  }, []);
+
+  /*
+    Não existe interface visual.
+
+    O componente trabalha somente em segundo plano
+    enquanto o React estiver aberto.
+  */
+
+  return null;
+}
 
 /* =========================================================
    BUSCAR USUÁRIO LOGADO
@@ -475,6 +706,16 @@ function RedirecionarApp() {
 export default function AppRouter() {
   return (
     <BrowserRouter>
+
+      {/* ===================================================
+          SINCRONIZAÇÃO GLOBAL DE PONTOS OFFLINE
+
+          Fica fora das Routes para continuar montado
+          durante toda a navegação do sistema.
+      =================================================== */}
+
+      <SincronizadorOfflineGlobal />
+
       <Routes>
 
         {/* =================================================
