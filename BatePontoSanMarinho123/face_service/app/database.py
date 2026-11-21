@@ -17,7 +17,7 @@ def get_db():
 
         database=os.getenv(
             "PG_DB",
-            "pontoMultiEmpresa"
+            "bateponto_multiempresa"
         ),
 
         user=os.getenv(

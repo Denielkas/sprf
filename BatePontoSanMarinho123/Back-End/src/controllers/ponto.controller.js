@@ -222,11 +222,6 @@ async function garantirTabelaPontos() {
 
   /* =====================================
      UUID DA BATIDA OFFLINE
-
-     Este UUID é criado no terminal.
-
-     Ele impede que a mesma batida seja
-     sincronizada duas vezes.
   ===================================== */
 
   await pool.query(`
@@ -238,12 +233,6 @@ async function garantirTabelaPontos() {
 
   /* =====================================
      ORIGEM
-
-     Exemplos:
-     online
-     offline
-     manual
-     automatico
   ===================================== */
 
   await pool.query(`
@@ -268,14 +257,6 @@ async function garantirTabelaPontos() {
 
   /* =====================================
      HORÁRIO ORIGINAL DO DISPOSITIVO
-
-     Exemplo:
-
-     funcionário bateu 08:00 sem internet
-     internet voltou 09:30
-
-     horario_dispositivo = 08:00
-     sincronizado_em     = 09:30
   ===================================== */
 
   await pool.query(`
@@ -297,7 +278,7 @@ async function garantirTabelaPontos() {
 
 
   /* =====================================
-     ÍNDICES JÁ EXISTENTES
+     ÍNDICES
   ===================================== */
 
   await pool.query(`
@@ -324,17 +305,12 @@ async function garantirTabelaPontos() {
 
   /* =====================================
      PROTEÇÃO CONTRA DUPLICIDADE OFFLINE
-
-     Duas sincronizações com o mesmo UUID
-     não poderão criar dois pontos.
   ===================================== */
 
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS
     idx_pontos_offline_uuid
-
     ON pontos(offline_uuid)
-
     WHERE offline_uuid IS NOT NULL
   `);
 }
@@ -469,7 +445,6 @@ async function garantirTabelaFaltas() {
   await pool.query(`
     CREATE INDEX IF NOT EXISTS
     idx_faltas_ajustes_empresa
-
     ON faltas_ajustes(empresa_id)
   `);
 
@@ -733,12 +708,26 @@ function normalizarHora(valor) {
 
 /* =========================================================
    BUSCAR TURNO ABERTO
+
+   REGRA:
+   - A jornada começa em uma "entrada".
+   - Ela permanece aberta até existir uma "saida".
+   - Pode atravessar a meia-noite.
+   - A jornada pertence ao dia em que ocorreu a entrada.
+   - Limite máximo de segurança: 36 horas.
 ========================================================= */
 async function buscarTurnoAberto(
   funcionarioId,
   empresaId
 ) {
-  const { rows } =
+  const agora =
+    dataHoraAgoraSQL();
+
+  /*
+    Procuramos a última entrada dentro das
+    últimas 36 horas.
+  */
+  const { rows: entradas } =
     await pool.query(
       `
       SELECT
@@ -752,8 +741,113 @@ async function buscarTurnoAberto(
 
       WHERE funcionario_id = $1
         AND empresa_id = $2
+        AND tipo = 'entrada'
+
         AND marcado_em >=
-            NOW() - INTERVAL '36 hours'
+            (
+              $3::timestamp -
+              INTERVAL '36 hours'
+            )
+
+        AND marcado_em <=
+            $3::timestamp
+
+      ORDER BY
+        marcado_em DESC,
+        id DESC
+
+      LIMIT 1
+      `,
+      [
+        funcionarioId,
+        empresaId,
+        agora,
+      ]
+    );
+
+  if (!entradas.length) {
+    return null;
+  }
+
+  const entrada =
+    entradas[0];
+
+  /*
+    Verificar se existe saída depois dessa entrada.
+
+    Se existir, a jornada já terminou.
+  */
+  const { rows: saidas } =
+    await pool.query(
+      `
+      SELECT
+        id,
+        empresa_id,
+        funcionario_id,
+        tipo,
+        marcado_em
+
+      FROM pontos
+
+      WHERE funcionario_id = $1
+        AND empresa_id = $2
+        AND tipo = 'saida'
+
+        AND marcado_em >
+            $3::timestamp
+
+        AND marcado_em <=
+            (
+              $3::timestamp +
+              INTERVAL '36 hours'
+            )
+
+      ORDER BY
+        marcado_em ASC,
+        id ASC
+
+      LIMIT 1
+      `,
+      [
+        funcionarioId,
+        empresaId,
+        entrada.marcado_em,
+      ]
+    );
+
+  /*
+    Encontrou saída depois da última entrada:
+    jornada encerrada.
+  */
+  if (saidas.length) {
+    return null;
+  }
+
+  /*
+    Jornada ainda está aberta.
+
+    Pegamos todas as batidas desde a entrada.
+  */
+  const { rows: batidas } =
+    await pool.query(
+      `
+      SELECT
+        id,
+        empresa_id,
+        funcionario_id,
+        tipo,
+        marcado_em
+
+      FROM pontos
+
+      WHERE funcionario_id = $1
+        AND empresa_id = $2
+
+        AND marcado_em >=
+            $3::timestamp
+
+        AND marcado_em <=
+            $4::timestamp
 
       ORDER BY
         marcado_em ASC,
@@ -762,48 +856,9 @@ async function buscarTurnoAberto(
       [
         funcionarioId,
         empresaId,
+        entrada.marcado_em,
+        agora,
       ]
-    );
-
-  if (!rows.length) {
-    return null;
-  }
-
-  let indiceUltimaSaida = -1;
-
-  for (
-    let i = rows.length - 1;
-    i >= 0;
-    i--
-  ) {
-    if (rows[i].tipo === "saida") {
-      indiceUltimaSaida = i;
-      break;
-    }
-  }
-
-  const depoisDaUltimaSaida =
-    rows.slice(
-      indiceUltimaSaida + 1
-    );
-
-  if (!depoisDaUltimaSaida.length) {
-    return null;
-  }
-
-  const indiceEntrada =
-    depoisDaUltimaSaida.findIndex(
-      (ponto) =>
-        ponto.tipo === "entrada"
-    );
-
-  if (indiceEntrada === -1) {
-    return null;
-  }
-
-  const batidas =
-    depoisDaUltimaSaida.slice(
-      indiceEntrada
     );
 
   if (!batidas.length) {
@@ -811,11 +866,11 @@ async function buscarTurnoAberto(
   }
 
   return {
-    entrada: batidas[0],
+    entrada,
     batidas,
+    jornada_aberta: true,
   };
 }
-
 
 /* =========================================
    PEGAR ÚLTIMA BATIDA
@@ -834,10 +889,7 @@ function obterUltimaBatidaDoTurno(
   return turno.batidas[
     turno.batidas.length - 1
   ];
-}
-
-
-/* =========================================================
+}/* =========================================================
    PERMISSÕES
 ========================================================= */
 function getPermissoesPorUltimaBatida(
@@ -1417,16 +1469,6 @@ exports.bater =
           ]
         );
 
-      /*
-        IMPORTANTE:
-
-        Só agora "ponto" existe.
-
-        No código anterior o registrarLog()
-        estava antes deste INSERT e tentava
-        acessar ponto.id e funcionario.nome
-        antes deles existirem.
-      */
       const ponto =
         rows[0];
 
@@ -1489,10 +1531,6 @@ exports.bater =
 
       /* =====================================
          RECALCULAR PELO BANCO
-
-         Não presumimos o estado.
-         Consultamos novamente o banco depois
-         da inserção.
       ===================================== */
 
       const turnoAtualizado =
@@ -1783,7 +1821,7 @@ exports.auto =
          LOG DO PONTO AUTOMÁTICO
       ===================================== */
 
-      const nomesBatidas = {
+            const nomesBatidas = {
         entrada:
           "Entrada",
 
@@ -1883,7 +1921,8 @@ exports.auto =
     }
   };
 
-  /* =========================================================
+
+/* =========================================================
    INSERIR PONTO MANUAL
 ========================================================= */
 exports.inserirManual =
@@ -2616,9 +2655,6 @@ exports.ajustar =
 
       /* =====================================
          VALIDAR IDS RECEBIDOS
-
-         Isso impede alterar um ponto de outro
-         funcionário/empresa passando outro ID.
       ===================================== */
 
       const pontosOriginais = {
@@ -2847,35 +2883,29 @@ exports.ajustar =
           ]
         );
 
-        /* ===================================
-           COMMIT
-        =================================== */
-
         await client.query(
           "COMMIT"
         );
 
         /* ===================================
-           REGISTRAR LOG
+           LOG
         =================================== */
 
-        const acaoAjuste =
-          faltaBool
-            ? "FALTA_REGISTRADA"
-            : folgaBool
-              ? "FOLGA_REGISTRADA"
-              : feriasBool
-                ? "FERIAS_REGISTRADA"
-                : "FALTA_JUSTIFICADA_REGISTRADA";
+        let situacao =
+          "ajuste";
 
-        const descricaoAjuste =
-          faltaBool
-            ? `Falta registrada para ${funcionario.nome}.`
-            : folgaBool
-              ? `Folga registrada para ${funcionario.nome}.`
-              : feriasBool
-                ? `Férias registradas para ${funcionario.nome}.`
-                : `Falta justificada registrada para ${funcionario.nome}.`;
+        if (faltaBool) {
+          situacao = "falta";
+        } else if (folgaBool) {
+          situacao = "folga";
+        } else if (feriasBool) {
+          situacao = "férias";
+        } else if (
+          faltaJustificadaBool
+        ) {
+          situacao =
+            "falta justificada";
+        }
 
         await registrarLog({
           req,
@@ -2890,10 +2920,10 @@ exports.ajustar =
             "AJUSTE",
 
           acao:
-            acaoAjuste,
+            "AJUSTE_SITUACAO_DIA",
 
           descricao:
-            descricaoAjuste,
+            `${funcionario.nome} teve o dia ${dataISO} marcado como ${situacao}.`,
 
           dados: {
             funcionario_id:
@@ -2917,11 +2947,64 @@ exports.ajustar =
             falta_justificada:
               faltaJustificadaBool,
 
-            justificativa:
+            justificativa_falta:
               faltaJustificadaBool
                 ? String(
-                    justificativa_falta ||
-                    ""
+                    justificativa_falta
+                  ).trim()
+                : null,
+
+            feriado:
+              feriadoBool,
+
+            origem:
+              "ajuste_rh",
+          },
+        });
+
+        return res.json({
+          ok: true,
+
+          message:
+            "Situação do dia atualizada com sucesso.",
+
+          empresa: {
+            id:
+              empresa.id,
+
+            nome:
+              empresa.nome_fantasia ||
+              empresa.nome,
+          },
+
+          funcionario: {
+            id:
+              funcionario.id,
+
+            nome:
+              funcionario.nome,
+          },
+
+          data:
+            dataISO,
+
+          situacao: {
+            falta:
+              faltaBool,
+
+            folga:
+              folgaBool,
+
+            ferias:
+              feriasBool,
+
+            falta_justificada:
+              faltaJustificadaBool,
+
+            justificativa_falta:
+              faltaJustificadaBool
+                ? String(
+                    justificativa_falta
                   ).trim()
                 : null,
 
@@ -2929,394 +3012,317 @@ exports.ajustar =
               feriadoBool,
           },
         });
-
-        /* ===================================
-           RESPOSTA
-        =================================== */
-
-        return res.json({
-          ok: true,
-
-          empresa_id:
-            empresaId,
-
-          funcionario_id:
-            funcionarioId,
-
-          falta:
-            faltaBool,
-
-          folga:
-            folgaBool,
-
-          ferias:
-            feriasBool,
-
-          falta_justificada:
-            faltaJustificadaBool,
-
-          justificativa_falta:
-            faltaJustificadaBool
-              ? String(
-                  justificativa_falta
-                ).trim()
-              : "",
-
-          feriado:
-            feriadoBool,
-
-          message:
-            faltaBool
-              ? "Falta registrada com sucesso."
-              : folgaBool
-                ? "Folga registrada com sucesso."
-                : feriasBool
-                  ? "Férias registradas com sucesso."
-                  : "Falta justificada registrada com sucesso.",
-        });
-      }
-
-            /* =========================================
-         AJUSTAR HORÁRIOS NORMAIS
-      ========================================= */
+      }      /* =====================================
+         AJUSTE NORMAL DOS HORÁRIOS
+      ===================================== */
 
       /*
-        Se chegou aqui, o dia não está sendo
-        marcado como falta, folga, férias
-        ou falta justificada.
+        Quando chegamos aqui, o dia não está
+        marcado como:
 
-        Portanto removemos qualquer situação
-        anterior salva para esta data.
+        - falta
+        - folga
+        - férias
+        - falta justificada
+
+        Portanto podemos trabalhar com as
+        batidas normalmente.
       */
+
+      /* =====================================
+         LIMPAR SITUAÇÕES ANTERIORES
+      ===================================== */
 
       await client.query(
         `
-        DELETE FROM faltas_ajustes
+        INSERT INTO faltas_ajustes (
+          empresa_id,
+          funcionario_id,
+          data,
 
-        WHERE funcionario_id = $1
-          AND empresa_id = $2
-          AND data = $3::date
+          falta,
+          folga,
+          ferias,
+
+          falta_justificada,
+          justificativa_falta,
+
+          feriado,
+
+          created_at,
+          updated_at
+        )
+
+        VALUES (
+          $1,
+          $2,
+          $3,
+
+          false,
+          false,
+          false,
+
+          false,
+          NULL,
+
+          $4,
+
+          NOW(),
+          NOW()
+        )
+
+        ON CONFLICT (
+          funcionario_id,
+          data
+        )
+
+        DO UPDATE SET
+
+          empresa_id =
+            EXCLUDED.empresa_id,
+
+          falta =
+            false,
+
+          folga =
+            false,
+
+          ferias =
+            false,
+
+          falta_justificada =
+            false,
+
+          justificativa_falta =
+            NULL,
+
+          feriado =
+            EXCLUDED.feriado,
+
+          updated_at =
+            NOW()
         `,
         [
-          funcionarioId,
           empresaId,
+          funcionarioId,
           dataISO,
+          feriadoBool,
         ]
       );
 
-      /* =========================================
-         FUNÇÃO PARA CONVERTER HORA EM MINUTOS
-      ========================================= */
+      /* =====================================
+         FUNÇÃO PARA MONTAR DATA/HORA
+         DO AJUSTE
+      ===================================== */
 
-      function horaParaMinutos(hora) {
+      function montarDataHoraAjuste(
+        hora,
+        adicionarDia = false
+      ) {
+        if (!hora) {
+          return null;
+        }
+
+        return montarDataHoraComDia(
+          dataISO,
+          hora,
+          adicionarDia ? 1 : 0
+        );
+      }
+
+      /* =====================================
+         IDENTIFICAR VIRADA DE DIA
+
+         Exemplo noturno:
+
+         entrada   17:30
+         intervalo 23:30
+         retorno   00:30
+         saída     05:30
+
+         retorno e saída pertencem ao
+         dia seguinte fisicamente, mas
+         continuam na mesma jornada.
+      ===================================== */
+
+      function horaParaMinutos(
+        hora
+      ) {
         if (!hora) {
           return null;
         }
 
         const [
-          horas,
-          minutos,
-        ] = hora
-          .split(":")
-          .map(Number);
+          h,
+          m,
+        ] =
+          hora
+            .split(":")
+            .map(Number);
 
         if (
-          !Number.isInteger(horas) ||
-          !Number.isInteger(minutos)
+          !Number.isInteger(h) ||
+          !Number.isInteger(m)
         ) {
           return null;
         }
 
         return (
-          horas * 60 +
-          minutos
+          h * 60 +
+          m
         );
       }
 
-      /* =========================================
-         DESCOBRIR O DIA DE CADA BATIDA
+      const ordemHorarios = [
+        {
+          chave:
+            "entrada",
 
-         IMPORTANTE PARA JORNADA NOTURNA:
+          hora:
+            horas.entrada,
+        },
 
-         Exemplo:
+        {
+          chave:
+            "intervalo_inicio",
 
-         Jornada referente ao dia 26:
+          hora:
+            horas.intervalo,
+        },
 
-         Entrada:   17:30 -> dia 26
-         Intervalo: 23:30 -> dia 26
-         Retorno:   00:30 -> dia 27
-         Saída:     05:30 -> dia 27
+        {
+          chave:
+            "intervalo_fim",
 
-         Mesmo retorno/saída acontecendo
-         fisicamente no dia 27, continuam
-         pertencendo à jornada iniciada no dia 26.
-      ========================================= */
+          hora:
+            horas.retorno,
+        },
 
-      const entradaMinutos =
-        horaParaMinutos(
-          horas.entrada
-        );
+        {
+          chave:
+            "saida",
 
-      const intervaloMinutos =
-        horaParaMinutos(
-          horas.intervalo
-        );
+          hora:
+            horas.saida,
+        },
+      ];
 
-      const retornoMinutos =
-        horaParaMinutos(
-          horas.retorno
-        );
+      let diaAtual = 0;
+      let ultimoMinuto = null;
 
-      const saidaMinutos =
-        horaParaMinutos(
-          horas.saida
-        );
+      const diasAdicionais = {
+        entrada: 0,
+        intervalo_inicio: 0,
+        intervalo_fim: 0,
+        saida: 0,
+      };
 
-      let diaEntrada = 0;
-      let diaIntervalo = 0;
-      let diaRetorno = 0;
-      let diaSaida = 0;
-
-      /*
-        "ultimoMinutoAbsoluto" permite
-        acompanhar quando houve virada
-        de meia-noite.
-      */
-      let ultimoMinutoAbsoluto =
-        null;
-
-      function calcularDiaBatida(
-        minutos
+      for (
+        const item of ordemHorarios
       ) {
-        if (minutos === null) {
-          return 0;
+        if (!item.hora) {
+          continue;
         }
 
-        /*
-          Primeira batida sempre começa
-          no dia de referência.
-        */
+        const minutoAtual =
+          horaParaMinutos(
+            item.hora
+          );
+
         if (
-          ultimoMinutoAbsoluto ===
-          null
+          minutoAtual === null
         ) {
-          ultimoMinutoAbsoluto =
-            minutos;
-
-          return 0;
+          continue;
         }
-
-        let candidato =
-          minutos;
 
         /*
-          Se o horário ficou menor que
-          o anterior, significa que
-          provavelmente passou da
-          meia-noite.
+          Se o horário ficou menor que o
+          anterior, significa que ocorreu
+          uma virada de meia-noite.
 
-          Somamos 24 horas até ficar
-          cronologicamente depois da
-          batida anterior.
+          Exemplo:
+
+          23:30 -> 00:30
+
+          Nesse caso avançamos um dia.
         */
-        while (
-          candidato <
-          ultimoMinutoAbsoluto
+
+        if (
+          ultimoMinuto !== null &&
+          minutoAtual < ultimoMinuto
         ) {
-          candidato +=
-            24 * 60;
+          diaAtual++;
         }
 
-        ultimoMinutoAbsoluto =
-          candidato;
+        diasAdicionais[
+          item.chave
+        ] = diaAtual;
 
-        return Math.floor(
-          candidato /
-          (24 * 60)
-        );
+        ultimoMinuto =
+          minutoAtual;
       }
 
-      /*
-        Calculamos seguindo a ordem
-        real da jornada.
-      */
+      /* =====================================
+         DATAS/HORAS FINAIS
+      ===================================== */
 
-      if (
-        entradaMinutos !== null
-      ) {
-        diaEntrada =
-          calcularDiaBatida(
-            entradaMinutos
-          );
-      }
-
-      if (
-        intervaloMinutos !== null
-      ) {
-        diaIntervalo =
-          calcularDiaBatida(
-            intervaloMinutos
-          );
-      }
-
-      if (
-        retornoMinutos !== null
-      ) {
-        diaRetorno =
-          calcularDiaBatida(
-            retornoMinutos
-          );
-      }
-
-      if (
-        saidaMinutos !== null
-      ) {
-        diaSaida =
-          calcularDiaBatida(
-            saidaMinutos
-          );
-      }
-
-      /* =========================================
-         MONTAR DATAS/HORAS COMPLETAS
-      ========================================= */
-
-      const marcadoEntrada =
+      const dataHoraEntrada =
         horas.entrada
           ? montarDataHoraComDia(
               dataISO,
               horas.entrada,
-              diaEntrada
+              diasAdicionais.entrada
             )
           : null;
 
-      const marcadoIntervalo =
+      const dataHoraIntervalo =
         horas.intervalo
           ? montarDataHoraComDia(
               dataISO,
               horas.intervalo,
-              diaIntervalo
+              diasAdicionais
+                .intervalo_inicio
             )
           : null;
 
-      const marcadoRetorno =
+      const dataHoraRetorno =
         horas.retorno
           ? montarDataHoraComDia(
               dataISO,
               horas.retorno,
-              diaRetorno
+              diasAdicionais
+                .intervalo_fim
             )
           : null;
 
-      const marcadoSaida =
+      const dataHoraSaida =
         horas.saida
           ? montarDataHoraComDia(
               dataISO,
               horas.saida,
-              diaSaida
+              diasAdicionais.saida
             )
           : null;
 
-      console.log(
-        "========== AJUSTE DE HORÁRIOS =========="
-      );
-
-      console.log({
-        empresa_id:
-          empresaId,
-
-        funcionario_id:
-          funcionarioId,
-
-        funcionario:
-          funcionario.nome,
-
-        data_referencia:
-          dataISO,
-
-        entrada: {
-          hora:
-            horas.entrada,
-
-          dia_adicional:
-            diaEntrada,
-
-          marcado_em:
-            marcadoEntrada,
-        },
-
-        intervalo: {
-          hora:
-            horas.intervalo,
-
-          dia_adicional:
-            diaIntervalo,
-
-          marcado_em:
-            marcadoIntervalo,
-        },
-
-        retorno: {
-          hora:
-            horas.retorno,
-
-          dia_adicional:
-            diaRetorno,
-
-          marcado_em:
-            marcadoRetorno,
-        },
-
-        saida: {
-          hora:
-            horas.saida,
-
-          dia_adicional:
-            diaSaida,
-
-          marcado_em:
-            marcadoSaida,
-        },
-      });
-
-      console.log(
-        "========================================="
-      );
-
-      /* =========================================
-         NOVOS IDS
-      ========================================= */
-
-      const novosIds = {
-        entrada_id:
-          null,
-
-        intervalo_inicio_id:
-          null,
-
-        intervalo_fim_id:
-          null,
-
-        saida_id:
-          null,
-      };
-
-      /* =========================================
-         FUNÇÃO AUXILIAR PARA ATUALIZAR
-         OU INSERIR UMA BATIDA
-      ========================================= */
+      /* =====================================
+         ATUALIZAR OU INSERIR UMA BATIDA
+      ===================================== */
 
       async function salvarBatida({
         pontoOriginal,
         tipo,
-        marcadoEm,
+        dataHora,
       }) {
-        /*
-          Se não existe horário novo,
-          removemos a batida antiga,
-          caso ela exista.
-        */
-        if (!marcadoEm) {
+        /* =================================
+           SE NÃO HÁ HORÁRIO
+
+           Se existia uma batida original,
+           removemos.
+
+           Se não existia, não fazemos nada.
+        ================================= */
+
+        if (!dataHora) {
           if (pontoOriginal?.id) {
             await client.query(
               `
@@ -3337,10 +3343,10 @@ exports.ajustar =
           return null;
         }
 
-        /*
-          Se já existe um ponto original,
-          atualizamos exatamente aquele ID.
-        */
+        /* =================================
+           ATUALIZAR BATIDA EXISTENTE
+        ================================= */
+
         if (pontoOriginal?.id) {
           const { rows } =
             await client.query(
@@ -3350,12 +3356,11 @@ exports.ajustar =
               SET
                 tipo = $1,
                 marcado_em =
-                  $2::timestamp,
-                empresa_id = $3
+                  $2::timestamp
 
-              WHERE id = $4
-                AND funcionario_id = $5
-                AND empresa_id = $3
+              WHERE id = $3
+                AND funcionario_id = $4
+                AND empresa_id = $5
 
               RETURNING
                 id,
@@ -3366,23 +3371,20 @@ exports.ajustar =
               `,
               [
                 tipo,
-                marcadoEm,
-                empresaId,
+                dataHora,
                 pontoOriginal.id,
                 funcionarioId,
+                empresaId,
               ]
             );
 
-          return (
-            rows[0] ||
-            null
-          );
+          return rows[0] || null;
         }
 
-        /*
-          Caso não exista ID original,
-          criamos uma nova batida.
-        */
+        /* =================================
+           INSERIR NOVA BATIDA
+        ================================= */
+
         const { rows } =
           await client.query(
             `
@@ -3390,14 +3392,16 @@ exports.ajustar =
               empresa_id,
               funcionario_id,
               tipo,
-              marcado_em
+              marcado_em,
+              origem
             )
 
             VALUES (
               $1,
               $2,
               $3,
-              $4::timestamp
+              $4::timestamp,
+              'manual'
             )
 
             RETURNING
@@ -3411,19 +3415,16 @@ exports.ajustar =
               empresaId,
               funcionarioId,
               tipo,
-              marcadoEm,
+              dataHora,
             ]
           );
 
-        return (
-          rows[0] ||
-          null
-        );
+        return rows[0] || null;
       }
 
-      /* =========================================
-         SALVAR ENTRADA
-      ========================================= */
+      /* =====================================
+         SALVAR AS QUATRO BATIDAS
+      ===================================== */
 
       const pontoEntrada =
         await salvarBatida({
@@ -3433,17 +3434,9 @@ exports.ajustar =
           tipo:
             "entrada",
 
-          marcadoEm:
-            marcadoEntrada,
+          dataHora:
+            dataHoraEntrada,
         });
-
-      novosIds.entrada_id =
-        pontoEntrada?.id ||
-        null;
-
-      /* =========================================
-         SALVAR INÍCIO DO INTERVALO
-      ========================================= */
 
       const pontoIntervalo =
         await salvarBatida({
@@ -3454,17 +3447,9 @@ exports.ajustar =
           tipo:
             "intervalo_inicio",
 
-          marcadoEm:
-            marcadoIntervalo,
+          dataHora:
+            dataHoraIntervalo,
         });
-
-      novosIds.intervalo_inicio_id =
-        pontoIntervalo?.id ||
-        null;
-
-      /* =========================================
-         SALVAR RETORNO DO INTERVALO
-      ========================================= */
 
       const pontoRetorno =
         await salvarBatida({
@@ -3475,17 +3460,9 @@ exports.ajustar =
           tipo:
             "intervalo_fim",
 
-          marcadoEm:
-            marcadoRetorno,
+          dataHora:
+            dataHoraRetorno,
         });
-
-      novosIds.intervalo_fim_id =
-        pontoRetorno?.id ||
-        null;
-
-      /* =========================================
-         SALVAR SAÍDA
-      ========================================= */
 
       const pontoSaida =
         await salvarBatida({
@@ -3495,111 +3472,21 @@ exports.ajustar =
           tipo:
             "saida",
 
-          marcadoEm:
-            marcadoSaida,
+          dataHora:
+            dataHoraSaida,
         });
 
-      novosIds.saida_id =
-        pontoSaida?.id ||
-        null;
-
-      /* =========================================
-         SALVAR FERIADO, CASO NECESSÁRIO
-      ========================================= */
-
-      if (feriadoBool) {
-        await client.query(
-          `
-          INSERT INTO faltas_ajustes (
-            empresa_id,
-            funcionario_id,
-            data,
-
-            falta,
-            folga,
-            ferias,
-
-            falta_justificada,
-            justificativa_falta,
-
-            feriado,
-
-            created_at,
-            updated_at
-          )
-
-          VALUES (
-            $1,
-            $2,
-            $3,
-
-            false,
-            false,
-            false,
-
-            false,
-            NULL,
-
-            true,
-
-            NOW(),
-            NOW()
-          )
-
-          ON CONFLICT (
-            funcionario_id,
-            data
-          )
-
-          DO UPDATE SET
-
-            empresa_id =
-              EXCLUDED.empresa_id,
-
-            falta =
-              false,
-
-            folga =
-              false,
-
-            ferias =
-              false,
-
-            falta_justificada =
-              false,
-
-            justificativa_falta =
-              NULL,
-
-            feriado =
-              true,
-
-            updated_at =
-              NOW()
-          `,
-          [
-            empresaId,
-            funcionarioId,
-            dataISO,
-          ]
-        );
-      }
-
-      /* =========================================
+      /* =====================================
          COMMIT
-      ========================================= */
+      ===================================== */
 
       await client.query(
         "COMMIT"
       );
 
-      /* =========================================
+      /* =====================================
          LOG DO AJUSTE
-
-         O log é feito DEPOIS do COMMIT.
-         Assim não registramos como concluída
-         uma alteração que sofreu rollback.
-      ========================================= */
+      ===================================== */
 
       await registrarLog({
         req,
@@ -3614,10 +3501,10 @@ exports.ajustar =
           "AJUSTE",
 
         acao:
-          "HORARIOS_AJUSTADOS",
+          "AJUSTE_PONTO",
 
         descricao:
-          `Horários de ${funcionario.nome} foram ajustados pelo RH.`,
+          `Ponto de ${funcionario.nome} ajustado em ${dataISO}.`,
 
         dados: {
           funcionario_id:
@@ -3626,71 +3513,38 @@ exports.ajustar =
           funcionario_nome:
             funcionario.nome,
 
-          data_referencia:
+          data:
             dataISO,
 
-          horarios: {
-            entrada:
-              horas.entrada,
+          entrada:
+            dataHoraEntrada,
 
-            intervalo:
-              horas.intervalo,
+          intervalo_inicio:
+            dataHoraIntervalo,
 
-            retorno:
-              horas.retorno,
+          intervalo_fim:
+            dataHoraRetorno,
 
-            saida:
-              horas.saida,
-          },
-
-          datas_reais: {
-            entrada:
-              marcadoEntrada,
-
-            intervalo:
-              marcadoIntervalo,
-
-            retorno:
-              marcadoRetorno,
-
-            saida:
-              marcadoSaida,
-          },
-
-          virada_dia: {
-            entrada:
-              diaEntrada,
-
-            intervalo:
-              diaIntervalo,
-
-            retorno:
-              diaRetorno,
-
-            saida:
-              diaSaida,
-          },
-
-          ids:
-            novosIds,
+          saida:
+            dataHoraSaida,
 
           feriado:
             feriadoBool,
 
           origem:
-            "ajuste_relatorio",
+            "ajuste_rh",
         },
       });
 
-      /* =========================================
+      /* =====================================
          RESPOSTA
-      ========================================= */
+      ===================================== */
 
       return res.json({
         ok: true,
 
         message:
-          "Horários ajustados com sucesso.",
+          "Ponto ajustado com sucesso.",
 
         empresa: {
           id:
@@ -3709,48 +3563,45 @@ exports.ajustar =
             funcionario.nome,
         },
 
-        data_referencia:
+        data:
           dataISO,
+
+        pontos: {
+          entrada:
+            pontoEntrada,
+
+          intervalo_inicio:
+            pontoIntervalo,
+
+          intervalo_fim:
+            pontoRetorno,
+
+          saida:
+            pontoSaida,
+        },
 
         horarios: {
           entrada:
-            horas.entrada,
+            dataHoraEntrada,
 
-          intervalo:
-            horas.intervalo,
+          intervalo_inicio:
+            dataHoraIntervalo,
 
-          retorno:
-            horas.retorno,
-
-          saida:
-            horas.saida,
-        },
-
-        datas_reais: {
-          entrada:
-            marcadoEntrada,
-
-          intervalo:
-            marcadoIntervalo,
-
-          retorno:
-            marcadoRetorno,
+          intervalo_fim:
+            dataHoraRetorno,
 
           saida:
-            marcadoSaida,
+            dataHoraSaida,
         },
-
-        ids:
-          novosIds,
 
         feriado:
           feriadoBool,
       });
 
     } catch (err) {
-      /* =========================================
+      /* =====================================
          ROLLBACK
-      ========================================= */
+      ===================================== */
 
       try {
         await client.query(
@@ -3798,7 +3649,9 @@ exports.limparBatidasDoDia =
 
       /*
         SEGURANÇA:
-        empresa exclusivamente do JWT.
+
+        empresa vem exclusivamente
+        do usuário RH autenticado.
       */
       const empresaId =
         Number(
@@ -3809,21 +3662,6 @@ exports.limparBatidasDoDia =
         String(
           req.body.data || ""
         ).trim();
-
-      /* =====================================
-         ACEITAR DD/MM/YYYY
-      ===================================== */
-
-      if (
-        /^\d{2}\/\d{2}\/\d{4}$/.test(
-          data
-        )
-      ) {
-        data =
-          dataBRparaISO(
-            data
-          );
-      }
 
       /* =====================================
          VALIDAR FUNCIONÁRIO
@@ -3862,8 +3700,19 @@ exports.limparBatidasDoDia =
       }
 
       /* =====================================
-         VALIDAR DATA
+         NORMALIZAR DATA
       ===================================== */
+
+      if (
+        /^\d{2}\/\d{2}\/\d{4}$/.test(
+          data
+        )
+      ) {
+        data =
+          dataBRparaISO(
+            data
+          );
+      }
 
       if (
         !/^\d{4}-\d{2}-\d{2}$/.test(
@@ -3877,6 +3726,9 @@ exports.limparBatidasDoDia =
               "Data inválida.",
           });
       }
+
+      const dataISO =
+        data;
 
       /* =====================================
          EMPRESA
@@ -3915,14 +3767,13 @@ exports.limparBatidasDoDia =
           });
       }
 
-      const dataISO =
-        data;
-
       /* =====================================
-         EXCLUIR BATIDAS
+         REMOVER BATIDAS
 
-         Mantemos janela de 36 horas para
-         jornada noturna.
+         Mantemos uma janela de 36 horas
+         porque uma jornada noturna pode
+         começar no dia selecionado e
+         terminar na madrugada seguinte.
       ===================================== */
 
       const result =
@@ -4025,7 +3876,8 @@ exports.limparBatidasDoDia =
     }
   };
 
-  /* =========================================================
+
+/* =========================================================
    LANÇAR HORÁRIO PADRÃO NO MÊS
 ========================================================= */
 exports.lancarHorarioPadraoMes =
@@ -4287,9 +4139,7 @@ exports.lancarHorarioPadraoMes =
             error:
               "O funcionário não possui horário padrão completo cadastrado.",
           });
-      }
-
-      /* =====================================
+      }      /* =====================================
          CONVERTER HORA PARA MINUTOS
       ===================================== */
 
@@ -5005,7 +4855,8 @@ exports.lancarHorarioPadraoMes =
     }
   };
 
-  /* =========================================================
+
+/* =========================================================
    SINCRONIZAR BATIDAS FEITAS OFFLINE
 
    POST /api/ponto/sincronizar-offline
@@ -5049,7 +4900,6 @@ exports.sincronizarOffline =
           });
       }
 
-
       /* =====================================
          EMPRESA PRECISA ESTAR ATIVA
       ===================================== */
@@ -5068,39 +4918,37 @@ exports.sincronizarOffline =
           });
       }
 
-
       /* =====================================
          RECEBER FILA
       ===================================== */
 
       const pontos =
-  Array.isArray(
-    req.body?.pontos
-  )
-    ? [...req.body.pontos].sort(
-        (a, b) => {
-          const dataA =
-            new Date(
-              a?.horario_dispositivo
-            ).getTime();
+        Array.isArray(
+          req.body?.pontos
+        )
+          ? [...req.body.pontos].sort(
+              (a, b) => {
+                const dataA =
+                  new Date(
+                    a?.horario_dispositivo
+                  ).getTime();
 
-          const dataB =
-            new Date(
-              b?.horario_dispositivo
-            ).getTime();
+                const dataB =
+                  new Date(
+                    b?.horario_dispositivo
+                  ).getTime();
 
-          if (
-            Number.isNaN(dataA) ||
-            Number.isNaN(dataB)
-          ) {
-            return 0;
-          }
+                if (
+                  Number.isNaN(dataA) ||
+                  Number.isNaN(dataB)
+                ) {
+                  return 0;
+                }
 
-          return dataA - dataB;
-        }
-      )
-    : [];
-
+                return dataA - dataB;
+              }
+            )
+          : [];
 
       if (!pontos.length) {
         return res
@@ -5110,7 +4958,6 @@ exports.sincronizarOffline =
               "Nenhuma batida offline enviada.",
           });
       }
-
 
       /*
         Proteção contra uma requisição
@@ -5126,7 +4973,6 @@ exports.sincronizarOffline =
           });
       }
 
-
       const tiposPermitidos =
         new Set([
           "entrada",
@@ -5135,13 +4981,10 @@ exports.sincronizarOffline =
           "saida",
         ]);
 
-
       const uuidRegex =
         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-
       const resultados = [];
-
 
       /* =====================================
          PROCESSAR CADA BATIDA
@@ -5158,12 +5001,10 @@ exports.sincronizarOffline =
             ""
           ).trim();
 
-
         const funcionarioId =
           Number(
             item?.funcionario_id
           );
-
 
         const tipo =
           String(
@@ -5173,13 +5014,11 @@ exports.sincronizarOffline =
             .trim()
             .toLowerCase();
 
-
         const horarioDispositivo =
           String(
             item?.horario_dispositivo ||
             ""
           ).trim();
-
 
         /* ===================================
            VALIDAR UUID
@@ -5205,7 +5044,6 @@ exports.sincronizarOffline =
           continue;
         }
 
-
         /* ===================================
            VALIDAR FUNCIONÁRIO
         =================================== */
@@ -5230,7 +5068,6 @@ exports.sincronizarOffline =
           continue;
         }
 
-
         /* ===================================
            VALIDAR TIPO
         =================================== */
@@ -5254,7 +5091,6 @@ exports.sincronizarOffline =
           continue;
         }
 
-
         /* ===================================
            VALIDAR DATA/HORA
         =================================== */
@@ -5274,12 +5110,10 @@ exports.sincronizarOffline =
           continue;
         }
 
-
         const dataHora =
           new Date(
             horarioDispositivo
           );
-
 
         if (
           Number.isNaN(
@@ -5300,17 +5134,12 @@ exports.sincronizarOffline =
           continue;
         }
 
-
         /* ===================================
            NÃO ACEITAR HORÁRIO MUITO À FRENTE
-
-           Permitimos até 5 minutos para
-           pequenas diferenças de relógio.
         =================================== */
 
         const cincoMinutos =
           5 * 60 * 1000;
-
 
         if (
           dataHora.getTime() >
@@ -5329,10 +5158,7 @@ exports.sincronizarOffline =
           });
 
           continue;
-        }
-
-
-        /* ===================================
+        }        /* ===================================
            VERIFICAR DUPLICIDADE
         =================================== */
 
@@ -5979,22 +5805,10 @@ exports.buscarPorCPF =
     try {
       await garantirTabelas();
 
-      /* =========================================
-         CPF
-      ========================================= */
-
       const cpf =
         onlyDigits(
           req.params.cpf
         );
-
-      /* =========================================
-         EMPRESA
-
-         A empresa vem exclusivamente do JWT.
-         Não confiamos em empresa_id enviado
-         pelo frontend.
-      ========================================= */
 
       const empresaId =
         Number(
@@ -6011,10 +5825,6 @@ exports.buscarPorCPF =
         user: req.user,
       });
 
-      /* =========================================
-         VALIDAR CPF
-      ========================================= */
-
       if (!cpf) {
         return res
           .status(400)
@@ -6023,10 +5833,6 @@ exports.buscarPorCPF =
               "CPF inválido.",
           });
       }
-
-      /* =========================================
-         VALIDAR EMPRESA
-      ========================================= */
 
       if (
         !Number.isInteger(
@@ -6042,10 +5848,6 @@ exports.buscarPorCPF =
           });
       }
 
-      /* =========================================
-         EMPRESA
-      ========================================= */
-
       const empresa =
         await buscarEmpresaAtiva(
           empresaId
@@ -6060,16 +5862,6 @@ exports.buscarPorCPF =
           });
       }
 
-      /* =========================================
-         FUNCIONÁRIO
-
-         CPF + empresa são obrigatórios.
-
-         Isso impede que um terminal de uma
-         empresa encontre funcionário cadastrado
-         em outra empresa.
-      ========================================= */
-
       const {
         rows: funcionarios,
       } =
@@ -6081,29 +5873,18 @@ exports.buscarPorCPF =
             f.nome,
             f.cpf,
             f.cnpj_empresa,
-
             f.chegada,
             f.intervalo_inicio,
             f.intervalo_fim,
             f.saida,
-
             f.ativo,
-
             fc.nome AS funcao_nome
-
           FROM funcionarios f
-
           LEFT JOIN funcoes fc
-            ON fc.id =
-               f.funcao_id
-
-          WHERE
-            f.cpf = $1
-
+            ON fc.id = f.funcao_id
+          WHERE f.cpf = $1
             AND f.empresa_id = $2
-
             AND f.ativo = TRUE
-
           LIMIT 1
           `,
           [
@@ -6112,9 +5893,7 @@ exports.buscarPorCPF =
           ]
         );
 
-      if (
-        !funcionarios.length
-      ) {
+      if (!funcionarios.length) {
         return res
           .status(404)
           .json({
@@ -6126,43 +5905,11 @@ exports.buscarPorCPF =
       const funcionario =
         funcionarios[0];
 
-      console.log(
-        "👤 FUNCIONÁRIO ENCONTRADO:",
-        {
-          id:
-            funcionario.id,
-
-          nome:
-            funcionario.nome,
-
-          empresa_id:
-            funcionario.empresa_id,
-        }
-      );
-
-      /* =========================================
-         DEFESA EXTRA DE EMPRESA
-      ========================================= */
-
       if (
         Number(
           funcionario.empresa_id
         ) !== empresaId
       ) {
-        console.error(
-          "❌ BLOQUEIO MULTIEMPRESA:",
-          {
-            empresa_token:
-              empresaId,
-
-            empresa_funcionario:
-              funcionario.empresa_id,
-
-            funcionario_id:
-              funcionario.id,
-          }
-        );
-
         return res
           .status(403)
           .json({
@@ -6171,76 +5918,70 @@ exports.buscarPorCPF =
           });
       }
 
-      /* =====================================================
-         DATA DE HOJE
-
-         Utilizamos o horário de São Paulo,
-         igual ao restante do sistema.
-      ===================================================== */
-
       const hoje =
         dataHojeISO();
 
+      const horaChegada =
+        normalizarHora(
+          funcionario.chegada
+        );
+
+      const horaSaida =
+        normalizarHora(
+          funcionario.saida
+        );
+
+      const jornadaNoturna =
+        Boolean(
+          horaChegada &&
+          horaSaida &&
+          horaSaida <= horaChegada
+        );
+
       /* =====================================================
-         BUSCAR PONTOS
+         REGRA DAS JORNADAS
 
-         Buscamos a partir do início do dia atual
-         até 36 horas depois.
+         DIURNA:
+           Mostra somente jornada iniciada hoje.
+           Depois de 00:00, uma jornada antiga
+           não passa para o novo dia.
 
-         Isso permite encontrar jornadas como:
+         NOTURNA:
+           Pode continuar a jornada iniciada ontem,
+           desde que ela ainda esteja aberta.
 
-         dia 26:
-         Entrada -> 17:30
-
-         dia 27:
-         Saída -> 05:30
-
-         A saída continua fazendo parte da
-         jornada iniciada no dia 26.
+         Se a jornada de ontem já teve saída,
+         ela não aparece como jornada de hoje.
       ===================================================== */
 
+      let pontos = [];
+
+      /* =========================================
+         PRIMEIRO: PROCURAR ENTRADA DE HOJE
+      ========================================= */
+
       const {
-        rows: pontosBanco,
+        rows: entradasHoje,
       } =
         await pool.query(
           `
           SELECT
-            p.id,
-            p.empresa_id,
-            p.funcionario_id,
-            p.tipo,
-            p.marcado_em,
-
-            TO_CHAR(
-              p.marcado_em,
-              'YYYY-MM-DD'
-            ) AS data,
-
-            TO_CHAR(
-              p.marcado_em,
-              'HH24:MI'
-            ) AS hora
-
-          FROM pontos p
-
-          WHERE
-            p.funcionario_id = $1
-
-            AND p.empresa_id = $2
-
-            AND p.marcado_em >=
-                $3::date
-
-            AND p.marcado_em <
-                (
-                  $3::date
-                  +
-                  INTERVAL '36 hours'
-                )
-
+            id,
+            empresa_id,
+            funcionario_id,
+            tipo,
+            marcado_em
+          FROM pontos
+          WHERE funcionario_id = $1
+            AND empresa_id = $2
+            AND tipo = 'entrada'
+            AND marcado_em >= $3::date
+            AND marcado_em <
+                ($3::date + INTERVAL '1 day')
           ORDER BY
-            p.marcado_em ASC,
-            p.id ASC
+            marcado_em DESC,
+            id DESC
+          LIMIT 1
           `,
           [
             funcionario.id,
@@ -6249,96 +5990,169 @@ exports.buscarPorCPF =
           ]
         );
 
-      /* =====================================================
-         SEPARAR SOMENTE JORNADAS QUE COMEÇARAM HOJE
-
-         O período de 36 horas pode encontrar:
-
-         - jornada iniciada hoje;
-         - saída amanhã;
-         - uma nova entrada amanhã.
-
-         A nova entrada de amanhã NÃO pode
-         aparecer no resumo de hoje.
-      ===================================================== */
-
-      const pontos = [];
-
-      let jornadaIniciada =
-        false;
-
-      for (
-        const ponto
-        of pontosBanco
-      ) {
+      if (entradasHoje.length) {
         /* =====================================
-           ENTRADA
+           EXISTE JORNADA INICIADA HOJE
+
+           Pegamos da entrada até a primeira
+           saída.
+
+           Para jornada noturna, a saída pode
+           estar no dia seguinte.
         ===================================== */
 
-        if (
-          ponto.tipo ===
-          "entrada"
+        const entradaHoje =
+          entradasHoje[0];
+
+        const limiteHoras =
+          jornadaNoturna
+            ? 36
+            : 24;
+
+        const {
+          rows: pontosDaJornada,
+        } =
+          await pool.query(
+            `
+            SELECT
+              p.id,
+              p.empresa_id,
+              p.funcionario_id,
+              p.tipo,
+              p.marcado_em,
+
+              TO_CHAR(
+                p.marcado_em,
+                'YYYY-MM-DD'
+              ) AS data,
+
+              TO_CHAR(
+                p.marcado_em,
+                'HH24:MI'
+              ) AS hora
+
+            FROM pontos p
+
+            WHERE p.funcionario_id = $1
+              AND p.empresa_id = $2
+
+              AND p.marcado_em >=
+                  $3::timestamp
+
+              AND p.marcado_em <
+                  (
+                    $3::timestamp +
+                    ($4::text || ' hours')::interval
+                  )
+
+            ORDER BY
+              p.marcado_em ASC,
+              p.id ASC
+            `,
+            [
+              funcionario.id,
+              empresaId,
+              entradaHoje.marcado_em,
+              limiteHoras,
+            ]
+          );
+
+        for (
+          const ponto
+          of pontosDaJornada
         ) {
           /*
-            A entrada só inicia uma jornada
-            deste resumo quando ocorreu
-            exatamente na data de hoje.
+            Se aparecer uma nova entrada,
+            significa que começou outra jornada.
+
+            Não misturamos duas jornadas.
           */
 
           if (
-            String(
-              ponto.data
-            ) === hoje
+            pontos.length > 0 &&
+            ponto.tipo === "entrada"
           ) {
-            jornadaIniciada =
-              true;
-
-            pontos.push(
-              ponto
-            );
-          } else {
-            /*
-              Encontramos uma entrada do
-              dia seguinte.
-
-              Portanto ela não pertence
-              ao resumo do dia atual.
-            */
-            jornadaIniciada =
-              false;
+            break;
           }
 
-          continue;
-        }
-
-        /* =====================================
-           DEMAIS BATIDAS
-        ===================================== */
-
-        if (
-          jornadaIniciada
-        ) {
           pontos.push(
             ponto
           );
 
-          /* ===================================
-             SAÍDA FECHA A JORNADA
-          =================================== */
+          /*
+            Encontrou saída:
+            jornada encerrada.
+          */
 
           if (
-            ponto.tipo ===
-            "saida"
+            ponto.tipo === "saida"
           ) {
-            jornadaIniciada =
-              false;
+            break;
           }
         }
-      }
 
-      /* =====================================================
-         LOGS DE DEBUG
-      ===================================================== */
+      } else if (jornadaNoturna) {
+
+        /* =====================================
+           NÃO EXISTE ENTRADA HOJE
+
+           Somente funcionário com jornada
+           noturna pode continuar uma jornada
+           iniciada ontem.
+
+           buscarTurnoAberto já verifica se
+           realmente existe uma jornada aberta.
+        ===================================== */
+
+        const turnoAberto =
+          await buscarTurnoAberto(
+            funcionario.id,
+            empresaId
+          );
+
+        if (
+          turnoAberto &&
+          Array.isArray(
+            turnoAberto.batidas
+          ) &&
+          turnoAberto.batidas.length
+        ) {
+
+          pontos =
+            turnoAberto.batidas.map(
+              (ponto) => {
+
+                const dataHora =
+                  new Date(
+                    ponto.marcado_em
+                  );
+
+                const data =
+                  `${dataHora.getFullYear()}-` +
+                  `${String(
+                    dataHora.getMonth() + 1
+                  ).padStart(2, "0")}-` +
+                  `${String(
+                    dataHora.getDate()
+                  ).padStart(2, "0")}`;
+
+                const hora =
+                  `${String(
+                    dataHora.getHours()
+                  ).padStart(2, "0")}:` +
+                  `${String(
+                    dataHora.getMinutes()
+                  ).padStart(2, "0")}`;
+
+                return {
+                  ...ponto,
+                  data,
+                  hora,
+                };
+              }
+            );
+        }
+      }
 
       console.log(
         "📅 DATA CONSULTADA:",
@@ -6346,8 +6160,8 @@ exports.buscarPorCPF =
       );
 
       console.log(
-        "🕒 PONTOS ENCONTRADOS NO BANCO:",
-        pontosBanco
+        "🌙 JORNADA NOTURNA:",
+        jornadaNoturna
       );
 
       console.log(
@@ -6359,43 +6173,8 @@ exports.buscarPorCPF =
         "=========================================="
       );
 
-      /* =====================================================
-         NÃO REGISTRAMOS LOG DE CONSULTA CPF
-
-         Motivo:
-
-         Essa rota é utilizada frequentemente
-         pelo terminal.
-
-         Registrar cada consulta criaria milhares
-         de logs desnecessários.
-
-         Os eventos importantes ficam registrados:
-
-         - Entrada
-         - Intervalo
-         - Retorno
-         - Saída
-         - Ponto manual
-         - Ajustes
-         - Falta
-         - Folga
-         - Férias
-         - Falta justificada
-         - Exclusão de batidas
-         - Horário padrão mensal
-      ===================================================== */
-
-      /* =====================================================
-         RESPOSTA
-      ===================================================== */
-
       return res.json({
         ok: true,
-
-        /* =====================================
-           EMPRESA
-        ===================================== */
 
         empresa: {
           id:
@@ -6405,10 +6184,6 @@ exports.buscarPorCPF =
             empresa.nome_fantasia ||
             empresa.nome,
         },
-
-        /* =====================================
-           FUNCIONÁRIO
-        ===================================== */
 
         funcionario: {
           id:
@@ -6445,24 +6220,20 @@ exports.buscarPorCPF =
             funcionario.ativo,
         },
 
-        /* =====================================
-           PONTOS
-        ===================================== */
-
         pontos,
-
-        /* =====================================
-           INFORMAÇÕES AUXILIARES
-        ===================================== */
 
         data:
           hoje,
+
+        jornada_noturna:
+          jornadaNoturna,
 
         total_pontos:
           pontos.length,
       });
 
     } catch (err) {
+
       console.error(
         "❌ Erro ao buscar funcionário por CPF:",
         err
@@ -6476,4 +6247,3 @@ exports.buscarPorCPF =
         });
     }
   };
-

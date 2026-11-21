@@ -27,6 +27,16 @@ export default function AcessosEmpresas() {
   const [password, setPassword] =
     useState("");
 
+  /* =========================================================
+     DURAÇÃO DA SESSÃO
+
+     RH começa com 8 horas.
+     Ponto começa com 30 dias.
+  ========================================================= */
+
+  const [sessaoDuracao, setSessaoDuracao] =
+    useState("8h");
+
   const [loading, setLoading] =
     useState(false);
 
@@ -38,6 +48,49 @@ export default function AcessosEmpresas() {
 
   const [sucesso, setSucesso] =
     useState("");
+
+  /* =========================================================
+     OPÇÕES DE DURAÇÃO
+  ========================================================= */
+
+  const duracoesSessao = [
+    {
+      value: "4h",
+      label: "4 horas",
+    },
+    {
+      value: "8h",
+      label: "8 horas",
+    },
+    {
+      value: "12h",
+      label: "12 horas",
+    },
+    {
+      value: "1d",
+      label: "1 dia",
+    },
+    {
+      value: "7d",
+      label: "7 dias",
+    },
+    {
+      value: "15d",
+      label: "15 dias",
+    },
+    {
+      value: "30d",
+      label: "30 dias",
+    },
+    {
+      value: "60d",
+      label: "60 dias",
+    },
+    {
+      value: "90d",
+      label: "90 dias",
+    },
+  ];
 
   /* =========================================================
      CARREGAR EMPRESAS
@@ -61,7 +114,9 @@ export default function AcessosEmpresas() {
         caso seu controller retorne:
 
         [...]
+
         ou
+
         { empresas: [...] }
       */
 
@@ -88,6 +143,7 @@ export default function AcessosEmpresas() {
       );
 
       setEmpresas([]);
+
     } finally {
       setLoadingEmpresas(false);
     }
@@ -111,6 +167,35 @@ export default function AcessosEmpresas() {
         String(empresa.id) ===
         String(empresaId)
     );
+
+  /* =========================================================
+     ALTERAR TIPO DE ACESSO
+
+     Ao trocar o tipo:
+     RH -> 8 horas
+     Ponto -> 30 dias
+  ========================================================= */
+
+  function alterarTipoAcesso(
+    novoRole
+  ) {
+    setRole(novoRole);
+
+    if (
+      novoRole === "rh_empresa"
+    ) {
+      setSessaoDuracao("8h");
+    }
+
+    if (
+      novoRole === "ponto_empresa"
+    ) {
+      setSessaoDuracao("30d");
+    }
+
+    setErro("");
+    setSucesso("");
+  }
 
   /* =========================================================
      CRIAR LOGIN
@@ -181,6 +266,14 @@ export default function AcessosEmpresas() {
       return;
     }
 
+    if (!sessaoDuracao) {
+      setErro(
+        "Selecione a duração da sessão."
+      );
+
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -203,6 +296,9 @@ export default function AcessosEmpresas() {
             password,
 
             role,
+
+            sessao_duracao:
+              sessaoDuracao,
           }
         );
 
@@ -211,9 +307,19 @@ export default function AcessosEmpresas() {
           ? "RH"
           : "Ponto";
 
+      const duracaoSelecionada =
+        duracoesSessao.find(
+          (item) =>
+            item.value ===
+            sessaoDuracao
+        );
+
       setSucesso(
         response.data?.message ||
-          `Login de ${tipo} criado com sucesso.`
+          `Login de ${tipo} criado com sucesso. Sessão: ${
+            duracaoSelecionada?.label ||
+            sessaoDuracao
+          }.`
       );
 
       /* =====================================================
@@ -233,6 +339,7 @@ export default function AcessosEmpresas() {
         error.response?.data?.error ||
           "Erro ao cadastrar login da empresa."
       );
+
     } finally {
       setLoading(false);
     }
@@ -297,6 +404,7 @@ export default function AcessosEmpresas() {
         <section className="acessoCard">
 
           <div className="acessoCardHeader">
+
             <div className="acessoIcon">
               👤
             </div>
@@ -311,6 +419,7 @@ export default function AcessosEmpresas() {
                 a uma empresa.
               </p>
             </div>
+
           </div>
 
           {/* =================================================
@@ -404,12 +513,9 @@ export default function AcessosEmpresas() {
                 id="role"
                 value={role}
                 onChange={(e) => {
-                  setRole(
+                  alterarTipoAcesso(
                     e.target.value
                   );
-
-                  setErro("");
-                  setSucesso("");
                 }}
               >
                 <option value="rh_empresa">
@@ -420,6 +526,54 @@ export default function AcessosEmpresas() {
                   Terminal de Ponto
                 </option>
               </select>
+
+            </div>
+
+            {/* ===============================================
+                DURAÇÃO DA SESSÃO
+            =============================================== */}
+
+            <div className="acessoCampo">
+
+              <label htmlFor="sessaoDuracao">
+                Duração da sessão
+              </label>
+
+              <select
+                id="sessaoDuracao"
+                value={
+                  sessaoDuracao
+                }
+                onChange={(e) => {
+                  setSessaoDuracao(
+                    e.target.value
+                  );
+
+                  setErro("");
+                  setSucesso("");
+                }}
+              >
+                {duracoesSessao.map(
+                  (duracao) => (
+                    <option
+                      key={
+                        duracao.value
+                      }
+                      value={
+                        duracao.value
+                      }
+                    >
+                      {duracao.label}
+                    </option>
+                  )
+                )}
+              </select>
+
+              <small>
+                {role === "rh_empresa"
+                  ? "Padrão recomendado para RH: 8 horas."
+                  : "Padrão recomendado para o terminal de ponto: 30 dias."}
+              </small>
 
             </div>
 
@@ -510,6 +664,17 @@ export default function AcessosEmpresas() {
                     : "Acesso somente ao terminal de ponto"}
                 </small>
 
+                <small>
+                  Sessão:{" "}
+                  {
+                    duracoesSessao.find(
+                      (item) =>
+                        item.value ===
+                        sessaoDuracao
+                    )?.label
+                  }
+                </small>
+
               </div>
             )}
 
@@ -572,6 +737,10 @@ export default function AcessosEmpresas() {
                 ponto manual, atestados e
                 banco de horas.
               </p>
+
+              <small>
+                Sessão padrão: 8 horas
+              </small>
             </div>
 
           </div>
@@ -597,6 +766,10 @@ export default function AcessosEmpresas() {
                 usado pelos funcionários
                 para registrar o ponto.
               </p>
+
+              <small>
+                Sessão padrão: 30 dias
+              </small>
             </div>
 
           </div>

@@ -1,9 +1,9 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
 
 const router = express.Router();
+
 
 /* =========================================================
    MIDDLEWARES
@@ -14,6 +14,7 @@ const {
   somenteSuperAdmin,
 } = require("../middlewares/auth");
 
+
 /* =========================================================
    CONTROLLER
 ========================================================= */
@@ -23,168 +24,43 @@ const {
   uploadFundoEmpresa,
   visualizarLogoEmpresa,
   visualizarFundoEmpresa,
-} = require("../controllers/empresaUpload.controller");
-
-/* =========================================================
-   PASTA BASE DOS UPLOADS
-
-   IMPORTANTE:
-   Essa configuração deve ser igual à utilizada no
-   empresaUpload.controller.js e no server.js.
-
-   Estrutura final:
-
-   Back-End/
-   ├── src/
-   ├── uploads/
-   │   └── empresas/
-   │       ├── empresa-1-logo-....
-   │       └── empresa-1-fundo-....
-========================================================= */
-
-const UPLOADS_DIR =
-  process.env.UPLOADS_DIR ||
-  path.join(
-    __dirname,
-    "../../uploads"
-  );
-
-const PASTA_EMPRESAS =
-  path.join(
-    UPLOADS_DIR,
-    "empresas"
-  );
-
-/* =========================================================
-   GARANTIR PASTA
-========================================================= */
-
-if (
-  !fs.existsSync(
-    PASTA_EMPRESAS
-  )
-) {
-  fs.mkdirSync(
-    PASTA_EMPRESAS,
-    {
-      recursive: true,
-    }
-  );
-}
-
-console.log(
-  "📁 Upload de empresas:",
-  PASTA_EMPRESAS
+} = require(
+  "../controllers/empresaUpload.controller"
 );
+
 
 /* =========================================================
    STORAGE DO MULTER
+
+   IMPORTANTE:
+
+   Antes utilizávamos:
+
+   multer.diskStorage()
+
+   Isso fazia as imagens serem salvas fisicamente em:
+
+   Back-End/uploads/empresas
+
+
+   AGORA UTILIZAMOS:
+
+   multer.memoryStorage()
+
+   A imagem fica temporariamente na memória e estará
+   disponível em:
+
+   req.file.buffer
+
+   Depois o controller salva esse Buffer diretamente
+   no PostgreSQL utilizando BYTEA.
+
+   Nenhum arquivo será criado dentro do projeto.
 ========================================================= */
 
 const storage =
-  multer.diskStorage({
-    /* =====================================================
-       DESTINO
-    ===================================================== */
+  multer.memoryStorage();
 
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
-      cb(
-        null,
-        PASTA_EMPRESAS
-      );
-    },
-
-    /* =====================================================
-       NOME DO ARQUIVO
-    ===================================================== */
-
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
-      try {
-        const extensao =
-          path
-            .extname(
-              file.originalname
-            )
-            .toLowerCase();
-
-        const empresaId =
-          req.params.id ||
-          "sem-id";
-
-        let tipo =
-          "imagem";
-
-        /*
-          Verificamos o fieldname primeiro.
-
-          Isso é mais seguro do que depender apenas
-          da URL.
-        */
-
-        if (
-          file.fieldname ===
-          "arquivo"
-        ) {
-          if (
-            req.originalUrl.includes(
-              "/logo"
-            )
-          ) {
-            tipo =
-              "logo";
-          }
-
-          if (
-            req.originalUrl.includes(
-              "/fundo"
-            )
-          ) {
-            tipo =
-              "fundo";
-          }
-        }
-
-        /* =================================================
-           IDENTIFICADOR ÚNICO
-        ================================================= */
-
-        const identificador =
-          `${Date.now()}-${Math.round(
-            Math.random() *
-              1e9
-          )}`;
-
-        /* =================================================
-           NOME FINAL
-        ================================================= */
-
-        const nomeArquivo =
-          `empresa-${empresaId}-${tipo}-${identificador}${extensao}`;
-
-        console.log(
-          "📄 Nome do upload:",
-          nomeArquivo
-        );
-
-        return cb(
-          null,
-          nomeArquivo
-        );
-      } catch (err) {
-        return cb(
-          err
-        );
-      }
-    },
-  });
 
 /* =========================================================
    FILTRO DE IMAGENS
@@ -196,6 +72,10 @@ const fileFilter = (
   cb
 ) => {
   try {
+    /* =====================================================
+       EXTENSÃO
+    ===================================================== */
+
     const extensao =
       path
         .extname(
@@ -203,30 +83,45 @@ const fileFilter = (
         )
         .toLowerCase();
 
-    const extensoesPermitidas =
-      [
-        ".jpg",
-        ".jpeg",
-        ".png",
-        ".webp",
-      ];
 
-    const mimesPermitidos =
-      [
-        "image/jpeg",
-        "image/png",
-        "image/webp",
-      ];
+    /* =====================================================
+       EXTENSÕES PERMITIDAS
+    ===================================================== */
+
+    const extensoesPermitidas = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+    ];
+
+
+    /* =====================================================
+       MIME TYPES PERMITIDOS
+    ===================================================== */
+
+    const mimesPermitidos = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+
+    /* =====================================================
+       VALIDAR
+    ===================================================== */
 
     const extensaoValida =
       extensoesPermitidas.includes(
         extensao
       );
 
+
     const mimeValido =
       mimesPermitidos.includes(
         file.mimetype
       );
+
 
     /* =====================================================
        ARQUIVO INVÁLIDO
@@ -243,6 +138,7 @@ const fileFilter = (
       );
     }
 
+
     /* =====================================================
        ARQUIVO VÁLIDO
     ===================================================== */
@@ -251,6 +147,7 @@ const fileFilter = (
       null,
       true
     );
+
   } catch (err) {
     return cb(
       err
@@ -258,33 +155,48 @@ const fileFilter = (
   }
 };
 
+
 /* =========================================================
    CONFIGURAÇÃO DO MULTER
 ========================================================= */
 
 const upload =
   multer({
+    /* =====================================================
+       MEMORY STORAGE
+
+       A imagem NÃO será salva no disco.
+
+       Ela ficará em:
+
+       req.file.buffer
+    ===================================================== */
+
     storage,
 
     fileFilter,
 
     limits: {
-      /*
-        10 MB por imagem.
-      */
+      /* ===================================================
+         TAMANHO MÁXIMO
+
+         10 MB por imagem.
+      =================================================== */
 
       fileSize:
         10 *
         1024 *
         1024,
 
-      /*
-        Cada rota recebe somente uma imagem.
-      */
+
+      /* ===================================================
+         UMA IMAGEM POR ROTA
+      =================================================== */
 
       files: 1,
     },
   });
+
 
 /* =========================================================
    UPLOAD DA LOGO
@@ -301,6 +213,9 @@ const upload =
 
    campo:
    arquivo
+
+   A imagem será recebida em memória e enviada pelo
+   controller diretamente para o PostgreSQL.
 ========================================================= */
 
 router.post(
@@ -316,6 +231,7 @@ router.post(
 
   uploadLogoEmpresa
 );
+
 
 /* =========================================================
    UPLOAD DO FUNDO
@@ -348,6 +264,7 @@ router.post(
   uploadFundoEmpresa
 );
 
+
 /* =========================================================
    VISUALIZAR LOGO
 
@@ -358,14 +275,19 @@ router.post(
 
    GET /api/empresas/1/logo
 
+
    IMPORTANTE:
 
    NÃO colocar:
+
    auth
    somenteSuperAdmin
 
-   Essa rota precisa ser pública porque a tela de ponto
-   da empresa precisa mostrar a logo.
+
+   Essa rota precisa continuar pública porque a tela
+   de ponto precisa conseguir carregar a logo da empresa.
+
+   Agora a imagem será buscada diretamente no PostgreSQL.
 ========================================================= */
 
 router.get(
@@ -373,6 +295,7 @@ router.get(
 
   visualizarLogoEmpresa
 );
+
 
 /* =========================================================
    VISUALIZAR FUNDO
@@ -384,7 +307,9 @@ router.get(
 
    GET /api/empresas/1/fundo
 
-   Também precisa ser pública.
+   Também continua pública.
+
+   A imagem será buscada diretamente no PostgreSQL.
 ========================================================= */
 
 router.get(
@@ -392,6 +317,7 @@ router.get(
 
   visualizarFundoEmpresa
 );
+
 
 /* =========================================================
    TRATAMENTO DOS ERROS DO MULTER
@@ -417,6 +343,7 @@ router.use(
         err
       );
 
+
       /* ===================================================
          ARQUIVO MUITO GRANDE
       =================================================== */
@@ -432,6 +359,7 @@ router.use(
               "A imagem deve possuir no máximo 10MB.",
           });
       }
+
 
       /* ===================================================
          MUITOS ARQUIVOS
@@ -449,6 +377,7 @@ router.use(
           });
       }
 
+
       /* ===================================================
          CAMPO INCORRETO
       =================================================== */
@@ -465,6 +394,11 @@ router.use(
           });
       }
 
+
+      /* ===================================================
+         OUTROS ERROS DO MULTER
+      =================================================== */
+
       return res
         .status(400)
         .json({
@@ -473,6 +407,7 @@ router.use(
             "Erro ao enviar imagem.",
         });
     }
+
 
     /* =====================================================
        TIPO DE ARQUIVO INVÁLIDO
@@ -490,10 +425,11 @@ router.use(
         });
     }
 
+
     /* =====================================================
        OUTROS ERROS
 
-       Passamos para o tratamento global do server.js.
+       Passa para o tratamento global do server.js.
     ===================================================== */
 
     return next(
@@ -501,6 +437,7 @@ router.use(
     );
   }
 );
+
 
 /* =========================================================
    EXPORT

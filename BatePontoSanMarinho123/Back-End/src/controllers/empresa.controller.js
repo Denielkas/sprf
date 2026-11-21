@@ -78,6 +78,30 @@ async function garantirTabelaEmpresas() {
     ADD COLUMN IF NOT EXISTS fundo_arquivo TEXT;
   `);
 
+  /* =======================================================
+   IMAGENS ARMAZENADAS DIRETAMENTE NO POSTGRESQL
+======================================================= */
+
+  await pool.query(`
+  ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS logo_dados BYTEA;
+`);
+
+  await pool.query(`
+  ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS logo_mimetype VARCHAR(100);
+`);
+
+  await pool.query(`
+  ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS fundo_dados BYTEA;
+`);
+
+  await pool.query(`
+  ALTER TABLE empresas
+  ADD COLUMN IF NOT EXISTS fundo_mimetype VARCHAR(100);
+`);
+
   await pool.query(`
     ALTER TABLE empresas
     ADD COLUMN IF NOT EXISTS ativo BOOLEAN
@@ -432,22 +456,79 @@ function montarEmpresa(empresa) {
     return null;
   }
 
-  return {
+  /* =======================================================
+     VERIFICAR SE POSSUI IMAGENS
+
+     NOVO:
+     logo_dados / fundo_dados
+
+     ANTIGO:
+     logo_arquivo / fundo_arquivo
+
+     Mantemos compatibilidade temporária com os dois.
+  ======================================================= */
+
+  const possuiLogo =
+    Boolean(
+      empresa.possui_logo ||
+      empresa.logo_dados ||
+      empresa.logo_arquivo
+    );
+
+
+  const possuiFundo =
+    Boolean(
+      empresa.possui_fundo ||
+      empresa.fundo_dados ||
+      empresa.fundo_arquivo
+    );
+
+
+  /* =======================================================
+     RESPOSTA
+
+     Não enviamos BYTEA para o frontend.
+
+     Enviamos somente a URL da API que entrega a imagem.
+  ======================================================= */
+
+  const resposta = {
 
     ...empresa,
 
+    possui_logo:
+      possuiLogo,
+
+    possui_fundo:
+      possuiFundo,
+
     logo_url:
-      empresa.logo_arquivo
+      possuiLogo
         ? `/api/empresas/${empresa.id}/logo`
         : null,
 
     fundo_url:
-      empresa.fundo_arquivo
+      possuiFundo
         ? `/api/empresas/${empresa.id}/fundo`
         : null,
   };
-}
 
+
+  /* =======================================================
+     SEGURANÇA
+
+     Caso alguma consulta futura traga os BYTEA,
+     não queremos mandar milhares/milhões de bytes
+     dentro do JSON da empresa.
+  ======================================================= */
+
+  delete resposta.logo_dados;
+
+  delete resposta.fundo_dados;
+
+
+  return resposta;
+}
 
 /* =========================================================
    BUSCAR CNPJS DA EMPRESA
@@ -456,31 +537,26 @@ function montarEmpresa(empresa) {
 async function buscarCnpjsEmpresa(
   empresaId
 ) {
-
   const { rows } =
     await pool.query(
       `
-      SELECT
-        id,
-        empresa_id,
-        cnpj,
-        nome_exibicao,
+        SELECT
+          id,
+          empresa_id,
+          cnpj,
+          nome_exibicao,
+          principal,
+          ativo,
+          created_at,
+          updated_at
 
-        nome_exibicao AS nome,
+        FROM empresa_cnpjs
 
-        principal,
-        ativo,
-        created_at,
-        updated_at
+        WHERE empresa_id = $1
 
-      FROM empresa_cnpjs
-
-      WHERE empresa_id = $1
-
-      ORDER BY
-        principal DESC,
-        nome_exibicao ASC NULLS LAST,
-        id ASC
+        ORDER BY
+          principal DESC,
+          id ASC
       `,
       [
         empresaId,
@@ -489,7 +565,6 @@ async function buscarCnpjsEmpresa(
 
   return rows;
 }
-
 
 /* =========================================================
    LISTAR EMPRESAS
@@ -507,29 +582,39 @@ async function listarEmpresas(
 
     const { rows } =
       await pool.query(`
-        SELECT
-          id,
-          nome,
-          nome_fantasia,
-          cnpj,
+    SELECT
+      id,
+      nome,
+      nome_fantasia,
+      cnpj,
 
-          cor_primaria,
-          cor_secundaria,
+      cor_primaria,
+      cor_secundaria,
 
-          logo_arquivo,
-          fundo_arquivo,
+      logo_arquivo,
+      fundo_arquivo,
 
-          ativo,
+      logo_mimetype,
+      fundo_mimetype,
 
-          created_at,
-          updated_at
+      (
+        logo_dados IS NOT NULL
+      ) AS possui_logo,
 
-        FROM empresas
+      (
+        fundo_dados IS NOT NULL
+      ) AS possui_fundo,
 
-        ORDER BY
-          nome ASC
-      `);
+      ativo,
 
+      created_at,
+      updated_at
+
+    FROM empresas
+
+    ORDER BY
+      nome ASC
+  `);
 
     const empresas =
       await Promise.all(
@@ -619,34 +704,44 @@ async function buscarEmpresaPorId(
     const { rows } =
       await pool.query(
         `
-        SELECT
-          id,
-          nome,
-          nome_fantasia,
-          cnpj,
+    SELECT
+      id,
+      nome,
+      nome_fantasia,
+      cnpj,
 
-          cor_primaria,
-          cor_secundaria,
+      cor_primaria,
+      cor_secundaria,
 
-          logo_arquivo,
-          fundo_arquivo,
+      logo_arquivo,
+      fundo_arquivo,
 
-          ativo,
+      logo_mimetype,
+      fundo_mimetype,
 
-          created_at,
-          updated_at
+      (
+        logo_dados IS NOT NULL
+      ) AS possui_logo,
 
-        FROM empresas
+      (
+        fundo_dados IS NOT NULL
+      ) AS possui_fundo,
 
-        WHERE id = $1
+      ativo,
 
-        LIMIT 1
-        `,
+      created_at,
+      updated_at
+
+    FROM empresas
+
+    WHERE id = $1
+
+    LIMIT 1
+    `,
         [
           empresaId,
         ]
       );
-
 
     if (
       rows.length === 0
@@ -872,12 +967,12 @@ async function criarEmpresa(
               nome_exibicao:
                 item?.nome_exibicao
                   ? String(
-                      item.nome_exibicao
-                    ).trim()
+                    item.nome_exibicao
+                  ).trim()
                   : item?.nome
                     ? String(
-                        item.nome
-                      ).trim()
+                      item.nome
+                    ).trim()
                     : null,
 
               principal:
@@ -1057,18 +1152,31 @@ async function criarEmpresa(
           true
         )
 
-        RETURNING
-          id,
-          nome,
-          nome_fantasia,
-          cnpj,
-          cor_primaria,
-          cor_secundaria,
-          logo_arquivo,
-          fundo_arquivo,
-          ativo,
-          created_at,
-          updated_at
+       RETURNING
+  id,
+  nome,
+  nome_fantasia,
+  cnpj,
+  cor_primaria,
+  cor_secundaria,
+
+  logo_arquivo,
+  fundo_arquivo,
+
+  logo_mimetype,
+  fundo_mimetype,
+
+  (
+    logo_dados IS NOT NULL
+  ) AS possui_logo,
+
+  (
+    fundo_dados IS NOT NULL
+  ) AS possui_fundo,
+
+  ativo,
+  created_at,
+  updated_at
         `,
         [
           String(
@@ -1077,8 +1185,8 @@ async function criarEmpresa(
 
           nome_fantasia
             ? String(
-                nome_fantasia
-              ).trim()
+              nome_fantasia
+            ).trim()
             : null,
 
           cnpjPrincipal,
@@ -1186,7 +1294,7 @@ async function criarEmpresa(
         );
 
       } catch (
-        rollbackError
+      rollbackError
       ) {
 
         console.error(
@@ -1299,6 +1407,16 @@ async function atualizarEmpresa(
           cor_secundaria,
           logo_arquivo,
           fundo_arquivo,
+          logo_mimetype,
+fundo_mimetype,
+
+(
+  logo_dados IS NOT NULL
+) AS possui_logo,
+
+(
+  fundo_dados IS NOT NULL
+) AS possui_fundo,
           ativo,
           created_at,
           updated_at
@@ -1339,44 +1457,44 @@ async function atualizarEmpresa(
     nome =
       nome !== undefined
         ? String(
-            nome
-          ).trim()
+          nome
+        ).trim()
         : atual.nome;
 
 
     nome_fantasia =
       nome_fantasia !== undefined
         ? (
-            nome_fantasia
-              ? String(
-                  nome_fantasia
-                ).trim()
-              : null
-          )
+          nome_fantasia
+            ? String(
+              nome_fantasia
+            ).trim()
+            : null
+        )
         : atual.nome_fantasia;
 
 
     cor_primaria =
       cor_primaria !== undefined
         ? String(
-            cor_primaria
-          ).trim()
+          cor_primaria
+        ).trim()
         : atual.cor_primaria;
 
 
     cor_secundaria =
       cor_secundaria !== undefined
         ? String(
-            cor_secundaria
-          ).trim()
+          cor_secundaria
+        ).trim()
         : atual.cor_secundaria;
 
 
     ativo =
       ativo !== undefined
         ? Boolean(
-            ativo
-          )
+          ativo
+        )
         : atual.ativo;
 
 
@@ -1450,17 +1568,30 @@ async function atualizarEmpresa(
         WHERE id = $6
 
         RETURNING
-          id,
-          nome,
-          nome_fantasia,
-          cnpj,
-          cor_primaria,
-          cor_secundaria,
-          logo_arquivo,
-          fundo_arquivo,
-          ativo,
-          created_at,
-          updated_at
+  id,
+  nome,
+  nome_fantasia,
+  cnpj,
+  cor_primaria,
+  cor_secundaria,
+
+  logo_arquivo,
+  fundo_arquivo,
+
+  logo_mimetype,
+  fundo_mimetype,
+
+  (
+    logo_dados IS NOT NULL
+  ) AS possui_logo,
+
+  (
+    fundo_dados IS NOT NULL
+  ) AS possui_fundo,
+
+  ativo,
+  created_at,
+  updated_at
         `,
         [
           nome,
@@ -1604,6 +1735,16 @@ async function alterarStatusEmpresa(
           cor_secundaria,
           logo_arquivo,
           fundo_arquivo,
+          logo_mimetype,
+fundo_mimetype,
+
+(
+  logo_dados IS NOT NULL
+) AS possui_logo,
+
+(
+  fundo_dados IS NOT NULL
+) AS possui_fundo,
           ativo,
           created_at,
           updated_at
@@ -2227,7 +2368,7 @@ async function excluirEmpresa(
         );
 
       } catch (
-        rollbackError
+      rollbackError
       ) {
 
         console.error(
@@ -2572,7 +2713,7 @@ async function adicionarCnpj(
         );
 
       } catch (
-        rollbackError
+      rollbackError
       ) {
 
         console.error(
@@ -2722,46 +2863,46 @@ async function atualizarCnpj(
     cnpj =
       cnpj !== undefined
         ? limparCnpj(
-            cnpj
-          )
+          cnpj
+        )
         : atual.cnpj;
 
 
     nome_exibicao =
       nome_exibicao !== undefined
         ? (
-            nome_exibicao
-              ? String(
-                  nome_exibicao
-                ).trim()
-              : null
-          )
+          nome_exibicao
+            ? String(
+              nome_exibicao
+            ).trim()
+            : null
+        )
         : nome !== undefined
           ? (
-              nome
-                ? String(
-                    nome
-                  ).trim()
-                : null
-            )
+            nome
+              ? String(
+                nome
+              ).trim()
+              : null
+          )
           : atual.nome_exibicao ||
-            atual.nome ||
-            null;
+          atual.nome ||
+          null;
 
 
     principal =
       principal !== undefined
         ? Boolean(
-            principal
-          )
+          principal
+        )
         : atual.principal;
 
 
     ativo =
       ativo !== undefined
         ? Boolean(
-            ativo
-          )
+          ativo
+        )
         : atual.ativo;
 
 
@@ -2985,7 +3126,7 @@ async function atualizarCnpj(
         );
 
       } catch (
-        rollbackError
+      rollbackError
       ) {
 
         console.error(
@@ -3280,7 +3421,7 @@ async function removerCnpj(
         );
 
       } catch (
-        rollbackError
+      rollbackError
       ) {
 
         console.error(

@@ -141,6 +141,8 @@ async function garantirTabelaAdmins() {
       NOT NULL
       DEFAULT true,
 
+      sessao_duracao VARCHAR(20),
+
       created_at TIMESTAMP
       NOT NULL
       DEFAULT NOW()
@@ -172,6 +174,34 @@ async function garantirTabelaAdmins() {
     ALTER TABLE admins
     ADD COLUMN IF NOT EXISTS created_at TIMESTAMP
     NOT NULL DEFAULT NOW();
+  `);
+
+  /* =======================================================
+     DURAÇÃO DA SESSÃO
+  ======================================================= */
+
+  await pool.query(`
+    ALTER TABLE admins
+    ADD COLUMN IF NOT EXISTS sessao_duracao VARCHAR(20);
+  `);
+
+  /* =======================================================
+     DEFINIR DURAÇÃO PADRÃO PARA USUÁRIOS ANTIGOS
+
+     RH / SUPER ADMIN = 8 horas
+     PONTO = 30 dias
+  ======================================================= */
+
+  await pool.query(`
+    UPDATE admins
+    SET sessao_duracao =
+      CASE
+        WHEN role = 'ponto_empresa' THEN '30d'
+        ELSE '8h'
+      END
+    WHERE
+      sessao_duracao IS NULL
+      OR TRIM(sessao_duracao) = '';
   `);
 
   /* =======================================================
@@ -251,49 +281,51 @@ async function login(req, res) {
     const result =
       await pool.query(
         `
-        SELECT
+          SELECT
 
-          a.id,
+            a.id,
 
-          a.username,
+            a.username,
 
-          a.password_hash,
+            a.password_hash,
 
-          a.role,
+            a.role,
 
-          a.empresa_id,
+            a.empresa_id,
 
-          a.ativo,
+            a.ativo,
 
-          e.id
-            AS empresa_id_real,
+            a.sessao_duracao,
 
-          e.nome
-            AS empresa_nome,
+            e.id
+              AS empresa_id_real,
 
-          e.nome_fantasia
-            AS empresa_nome_fantasia,
+            e.nome
+              AS empresa_nome,
 
-          e.ativo
-            AS empresa_ativa,
+            e.nome_fantasia
+              AS empresa_nome_fantasia,
 
-          e.cor_primaria,
+            e.ativo
+              AS empresa_ativa,
 
-          e.cor_secundaria,
+            e.cor_primaria,
 
-          e.logo_arquivo,
+            e.cor_secundaria,
 
-          e.fundo_arquivo
+            e.logo_arquivo,
 
-        FROM admins a
+            e.fundo_arquivo
 
-        LEFT JOIN empresas e
-          ON e.id = a.empresa_id
+          FROM admins a
 
-        WHERE LOWER(a.username) =
-              LOWER($1)
+          LEFT JOIN empresas e
+            ON e.id = a.empresa_id
 
-        LIMIT 1
+          WHERE LOWER(a.username) =
+                LOWER($1)
+
+          LIMIT 1
         `,
         [
           usuarioDigitado,
@@ -343,6 +375,11 @@ async function login(req, res) {
       "🏢 EMPRESA:",
       admin.empresa_nome_fantasia ||
         admin.empresa_nome
+    );
+
+    console.log(
+      "⏱ DURAÇÃO SESSÃO:",
+      admin.sessao_duracao
     );
 
     console.log(
@@ -483,6 +520,47 @@ async function login(req, res) {
           );
 
     /* =====================================================
+       DURAÇÕES PERMITIDAS
+    ===================================================== */
+
+    const duracoesPermitidas = [
+      "4h",
+      "8h",
+      "12h",
+      "1d",
+      "7d",
+      "15d",
+      "30d",
+      "60d",
+      "90d",
+    ];
+
+    /* =====================================================
+       DURAÇÃO PADRÃO
+
+       RH = 8 horas
+       PONTO = 30 dias
+       SUPER ADMIN = 8 horas
+    ===================================================== */
+
+    const duracaoPadrao =
+      admin.role ===
+      ROLES.PONTO_EMPRESA
+        ? "30d"
+        : "8h";
+
+    /* =====================================================
+       DURAÇÃO REAL DA SESSÃO
+    ===================================================== */
+
+    const sessaoDuracao =
+      duracoesPermitidas.includes(
+        admin.sessao_duracao
+      )
+        ? admin.sessao_duracao
+        : duracaoPadrao;
+
+    /* =====================================================
        TOKEN
     ===================================================== */
 
@@ -506,7 +584,7 @@ async function login(req, res) {
 
         {
           expiresIn:
-            "8h",
+            sessaoDuracao,
         }
       );
 
@@ -595,6 +673,9 @@ async function login(req, res) {
 
         empresa_nome:
           empresaNome,
+
+        sessao_duracao:
+          sessaoDuracao,
       },
     });
 
@@ -631,10 +712,6 @@ async function login(req, res) {
           admin.cor_secundaria ||
           "#084298",
 
-        /* ===============================================
-           NOMES DOS ARQUIVOS
-        =============================================== */
-
         logo_arquivo:
           admin.logo_arquivo ||
           null,
@@ -642,10 +719,6 @@ async function login(req, res) {
         fundo_arquivo:
           admin.fundo_arquivo ||
           null,
-
-        /* ===============================================
-           ROTAS PÚBLICAS DAS IMAGENS
-        =============================================== */
 
         logo_url:
           admin.logo_arquivo
@@ -699,6 +772,9 @@ async function login(req, res) {
 
         empresa_nome:
           empresaNome,
+
+        sessao_duracao:
+          sessaoDuracao,
       },
 
       empresa,
@@ -809,14 +885,14 @@ async function criarPrimeiroSuperAdmin(
     const usernameExiste =
       await pool.query(
         `
-        SELECT id
+          SELECT id
 
-        FROM admins
+          FROM admins
 
-        WHERE LOWER(username) =
-              LOWER($1)
+          WHERE LOWER(username) =
+                LOWER($1)
 
-        LIMIT 1
+          LIMIT 1
         `,
         [
           usuario,
@@ -845,34 +921,39 @@ async function criarPrimeiroSuperAdmin(
 
     /* =====================================================
        INSERT
+
+       Super Admin fica com 8 horas.
     ===================================================== */
 
     const { rows } =
       await pool.query(
         `
-        INSERT INTO admins (
-          username,
-          password_hash,
-          role,
-          empresa_id,
-          ativo
-        )
+          INSERT INTO admins (
+            username,
+            password_hash,
+            role,
+            empresa_id,
+            sessao_duracao,
+            ativo
+          )
 
-        VALUES (
-          $1,
-          $2,
-          'super_admin',
-          NULL,
-          true
-        )
+          VALUES (
+            $1,
+            $2,
+            'super_admin',
+            NULL,
+            '8h',
+            true
+          )
 
-        RETURNING
-          id,
-          username,
-          role,
-          empresa_id,
-          ativo,
-          created_at
+          RETURNING
+            id,
+            username,
+            role,
+            empresa_id,
+            sessao_duracao,
+            ativo,
+            created_at
         `,
         [
           usuario,
@@ -882,9 +963,6 @@ async function criarPrimeiroSuperAdmin(
 
     /* =====================================================
        REGISTRAR LOG
-
-       Como é a criação do primeiro Super Admin,
-       ainda não existe usuário autenticado.
     ===================================================== */
 
     await registrarLog({
@@ -917,6 +995,9 @@ async function criarPrimeiroSuperAdmin(
 
         username:
           rows[0].username,
+
+        sessao_duracao:
+          rows[0].sessao_duracao,
       },
     });
 
@@ -961,6 +1042,7 @@ async function criarAdminEmpresa(
       password,
       empresa_id,
       role,
+      sessao_duracao,
     } = req.body;
 
     /* =====================================================
@@ -996,6 +1078,57 @@ async function criarAdminEmpresa(
       return res.status(400).json({
         error:
           "Tipo de acesso inválido. Use rh_empresa ou ponto_empresa.",
+      });
+    }
+
+    /* =====================================================
+       DURAÇÕES PERMITIDAS
+    ===================================================== */
+
+    const duracoesPermitidas = [
+      "4h",
+      "8h",
+      "12h",
+      "1d",
+      "7d",
+      "15d",
+      "30d",
+      "60d",
+      "90d",
+    ];
+
+    /* =====================================================
+       PADRÃO
+
+       RH = 8 horas
+       PONTO = 30 dias
+    ===================================================== */
+
+    const duracaoPadrao =
+      role ===
+      ROLES.PONTO_EMPRESA
+        ? "30d"
+        : "8h";
+
+    const sessaoDuracao =
+      sessao_duracao
+        ? String(
+            sessao_duracao
+          ).trim()
+        : duracaoPadrao;
+
+    /* =====================================================
+       VALIDAR DURAÇÃO
+    ===================================================== */
+
+    if (
+      !duracoesPermitidas.includes(
+        sessaoDuracao
+      )
+    ) {
+      return res.status(400).json({
+        error:
+          "Duração de sessão inválida.",
       });
     }
 
@@ -1059,17 +1192,17 @@ async function criarAdminEmpresa(
     const empresaResult =
       await pool.query(
         `
-        SELECT
-          id,
-          nome,
-          nome_fantasia,
-          ativo
+          SELECT
+            id,
+            nome,
+            nome_fantasia,
+            ativo
 
-        FROM empresas
+          FROM empresas
 
-        WHERE id = $1
+          WHERE id = $1
 
-        LIMIT 1
+          LIMIT 1
         `,
         [
           empresaId,
@@ -1103,14 +1236,14 @@ async function criarAdminEmpresa(
     const usuarioExiste =
       await pool.query(
         `
-        SELECT id
+          SELECT id
 
-        FROM admins
+          FROM admins
 
-        WHERE LOWER(username) =
-              LOWER($1)
+          WHERE LOWER(username) =
+                LOWER($1)
 
-        LIMIT 1
+          LIMIT 1
         `,
         [
           usuario,
@@ -1134,16 +1267,16 @@ async function criarAdminEmpresa(
     const tipoExiste =
       await pool.query(
         `
-        SELECT
-          id,
-          username
+          SELECT
+            id,
+            username
 
-        FROM admins
+          FROM admins
 
-        WHERE empresa_id = $1
-          AND role = $2
+          WHERE empresa_id = $1
+            AND role = $2
 
-        LIMIT 1
+          LIMIT 1
         `,
         [
           empresaId,
@@ -1184,35 +1317,39 @@ async function criarAdminEmpresa(
     const { rows } =
       await pool.query(
         `
-        INSERT INTO admins (
-          username,
-          password_hash,
-          role,
-          empresa_id,
-          ativo
-        )
+          INSERT INTO admins (
+            username,
+            password_hash,
+            role,
+            empresa_id,
+            sessao_duracao,
+            ativo
+          )
 
-        VALUES (
-          $1,
-          $2,
-          $3,
-          $4,
-          true
-        )
+          VALUES (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            true
+          )
 
-        RETURNING
-          id,
-          username,
-          role,
-          empresa_id,
-          ativo,
-          created_at
+          RETURNING
+            id,
+            username,
+            role,
+            empresa_id,
+            sessao_duracao,
+            ativo,
+            created_at
         `,
         [
           usuario,
           hash,
           role,
           empresaId,
+          sessaoDuracao,
         ]
       );
 
@@ -1228,10 +1365,6 @@ async function criarAdminEmpresa(
 
     /* =====================================================
        REGISTRAR LOG DA CRIAÇÃO DO ACESSO
-
-       req.user é o Super Admin autenticado.
-
-       empresa_id é a empresa que recebeu o acesso.
     ===================================================== */
 
     await registrarLog({
@@ -1273,6 +1406,9 @@ async function criarAdminEmpresa(
 
         role_criada:
           rows[0].role,
+
+        sessao_duracao:
+          rows[0].sessao_duracao,
 
         empresa_id:
           empresaId,

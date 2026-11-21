@@ -1,13 +1,12 @@
 const express = require("express");
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
 
 const router = express.Router();
 
 
 /* =========================================================
-   CONTROLLER
+   CONTROLLER DAS EMPRESAS
 ========================================================= */
 
 const {
@@ -22,7 +21,24 @@ const {
   adicionarCnpj,
   atualizarCnpj,
   removerCnpj,
-} = require("../controllers/empresa.controller");
+} = require(
+  "../controllers/empresa.controller"
+);
+
+
+/* =========================================================
+   CONTROLLER DAS IMAGENS
+
+   Agora logo e fundo são armazenados diretamente
+   no PostgreSQL.
+========================================================= */
+
+const {
+  uploadLogoEmpresa,
+  uploadFundoEmpresa,
+} = require(
+  "../controllers/empresaUpload.controller"
+);
 
 
 /* =========================================================
@@ -32,133 +48,38 @@ const {
 const {
   auth,
   somenteSuperAdmin,
-} = require("../middlewares/auth");
+} = require(
+  "../middlewares/auth"
+);
 
 
 /* =========================================================
-   PASTA DE UPLOAD DAS EMPRESAS
-========================================================= */
+   STORAGE EM MEMÓRIA
 
-const PASTA_EMPRESAS =
-  process.env.UPLOADS_DIR
+   IMPORTANTE:
 
-    ? path.join(
-        process.env.UPLOADS_DIR,
-        "empresas"
-      )
+   Não utilizamos mais:
 
-    : path.join(
-        __dirname,
-        "../../uploads/empresas"
-      );
+   multer.diskStorage()
+
+   Não criamos mais arquivos em:
+
+   Back-End/uploads/empresas
 
 
-/* =========================================================
-   GARANTIR QUE A PASTA EXISTA
-========================================================= */
+   Agora:
 
-if (
-  !fs.existsSync(
-    PASTA_EMPRESAS
-  )
-) {
+   multer.memoryStorage()
 
-  fs.mkdirSync(
-    PASTA_EMPRESAS,
-    {
-      recursive: true,
-    }
-  );
-}
+   disponibiliza a imagem em:
 
+   file.buffer
 
-/* =========================================================
-   CONFIGURAÇÃO DO STORAGE
+   e o controller salva diretamente no PostgreSQL.
 ========================================================= */
 
 const storage =
-  multer.diskStorage({
-
-    destination: (
-      req,
-      file,
-      cb
-    ) => {
-
-      cb(
-        null,
-        PASTA_EMPRESAS
-      );
-    },
-
-
-    filename: (
-      req,
-      file,
-      cb
-    ) => {
-
-      const extensao =
-        path
-          .extname(
-            file.originalname
-          )
-          .toLowerCase();
-
-
-      let tipo =
-        "imagem";
-
-
-      if (
-        file.fieldname ===
-        "logo"
-      ) {
-
-        tipo =
-          "logo";
-      }
-
-
-      if (
-        file.fieldname ===
-        "fundo"
-      ) {
-
-        tipo =
-          "fundo";
-      }
-
-
-      const empresaId =
-        req.params.id ||
-        "empresa";
-
-
-      const nomeArquivo = [
-
-        tipo,
-
-        "empresa",
-
-        empresaId,
-
-        Date.now(),
-
-        Math.round(
-          Math.random() *
-          1e9
-        ),
-
-      ].join("-");
-
-
-      cb(
-        null,
-        `${nomeArquivo}${extensao}`
-      );
-    },
-  });
+  multer.memoryStorage();
 
 
 /* =========================================================
@@ -170,59 +91,92 @@ const fileFilter = (
   file,
   cb
 ) => {
+  try {
+    /* =====================================================
+       EXTENSÃO
+    ===================================================== */
 
-  const extensao =
-    path
-      .extname(
-        file.originalname
-      )
-      .toLowerCase();
-
-
-  const extensoesPermitidas = [
-    ".jpg",
-    ".jpeg",
-    ".png",
-    ".webp",
-  ];
+    const extensao =
+      path
+        .extname(
+          file.originalname
+        )
+        .toLowerCase();
 
 
-  const mimesPermitidos = [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-  ];
+    /* =====================================================
+       EXTENSÕES PERMITIDAS
+    ===================================================== */
+
+    const extensoesPermitidas = [
+      ".jpg",
+      ".jpeg",
+      ".png",
+      ".webp",
+    ];
 
 
-  const extensaoValida =
-    extensoesPermitidas.includes(
-      extensao
-    );
+    /* =====================================================
+       MIME TYPES PERMITIDOS
+    ===================================================== */
+
+    const mimesPermitidos = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
 
 
-  const mimeValido =
-    mimesPermitidos.includes(
-      file.mimetype
-    );
+    /* =====================================================
+       VALIDAR EXTENSÃO
+    ===================================================== */
+
+    const extensaoValida =
+      extensoesPermitidas.includes(
+        extensao
+      );
 
 
-  if (
-    !extensaoValida ||
-    !mimeValido
-  ) {
+    /* =====================================================
+       VALIDAR MIME
+    ===================================================== */
+
+    const mimeValido =
+      mimesPermitidos.includes(
+        file.mimetype
+      );
+
+
+    /* =====================================================
+       ARQUIVO INVÁLIDO
+    ===================================================== */
+
+    if (
+      !extensaoValida ||
+      !mimeValido
+    ) {
+      return cb(
+        new Error(
+          "Somente imagens JPG, JPEG, PNG ou WEBP são permitidas."
+        )
+      );
+    }
+
+
+    /* =====================================================
+       ARQUIVO VÁLIDO
+    ===================================================== */
 
     return cb(
-      new Error(
-        "Somente imagens JPG, JPEG, PNG ou WEBP são permitidas."
-      )
+      null,
+      true
+    );
+
+  } catch (err) {
+    return cb(
+      err
     );
   }
-
-
-  return cb(
-    null,
-    true
-  );
 };
 
 
@@ -232,31 +186,42 @@ const fileFilter = (
 
 const uploadEmpresa =
   multer({
-
     storage,
 
     fileFilter,
 
     limits: {
+      /* ===================================================
+         10 MB POR IMAGEM
+      =================================================== */
 
       fileSize:
         10 *
         1024 *
         1024,
 
-      files:
-        2,
+
+      /* ===================================================
+         LOGO + FUNDO
+      =================================================== */
+
+      files: 2,
     },
   });
 
 
 /* =========================================================
-   CAMPOS
+   CAMPOS DA IDENTIDADE VISUAL
+
+   Mantemos exatamente os campos que seu frontend
+   já utiliza:
+
+   logo
+   fundo
 ========================================================= */
 
 const uploadImagensEmpresa =
   uploadEmpresa.fields([
-
     {
       name:
         "logo",
@@ -277,6 +242,9 @@ const uploadImagensEmpresa =
 
 /* =========================================================
    PROCESSAR UPLOAD
+
+   Tratamos os erros aqui para não deixar o Multer
+   retornar erros confusos para o frontend.
 ========================================================= */
 
 function processarUploadImagens(
@@ -284,40 +252,43 @@ function processarUploadImagens(
   res,
   next
 ) {
-
   uploadImagensEmpresa(
     req,
     res,
     (
       err
     ) => {
+      /* ===================================================
+         SEM ERRO
+      =================================================== */
 
       if (!err) {
-
         return next();
       }
 
 
       console.error(
-        "Erro no upload da empresa:",
+        "❌ Erro no upload da empresa:",
         err
       );
 
 
       /* ===================================================
-         ERROS MULTER
+         ERROS DO MULTER
       =================================================== */
 
       if (
         err instanceof
         multer.MulterError
       ) {
+        /* =================================================
+           ARQUIVO MUITO GRANDE
+        ================================================= */
 
         if (
           err.code ===
           "LIMIT_FILE_SIZE"
         ) {
-
           return res
             .status(400)
             .json({
@@ -327,11 +298,14 @@ function processarUploadImagens(
         }
 
 
+        /* =================================================
+           MUITOS ARQUIVOS
+        ================================================= */
+
         if (
           err.code ===
           "LIMIT_FILE_COUNT"
         ) {
-
           return res
             .status(400)
             .json({
@@ -341,11 +315,14 @@ function processarUploadImagens(
         }
 
 
+        /* =================================================
+           CAMPO INCORRETO
+        ================================================= */
+
         if (
           err.code ===
           "LIMIT_UNEXPECTED_FILE"
         ) {
-
           return res
             .status(400)
             .json({
@@ -354,6 +331,10 @@ function processarUploadImagens(
             });
         }
 
+
+        /* =================================================
+           OUTRO ERRO DO MULTER
+        ================================================= */
 
         return res
           .status(400)
@@ -364,6 +345,10 @@ function processarUploadImagens(
           });
       }
 
+
+      /* ===================================================
+         OUTRO ERRO
+      =================================================== */
 
       return res
         .status(400)
@@ -378,67 +363,151 @@ function processarUploadImagens(
 
 
 /* =========================================================
-   REMOVER ARQUIVO
+   FUNÇÃO AUXILIAR
+
+   Executa os controllers de imagem sem encerrar
+   diretamente a resposta HTTP.
+
+   Isso é necessário porque a rota /imagens pode receber
+   logo e fundo ao mesmo tempo.
 ========================================================= */
 
-function removerArquivo(
+async function salvarLogoNoBanco(
+  empresaId,
   arquivo
 ) {
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      const reqFake = {
+        params: {
+          id:
+            String(
+              empresaId
+            ),
+        },
 
-  if (
-    !arquivo?.path
-  ) {
-
-    return;
-  }
+        file:
+          arquivo,
+      };
 
 
-  try {
+      const resFake = {
+        statusCode:
+          200,
 
-    if (
-      fs.existsSync(
-        arquivo.path
-      )
-    ) {
+        status(
+          codigo
+        ) {
+          this.statusCode =
+            codigo;
 
-      fs.unlinkSync(
-        arquivo.path
+          return this;
+        },
+
+        json(
+          dados
+        ) {
+          if (
+            this.statusCode >=
+            400
+          ) {
+            return reject(
+              new Error(
+                dados?.error ||
+                "Erro ao salvar logo."
+              )
+            );
+          }
+
+          return resolve(
+            dados
+          );
+        },
+      };
+
+
+      Promise.resolve(
+        uploadLogoEmpresa(
+          reqFake,
+          resFake
+        )
+      ).catch(
+        reject
       );
     }
-
-  } catch (err) {
-
-    console.error(
-      "Erro ao remover arquivo:",
-      err
-    );
-  }
+  );
 }
 
 
-/* =========================================================
-   REMOVER ARQUIVOS DO UPLOAD
-========================================================= */
-
-function removerArquivosUpload(
-  req
+async function salvarFundoNoBanco(
+  empresaId,
+  arquivo
 ) {
+  return new Promise(
+    (
+      resolve,
+      reject
+    ) => {
+      const reqFake = {
+        params: {
+          id:
+            String(
+              empresaId
+            ),
+        },
 
-  const logo =
-    req.files?.logo?.[0];
+        file:
+          arquivo,
+      };
 
 
-  const fundo =
-    req.files?.fundo?.[0];
+      const resFake = {
+        statusCode:
+          200,
+
+        status(
+          codigo
+        ) {
+          this.statusCode =
+            codigo;
+
+          return this;
+        },
+
+        json(
+          dados
+        ) {
+          if (
+            this.statusCode >=
+            400
+          ) {
+            return reject(
+              new Error(
+                dados?.error ||
+                "Erro ao salvar fundo."
+              )
+            );
+          }
+
+          return resolve(
+            dados
+          );
+        },
+      };
 
 
-  removerArquivo(
-    logo
-  );
-
-
-  removerArquivo(
-    fundo
+      Promise.resolve(
+        uploadFundoEmpresa(
+          reqFake,
+          resFake
+        )
+      ).catch(
+        reject
+      );
+    }
   );
 }
 
@@ -446,7 +515,8 @@ function removerArquivosUpload(
 /* =========================================================
    LISTAR EMPRESAS
 
-   GET /api/empresas
+   GET:
+   /api/empresas
 ========================================================= */
 
 router.get(
@@ -463,7 +533,8 @@ router.get(
 /* =========================================================
    CADASTRAR EMPRESA
 
-   POST /api/empresas
+   POST:
+   /api/empresas
 ========================================================= */
 
 router.post(
@@ -480,7 +551,23 @@ router.post(
 /* =========================================================
    UPLOAD DA IDENTIDADE VISUAL
 
-   POST /api/empresas/:id/imagens
+   POST:
+   /api/empresas/:id/imagens
+
+   multipart/form-data
+
+   Campos:
+
+   logo
+   fundo
+
+
+   IMPORTANTE:
+
+   Agora nenhuma imagem é gravada em disco.
+
+   As imagens são recebidas em memória e salvas
+   diretamente no PostgreSQL.
 ========================================================= */
 
 router.post(
@@ -496,8 +583,10 @@ router.post(
     req,
     res
   ) => {
-
     try {
+      /* ===================================================
+         EMPRESA
+      =================================================== */
 
       const empresaId =
         Number(
@@ -505,22 +594,12 @@ router.post(
         );
 
 
-      /* ===================================================
-         VALIDAR ID
-      =================================================== */
-
       if (
         !Number.isInteger(
           empresaId
         ) ||
         empresaId <= 0
       ) {
-
-        removerArquivosUpload(
-          req
-        );
-
-
         return res
           .status(400)
           .json({
@@ -531,7 +610,7 @@ router.post(
 
 
       /* ===================================================
-         ARQUIVOS
+         ARQUIVOS RECEBIDOS
       =================================================== */
 
       const logo =
@@ -544,11 +623,14 @@ router.post(
         null;
 
 
+      /* ===================================================
+         PRECISA TER PELO MENOS UMA IMAGEM
+      =================================================== */
+
       if (
         !logo &&
         !fundo
       ) {
-
         return res
           .status(400)
           .json({
@@ -559,60 +641,92 @@ router.post(
 
 
       /* ===================================================
+         RESULTADOS
+      =================================================== */
+
+      let resultadoLogo =
+        null;
+
+      let resultadoFundo =
+        null;
+
+
+      /* ===================================================
+         SALVAR LOGO NO POSTGRESQL
+      =================================================== */
+
+      if (logo) {
+        resultadoLogo =
+          await salvarLogoNoBanco(
+            empresaId,
+            logo
+          );
+      }
+
+
+      /* ===================================================
+         SALVAR FUNDO NO POSTGRESQL
+      =================================================== */
+
+      if (fundo) {
+        resultadoFundo =
+          await salvarFundoNoBanco(
+            empresaId,
+            fundo
+          );
+      }
+
+
+      /* ===================================================
          URLs
+
+         Continuam iguais.
+
+         Isso evita precisar alterar o frontend.
       =================================================== */
 
       const logoUrl =
-        logo
-          ? `/uploads/empresas/${logo.filename}`
-          : undefined;
+        resultadoLogo?.logo_url ||
+        resultadoFundo?.logo_url ||
+        null;
 
 
       const fundoUrl =
-        fundo
-          ? `/uploads/empresas/${fundo.filename}`
-          : undefined;
+        resultadoFundo?.fundo_url ||
+        resultadoLogo?.fundo_url ||
+        null;
 
 
-      req.body = {
+      /* ===================================================
+         RESPOSTA
+      =================================================== */
 
-        ...req.body,
-      };
+      return res.json({
+        ok: true,
 
+        message:
+          logo && fundo
+            ? "Logo e imagem de fundo atualizadas com sucesso."
+            : logo
+              ? "Logo atualizada com sucesso."
+              : "Imagem de fundo atualizada com sucesso.",
 
-      if (
-        logoUrl
-      ) {
+        logo_url:
+          logoUrl,
 
-        req.body.logo_url =
-          logoUrl;
-      }
+        fundo_url:
+          fundoUrl,
 
-
-      if (
-        fundoUrl
-      ) {
-
-        req.body.fundo_url =
-          fundoUrl;
-      }
-
-
-      return atualizarEmpresa(
-        req,
-        res
-      );
+        empresa:
+          resultadoFundo?.empresa ||
+          resultadoLogo?.empresa ||
+          null,
+      });
 
     } catch (err) {
-
       console.error(
-        "Erro ao enviar imagens da empresa:",
+        "❌ Erro ao enviar imagens da empresa:",
         err
-      );
-
-
-      removerArquivosUpload(
-        req
       );
 
 
@@ -621,6 +735,9 @@ router.post(
         .json({
           error:
             "Erro ao enviar imagens da empresa.",
+
+          detalhe:
+            err.message,
         });
     }
   }
@@ -630,7 +747,8 @@ router.post(
 /* =========================================================
    ATIVAR / DESATIVAR
 
-   PATCH /api/empresas/:id/status
+   PATCH:
+   /api/empresas/:id/status
 ========================================================= */
 
 router.patch(
@@ -647,7 +765,8 @@ router.patch(
 /* =========================================================
    ADICIONAR CNPJ
 
-   POST /api/empresas/:id/cnpjs
+   POST:
+   /api/empresas/:id/cnpjs
 ========================================================= */
 
 router.post(
@@ -664,7 +783,8 @@ router.post(
 /* =========================================================
    ATUALIZAR CNPJ
 
-   PUT /api/empresas/:id/cnpjs/:cnpjId
+   PUT:
+   /api/empresas/:id/cnpjs/:cnpjId
 ========================================================= */
 
 router.put(
@@ -681,7 +801,8 @@ router.put(
 /* =========================================================
    REMOVER CNPJ
 
-   DELETE /api/empresas/:id/cnpjs/:cnpjId
+   DELETE:
+   /api/empresas/:id/cnpjs/:cnpjId
 ========================================================= */
 
 router.delete(
@@ -698,7 +819,8 @@ router.delete(
 /* =========================================================
    ATUALIZAR EMPRESA
 
-   PUT /api/empresas/:id
+   PUT:
+   /api/empresas/:id
 ========================================================= */
 
 router.put(
@@ -715,9 +837,8 @@ router.put(
 /* =========================================================
    EXCLUIR EMPRESA
 
-   DELETE /api/empresas/:id
-
-   SOMENTE SUPER ADMIN
+   DELETE:
+   /api/empresas/:id
 ========================================================= */
 
 router.delete(
@@ -734,7 +855,8 @@ router.delete(
 /* =========================================================
    BUSCAR EMPRESA POR ID
 
-   GET /api/empresas/:id
+   GET:
+   /api/empresas/:id
 ========================================================= */
 
 router.get(
